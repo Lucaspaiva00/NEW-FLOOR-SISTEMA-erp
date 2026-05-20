@@ -1,46 +1,143 @@
+const API_URL = "http://localhost:3000";
+
 const token = JSON.parse(
     localStorage.getItem("usuarioLogado")
 )?.token;
 
 if (!token) {
-
-    window.location.href =
-        "login.html";
-
+    window.location.href = "login.html";
 }
 
-/* ===================================================
-   ELEMENTOS
-=================================================== */
-
-const listaClientes =
-    document.getElementById("listaClientes");
-
-const formCliente =
-    document.getElementById("formCliente");
-
-const formEditarCliente =
-    document.getElementById("formEditarCliente");
-
-const pesquisaCliente =
-    document.getElementById("pesquisaCliente");
-
-/* ===================================================
-   CACHE
-=================================================== */
+const listaClientes = document.getElementById("listaClientes");
+const formCliente = document.getElementById("formCliente");
+const formEditarCliente = document.getElementById("formEditarCliente");
+const pesquisaCliente = document.getElementById("pesquisaCliente");
 
 let clientesCache = [];
 
-/* ===================================================
-   CARREGAR CLIENTES
-=================================================== */
+function pegarValor(id) {
+    const elemento = document.getElementById(id);
+
+    if (!elemento) return null;
+
+    const valor = elemento.value;
+
+    if (valor === undefined || valor === null) return null;
+
+    const valorTratado = String(valor).trim();
+
+    return valorTratado === "" ? null : valorTratado;
+}
+
+function pegarDecimal(id) {
+    const valor = pegarValor(id);
+
+    if (!valor) return null;
+
+    return valor.replace(",", ".");
+}
+
+function formatarDataParaInput(data) {
+    if (!data) return "";
+
+    return String(data).split("T")[0];
+}
+
+function textoSeguro(valor) {
+    if (valor === null || valor === undefined || valor === "") {
+        return "-";
+    }
+
+    return String(valor)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function montarBodyCliente(prefixo = "") {
+    const campo = (nome) => {
+        if (!prefixo) return nome;
+
+        return `${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`;
+    };
+
+    return {
+        tipo: pegarValor(campo("tipo")) || "PESSOA_JURIDICA",
+
+        nome: pegarValor(campo("nome")),
+
+        nomeFantasia: pegarValor(campo("nomeFantasia")),
+
+        razaoSocial: pegarValor(campo("razaoSocial")),
+
+        cnpj: pegarValor(campo("cnpj")),
+
+        cpf: pegarValor(campo("cpf")),
+
+        inscricaoEstadual: pegarValor(campo("inscricaoEstadual")),
+
+        responsavel: pegarValor(campo("responsavel")),
+
+        telefone: pegarValor(campo("telefone")),
+
+        telefoneSecundario: pegarValor(campo("telefoneSecundario")),
+
+        whatsapp: pegarValor(campo("whatsapp")),
+
+        email: pegarValor(campo("email")),
+
+        site: pegarValor(campo("site")),
+
+        cep: pegarValor(campo("cep")),
+
+        endereco: pegarValor(campo("endereco")),
+
+        numero: pegarValor(campo("numero")),
+
+        complemento: pegarValor(campo("complemento")),
+
+        bairro: pegarValor(campo("bairro")),
+
+        cidade: pegarValor(campo("cidade")),
+
+        estado: pegarValor(campo("estado")),
+
+        pais: pegarValor(campo("pais")) || "Brasil",
+
+        latitude: pegarValor(campo("latitude")),
+
+        longitude: pegarValor(campo("longitude")),
+
+        observacoes: pegarValor(campo("observacoes")),
+
+        origemLead: pegarValor(campo("origemLead")),
+
+        tags: pegarValor(campo("tags")),
+
+        statusCliente: pegarValor(campo("statusCliente")) || "Novo",
+
+        limiteCredito: pegarDecimal(campo("limiteCredito")),
+
+        descontoPadrao: pegarDecimal(campo("descontoPadrao")),
+
+        dataNascimento: pegarValor(campo("dataNascimento"))
+    };
+}
+
+function preencherCampo(id, valor) {
+    const elemento = document.getElementById(id);
+
+    if (!elemento) return;
+
+    elemento.value = valor ?? "";
+}
 
 async function carregarClientes() {
-
     try {
-
         const response = await fetch(
-            "http://localhost:3000/clientes",
+            `${API_URL}/clientes`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -48,61 +145,43 @@ async function carregarClientes() {
             }
         );
 
-        const clientes =
-            await response.json();
+        if (!response.ok) {
+            alert("Erro ao carregar clientes.");
+            return;
+        }
 
-        clientesCache = clientes;
+        const clientes = await response.json();
 
-        atualizarKpis(clientes);
+        clientesCache = Array.isArray(clientes) ? clientes : [];
 
-        renderizarClientes(clientes);
+        atualizarKpis(clientesCache);
+
+        renderizarClientes(clientesCache);
 
     } catch (error) {
-
         console.log(error);
-
+        alert("Erro de conexão ao carregar clientes.");
     }
-
 }
-
-/* ===================================================
-   KPIS
-=================================================== */
 
 function atualizarKpis(clientes) {
+    document.getElementById("kpiTotal").innerText = clientes.length;
 
-    document.getElementById(
-        "kpiTotal"
-    ).innerText = clientes.length;
-
-    document.getElementById(
-        "kpiAtivos"
-    ).innerText = clientes.filter(c =>
-        c.statusCliente === "Ativo"
+    document.getElementById("kpiAtivos").innerText = clientes.filter(
+        cliente => cliente.statusCliente === "Ativo"
     ).length;
 
-    document.getElementById(
-        "kpiNegociacao"
-    ).innerText = clientes.filter(c =>
-        c.statusCliente === "Negociação"
+    document.getElementById("kpiNegociacao").innerText = clientes.filter(
+        cliente => cliente.statusCliente === "Negociação"
     ).length;
 
-    document.getElementById(
-        "kpiNovos"
-    ).innerText = clientes.filter(c =>
-        c.statusCliente === "Novo"
+    document.getElementById("kpiNovos").innerText = clientes.filter(
+        cliente => cliente.statusCliente === "Novo"
     ).length;
-
 }
 
-/* ===================================================
-   STATUS
-=================================================== */
-
 function renderizarStatus(status) {
-
     if (status === "Ativo") {
-
         return `
             <span class="status-badge status-ativo">
                 Ativo
@@ -111,7 +190,6 @@ function renderizarStatus(status) {
     }
 
     if (status === "Negociação") {
-
         return `
             <span class="status-badge status-negociacao">
                 Negociação
@@ -124,734 +202,374 @@ function renderizarStatus(status) {
             Novo
         </span>
     `;
-
 }
 
-/* ===================================================
-   RENDER CLIENTES
-=================================================== */
-
 function renderizarClientes(clientes) {
-
     listaClientes.innerHTML = "";
 
-    if (clientes.length === 0) {
-
+    if (!clientes || clientes.length === 0) {
         listaClientes.innerHTML = `
-
             <div class="empty-state">
-
-                <h3>
-                    Nenhum cliente encontrado
-                </h3>
-
-                <p>
-                    Tente outra pesquisa.
-                </p>
-
+                <h3>Nenhum cliente encontrado</h3>
+                <p>Cadastre um novo cliente ou tente outra pesquisa.</p>
             </div>
-
         `;
 
         return;
-
     }
 
     clientes.forEach(cliente => {
+        const primeiraLetra = cliente.nome
+            ? textoSeguro(cliente.nome.charAt(0).toUpperCase())
+            : "C";
 
         listaClientes.innerHTML += `
-
             <div class="cliente-card">
 
                 <div class="cliente-header">
 
                     <div class="cliente-avatar">
-
-                        ${cliente.nome?.charAt(0) || "C"}
-
+                        ${primeiraLetra}
                     </div>
 
                     <div class="cliente-header-info">
-
-                        <h3>
-                            ${cliente.nome || "-"}
-                        </h3>
-
-                        <p>
-                            ${cliente.nomeFantasia || "Sem nome fantasia"}
-                        </p>
-
+                        <h3>${textoSeguro(cliente.nome)}</h3>
+                        <p>${textoSeguro(cliente.nomeFantasia || cliente.razaoSocial || "Sem nome fantasia")}</p>
                     </div>
 
-                    ${renderizarStatus(
-            cliente.statusCliente
-        )}
+                    ${renderizarStatus(cliente.statusCliente)}
 
                 </div>
 
                 <div class="cliente-body">
 
                     <div class="cliente-item">
-
-                        <span>
-                            Responsável
-                        </span>
-
-                        <strong>
-                            ${cliente.responsavel || "-"}
-                        </strong>
-
+                        <span>Responsável</span>
+                        <strong>${textoSeguro(cliente.responsavel)}</strong>
                     </div>
 
                     <div class="cliente-item">
-
-                        <span>
-                            Telefone
-                        </span>
-
-                        <strong>
-                            ${cliente.telefone || "-"}
-                        </strong>
-
+                        <span>Telefone</span>
+                        <strong>${textoSeguro(cliente.telefone)}</strong>
                     </div>
 
                     <div class="cliente-item">
-
-                        <span>
-                            Email
-                        </span>
-
-                        <strong>
-                            ${cliente.email || "-"}
-                        </strong>
-
+                        <span>WhatsApp</span>
+                        <strong>${textoSeguro(cliente.whatsapp)}</strong>
                     </div>
 
                     <div class="cliente-item">
+                        <span>Email</span>
+                        <strong>${textoSeguro(cliente.email)}</strong>
+                    </div>
 
-                        <span>
-                            Cidade
-                        </span>
+                    <div class="cliente-item">
+                        <span>Cidade</span>
+                        <strong>${textoSeguro(cliente.cidade)}</strong>
+                    </div>
 
-                        <strong>
-                            ${cliente.cidade || "-"}
-                        </strong>
-
+                    <div class="cliente-item">
+                        <span>CNPJ / CPF</span>
+                        <strong>${textoSeguro(cliente.cnpj || cliente.cpf)}</strong>
                     </div>
 
                 </div>
 
                 <div class="cliente-footer">
-
                     <button
                         class="btn-gerenciar"
                         onclick="abrirModalCliente(${cliente.clienteid})"
                     >
-
                         Gerenciar cliente
-
                     </button>
-
                 </div>
 
             </div>
-
         `;
-
     });
-
 }
 
-carregarClientes();
+if (pesquisaCliente) {
+    pesquisaCliente.addEventListener(
+        "input",
+        () => {
+            const termo = pesquisaCliente.value.toLowerCase().trim();
 
-/* ===================================================
-   PESQUISA
-=================================================== */
-
-pesquisaCliente.addEventListener(
-    "input",
-    () => {
-
-        const termo =
-            pesquisaCliente.value
-                .toLowerCase();
-
-        const filtrados =
-            clientesCache.filter(cliente => {
-
+            const filtrados = clientesCache.filter(cliente => {
                 return (
-
-                    cliente.nome
-                        ?.toLowerCase()
-                        .includes(termo)
-
-                    ||
-
-                    cliente.nomeFantasia
-                        ?.toLowerCase()
-                        .includes(termo)
-
-                    ||
-
-                    cliente.email
-                        ?.toLowerCase()
-                        .includes(termo)
-
-                    ||
-
-                    cliente.telefone
-                        ?.toLowerCase()
-                        .includes(termo)
-
+                    cliente.nome?.toLowerCase().includes(termo) ||
+                    cliente.nomeFantasia?.toLowerCase().includes(termo) ||
+                    cliente.razaoSocial?.toLowerCase().includes(termo) ||
+                    cliente.email?.toLowerCase().includes(termo) ||
+                    cliente.telefone?.toLowerCase().includes(termo) ||
+                    cliente.whatsapp?.toLowerCase().includes(termo) ||
+                    cliente.cnpj?.toLowerCase().includes(termo) ||
+                    cliente.cpf?.toLowerCase().includes(termo) ||
+                    cliente.cidade?.toLowerCase().includes(termo)
                 );
-
             });
 
-        renderizarClientes(filtrados);
-
-    }
-);
-
-/* ===================================================
-   NOVO CLIENTE
-=================================================== */
+            renderizarClientes(filtrados);
+        }
+    );
+}
 
 formCliente.addEventListener(
     "submit",
     async (e) => {
-
         e.preventDefault();
 
         try {
+            const body = montarBodyCliente();
 
-            const body = {
-
-                tipo:
-                    document.getElementById("tipo").value,
-
-                nome:
-                    document.getElementById("nome").value,
-
-                nomeFantasia:
-                    document.getElementById("nomeFantasia").value,
-
-                razaoSocial:
-                    document.getElementById("razaoSocial").value,
-
-                cnpj:
-                    document.getElementById("cnpj").value,
-
-                cpf:
-                    document.getElementById("cpf").value,
-
-                inscricaoEstadual:
-                    document.getElementById("inscricaoEstadual").value,
-
-                responsavel:
-                    document.getElementById("responsavel").value,
-
-                telefone:
-                    document.getElementById("telefone").value,
-
-                telefoneSecundario:
-                    document.getElementById("telefoneSecundario").value,
-
-                whatsapp:
-                    document.getElementById("whatsapp").value,
-
-                email:
-                    document.getElementById("email").value,
-
-                site:
-                    document.getElementById("site").value,
-
-                cep:
-                    document.getElementById("cep").value,
-
-                endereco:
-                    document.getElementById("endereco").value,
-
-                numero:
-                    document.getElementById("numero").value,
-
-                complemento:
-                    document.getElementById("complemento").value,
-
-                bairro:
-                    document.getElementById("bairro").value,
-
-                cidade:
-                    document.getElementById("cidade").value,
-
-                estado:
-                    document.getElementById("estado").value,
-
-                pais:
-                    document.getElementById("pais").value,
-
-                latitude:
-                    document.getElementById("latitude").value,
-
-                longitude:
-                    document.getElementById("longitude").value,
-
-                observacoes:
-                    document.getElementById("observacoes").value,
-
-                origemLead:
-                    document.getElementById("origemLead").value,
-
-                tags:
-                    document.getElementById("tags").value,
-
-                statusCliente:
-                    document.getElementById("statusCliente").value,
-
-                limiteCredito:
-                    document.getElementById("limiteCredito").value,
-
-                descontoPadrao:
-                    document.getElementById("descontoPadrao").value,
-
-                dataNascimento:
-                    document.getElementById("dataNascimento").value
-
-            };
+            if (!body.nome) {
+                alert("Informe o nome do cliente.");
+                return;
+            }
 
             const response = await fetch(
-                "http://localhost:3000/clientes",
+                `${API_URL}/clientes`,
                 {
                     method: "POST",
 
                     headers: {
-
-                        "Content-Type":
-                            "application/json",
-
-                        Authorization:
-                            `Bearer ${token}`
-
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
                     },
 
                     body: JSON.stringify(body)
-
                 }
             );
 
+            const resposta = await response.json();
+
             if (!response.ok) {
-
-                alert(
-                    "Erro ao cadastrar cliente."
-                );
-
+                console.log(resposta);
+                alert(resposta.error || "Erro ao cadastrar cliente.");
                 return;
-
             }
 
-            bootstrap.Modal.getInstance(
-                document.getElementById(
-                    "modalCliente"
-                )
-            ).hide();
+            const modal = bootstrap.Modal.getInstance(
+                document.getElementById("modalCliente")
+            );
+
+            if (modal) {
+                modal.hide();
+            }
 
             formCliente.reset();
+
+            preencherCampo("pais", "Brasil");
 
             carregarClientes();
 
         } catch (error) {
-
             console.log(error);
-
+            alert("Erro de conexão ao cadastrar cliente.");
         }
-
     }
 );
 
-/* ===================================================
-   ABRIR MODAL CLIENTE
-=================================================== */
-
 async function abrirModalCliente(id) {
-
     try {
-
         const response = await fetch(
-            `http://localhost:3000/clientes/${id}`,
+            `${API_URL}/clientes/${id}`,
             {
                 headers: {
-                    Authorization:
-                        `Bearer ${token}`
+                    Authorization: `Bearer ${token}`
                 }
             }
         );
 
-        const cliente =
-            await response.json();
+        if (!response.ok) {
+            alert("Erro ao buscar cliente.");
+            return;
+        }
 
-        document.getElementById(
-            "editarId"
-        ).value =
-            cliente.clienteid || "";
+        const cliente = await response.json();
 
-        document.getElementById(
-            "editarTipo"
-        ).value =
-            cliente.tipo || "PESSOA_JURIDICA";
+        preencherCampo("editarId", cliente.clienteid);
 
-        document.getElementById(
-            "editarNome"
-        ).value =
-            cliente.nome || "";
+        preencherCampo("editarTipo", cliente.tipo || "PESSOA_JURIDICA");
 
-        document.getElementById(
-            "editarEmpresa"
-        ).value =
-            cliente.nomeFantasia || "";
+        preencherCampo("editarNome", cliente.nome);
 
-        document.getElementById(
-            "editarResponsavel"
-        ).value =
-            cliente.responsavel || "";
+        preencherCampo("editarNomeFantasia", cliente.nomeFantasia);
 
-        document.getElementById(
-            "editarCnpj"
-        ).value =
-            cliente.cnpj || "";
+        preencherCampo("editarRazaoSocial", cliente.razaoSocial);
 
-        document.getElementById(
-            "editarCpf"
-        ).value =
-            cliente.cpf || "";
+        preencherCampo("editarCnpj", cliente.cnpj);
 
-        document.getElementById(
-            "editarInscricaoEstadual"
-        ).value =
-            cliente.inscricaoEstadual || "";
+        preencherCampo("editarCpf", cliente.cpf);
 
-        document.getElementById(
-            "editarInscricaoMunicipal"
-        ).value =
-            cliente.inscricaoMunicipal || "";
+        preencherCampo("editarInscricaoEstadual", cliente.inscricaoEstadual);
 
-        document.getElementById(
-            "editarSegmento"
-        ).value =
-            cliente.segmento || "";
+        preencherCampo("editarResponsavel", cliente.responsavel);
 
-        document.getElementById(
-            "editarTelefone"
-        ).value =
-            cliente.telefone || "";
+        preencherCampo("editarTelefone", cliente.telefone);
 
-        document.getElementById(
-            "editarWhatsapp"
-        ).value =
-            cliente.whatsapp || "";
+        preencherCampo("editarTelefoneSecundario", cliente.telefoneSecundario);
 
-        document.getElementById(
-            "editarEmail"
-        ).value =
-            cliente.email || "";
+        preencherCampo("editarWhatsapp", cliente.whatsapp);
 
-        document.getElementById(
-            "editarSite"
-        ).value =
-            cliente.site || "";
+        preencherCampo("editarEmail", cliente.email);
 
-        document.getElementById(
-            "editarOrigemLead"
-        ).value =
-            cliente.origemLead || "";
+        preencherCampo("editarSite", cliente.site);
 
-        document.getElementById(
-            "editarCep"
-        ).value =
-            cliente.cep || "";
+        preencherCampo("editarCep", cliente.cep);
 
-        document.getElementById(
-            "editarEndereco"
-        ).value =
-            cliente.endereco || "";
+        preencherCampo("editarEndereco", cliente.endereco);
 
-        document.getElementById(
-            "editarNumero"
-        ).value =
-            cliente.numero || "";
+        preencherCampo("editarNumero", cliente.numero);
 
-        document.getElementById(
-            "editarBairro"
-        ).value =
-            cliente.bairro || "";
+        preencherCampo("editarComplemento", cliente.complemento);
 
-        document.getElementById(
-            "editarCidade"
-        ).value =
-            cliente.cidade || "";
+        preencherCampo("editarBairro", cliente.bairro);
 
-        document.getElementById(
-            "editarEstado"
-        ).value =
-            cliente.estado || "";
+        preencherCampo("editarCidade", cliente.cidade);
 
-        document.getElementById(
-            "editarStatusCliente"
-        ).value =
-            cliente.statusCliente || "Novo";
+        preencherCampo("editarEstado", cliente.estado);
 
-        document.getElementById(
-            "editarLimiteCredito"
-        ).value =
-            cliente.limiteCredito || "";
+        preencherCampo("editarPais", cliente.pais || "Brasil");
 
-        document.getElementById(
-            "editarCondicaoPagamento"
-        ).value =
-            cliente.condicaoPagamento || "";
+        preencherCampo("editarLatitude", cliente.latitude);
 
-        document.getElementById(
-            "editarVendedorResponsavel"
-        ).value =
-            cliente.vendedorResponsavel || "";
+        preencherCampo("editarLongitude", cliente.longitude);
 
-        document.getElementById(
-            "editarTags"
-        ).value =
-            cliente.tags || "";
+        preencherCampo("editarOrigemLead", cliente.origemLead);
 
-        document.getElementById(
-            "editarObservacoes"
-        ).value =
-            cliente.observacoes || "";
+        preencherCampo("editarTags", cliente.tags);
 
-        const modal =
-            new bootstrap.Modal(
-                document.getElementById(
-                    "modalEditarCliente"
-                )
-            );
+        preencherCampo("editarStatusCliente", cliente.statusCliente || "Novo");
+
+        preencherCampo("editarLimiteCredito", cliente.limiteCredito);
+
+        preencherCampo("editarDescontoPadrao", cliente.descontoPadrao);
+
+        preencherCampo("editarDataNascimento", formatarDataParaInput(cliente.dataNascimento));
+
+        preencherCampo("editarObservacoes", cliente.observacoes);
+
+        const modal = new bootstrap.Modal(
+            document.getElementById("modalEditarCliente")
+        );
 
         modal.show();
 
     } catch (error) {
-
         console.log(error);
-
+        alert("Erro de conexão ao abrir cliente.");
     }
-
 }
-
-/* ===================================================
-   EDITAR CLIENTE
-=================================================== */
 
 formEditarCliente.addEventListener(
     "submit",
     async (e) => {
-
         e.preventDefault();
 
         try {
+            const id = pegarValor("editarId");
 
-            const body = {
+            if (!id) {
+                alert("Cliente inválido.");
+                return;
+            }
 
-                tipo:
-                    document.getElementById("editarTipo").value,
+            const body = montarBodyCliente("editar");
 
-                nome:
-                    document.getElementById("editarNome").value,
-
-                nomeFantasia:
-                    document.getElementById("editarNomeFantasia").value,
-
-                razaoSocial:
-                    document.getElementById("editarRazaoSocial").value,
-
-                cnpj:
-                    document.getElementById("editarCnpj").value,
-
-                cpf:
-                    document.getElementById("editarCpf").value,
-
-                inscricaoEstadual:
-                    document.getElementById("editarInscricaoEstadual").value,
-
-                responsavel:
-                    document.getElementById("editarResponsavel").value,
-
-                telefone:
-                    document.getElementById("editarTelefone").value,
-
-                telefoneSecundario:
-                    document.getElementById("editarTelefoneSecundario").value,
-
-                whatsapp:
-                    document.getElementById("editarWhatsapp").value,
-
-                email:
-                    document.getElementById("editarEmail").value,
-
-                site:
-                    document.getElementById("editarSite").value,
-
-                cep:
-                    document.getElementById("editarCep").value,
-
-                endereco:
-                    document.getElementById("editarEndereco").value,
-
-                numero:
-                    document.getElementById("editarNumero").value,
-
-                complemento:
-                    document.getElementById("editarComplemento").value,
-
-                bairro:
-                    document.getElementById("editarBairro").value,
-
-                cidade:
-                    document.getElementById("editarCidade").value,
-
-                estado:
-                    document.getElementById("editarEstado").value,
-
-                pais:
-                    document.getElementById("editarPais").value,
-
-                latitude:
-                    document.getElementById("editarLatitude").value,
-
-                longitude:
-                    document.getElementById("editarLongitude").value,
-
-                observacoes:
-                    document.getElementById("editarObservacoes").value,
-
-                origemLead:
-                    document.getElementById("editarOrigemLead").value,
-
-                tags:
-                    document.getElementById("editarTags").value,
-
-                statusCliente:
-                    document.getElementById("editarStatusCliente").value,
-
-                limiteCredito:
-                    document.getElementById("editarLimiteCredito").value,
-
-                descontoPadrao:
-                    document.getElementById("editarDescontoPadrao").value,
-
-                dataNascimento:
-                    document.getElementById("editarDataNascimento").value
-
-            };
+            if (!body.nome) {
+                alert("Informe o nome do cliente.");
+                return;
+            }
 
             const response = await fetch(
-                `http://localhost:3000/clientes/${id}`,
+                `${API_URL}/clientes/${id}`,
                 {
                     method: "PUT",
 
                     headers: {
-
-                        "Content-Type":
-                            "application/json",
-
-                        Authorization:
-                            `Bearer ${token}`
-
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
                     },
 
                     body: JSON.stringify(body)
-
                 }
             );
 
+            const resposta = await response.json();
+
             if (!response.ok) {
-
-                alert(
-                    "Erro ao atualizar cliente."
-                );
-
+                console.log(resposta);
+                alert(resposta.error || "Erro ao atualizar cliente.");
                 return;
-
             }
 
-            bootstrap.Modal.getInstance(
-                document.getElementById(
-                    "modalEditarCliente"
-                )
-            ).hide();
+            const modal = bootstrap.Modal.getInstance(
+                document.getElementById("modalEditarCliente")
+            );
+
+            if (modal) {
+                modal.hide();
+            }
 
             carregarClientes();
 
         } catch (error) {
-
             console.log(error);
-
+            alert("Erro de conexão ao atualizar cliente.");
         }
-
     }
 );
 
-/* ===================================================
-   EXCLUIR
-=================================================== */
-
-document.getElementById(
-    "btnExcluirCliente"
-).addEventListener(
+document.getElementById("btnExcluirCliente").addEventListener(
     "click",
     async () => {
-
         try {
+            const id = pegarValor("editarId");
 
-            const id =
-                document.getElementById(
-                    "editarId"
-                ).value;
+            if (!id) {
+                alert("Cliente inválido.");
+                return;
+            }
 
-            const confirmar =
-                confirm(
-                    "Deseja excluir este cliente?"
-                );
+            const confirmar = confirm("Deseja excluir este cliente?");
 
             if (!confirmar) return;
 
             const response = await fetch(
-                `http://localhost:3000/clientes/${id}`,
+                `${API_URL}/clientes/${id}`,
                 {
                     method: "DELETE",
 
                     headers: {
-                        Authorization:
-                            `Bearer ${token}`
+                        Authorization: `Bearer ${token}`
                     }
                 }
             );
 
+            const resposta = await response.json();
+
             if (!response.ok) {
-
-                alert(
-                    "Erro ao excluir cliente."
-                );
-
+                console.log(resposta);
+                alert(resposta.error || "Erro ao excluir cliente.");
                 return;
-
             }
 
-            bootstrap.Modal.getInstance(
-                document.getElementById(
-                    "modalEditarCliente"
-                )
-            ).hide();
+            const modal = bootstrap.Modal.getInstance(
+                document.getElementById("modalEditarCliente")
+            );
+
+            if (modal) {
+                modal.hide();
+            }
 
             carregarClientes();
 
         } catch (error) {
-
             console.log(error);
-
+            alert("Erro de conexão ao excluir cliente.");
         }
-
     }
 );
+
+carregarClientes();
