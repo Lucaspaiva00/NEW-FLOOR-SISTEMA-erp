@@ -1,3 +1,5 @@
+const API_URL = "http://localhost:3000";
+
 const token = JSON.parse(
     localStorage.getItem("usuarioLogado")
 )?.token;
@@ -12,163 +14,299 @@ const colunaExecutando = document.getElementById("colunaExecutando");
 const colunaFaturada = document.getElementById("colunaFaturada");
 
 const clienteSelect = document.getElementById("clienteId");
+const editarClienteSelect = document.getElementById("editarClienteId");
 const listaItensProposta = document.getElementById("listaItensProposta");
 const valorTotal = document.getElementById("valorTotal");
+const pesquisaProposta = document.getElementById("pesquisaProposta");
+const formNovaProposta = document.getElementById("formNovaProposta");
+const formEditarProposta = document.getElementById("formEditarProposta");
 
 let propostas = [];
+let propostasCache = [];
+let clientes = [];
 let servicos = [];
 let sortableInstances = [];
 let estaArrastando = false;
 
-async function carregarClientes() {
+function pegarValor(id) {
+    const elemento = document.getElementById(id);
 
-    const response = await fetch(
-        "http://localhost:3000/clientes",
+    if (!elemento) return null;
+
+    const valor = elemento.value;
+
+    if (valor === undefined || valor === null) return null;
+
+    const tratado = String(valor).trim();
+
+    return tratado === "" ? null : tratado;
+}
+
+function pegarNumero(id) {
+    const valor = pegarValor(id);
+
+    if (!valor) return null;
+
+    const numero = Number(String(valor).replace(",", "."));
+
+    return Number.isNaN(numero) ? null : numero;
+}
+
+function pegarInteiro(id) {
+    const valor = pegarValor(id);
+
+    if (!valor) return null;
+
+    const numero = Number(valor);
+
+    return Number.isNaN(numero) ? null : numero;
+}
+
+function pegarCheckbox(id) {
+    const elemento = document.getElementById(id);
+
+    if (!elemento) return false;
+
+    return elemento.checked;
+}
+
+function preencherCampo(id, valor) {
+    const elemento = document.getElementById(id);
+
+    if (!elemento) return;
+
+    elemento.value = valor ?? "";
+}
+
+function preencherCheckbox(id, valor) {
+    const elemento = document.getElementById(id);
+
+    if (!elemento) return;
+
+    elemento.checked = Boolean(valor);
+}
+
+function dataInput(data) {
+    if (!data) return "";
+
+    return String(data).split("T")[0];
+}
+
+function moeda(valor) {
+    return Number(valor || 0).toLocaleString(
+        "pt-BR",
         {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
+            style: "currency",
+            currency: "BRL"
         }
     );
+}
 
-    const clientes = await response.json();
+function textoSeguro(valor) {
+    if (valor === null || valor === undefined || valor === "") {
+        return "-";
+    }
 
-    clienteSelect.innerHTML = "";
+    return String(valor)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
-    clientes.forEach(cliente => {
-        clienteSelect.innerHTML += `
-            <option value="${cliente.clienteid}">
-                ${cliente.nome}
-            </option>
-        `;
-    });
+async function carregarClientes() {
+    try {
+        const response = await fetch(
+            `${API_URL}/clientes`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        clientes = await response.json();
+
+        clienteSelect.innerHTML = "";
+        editarClienteSelect.innerHTML = "";
+
+        clientes.forEach(cliente => {
+            const option = `
+                <option value="${cliente.clienteid}">
+                    ${textoSeguro(cliente.nome)}
+                </option>
+            `;
+
+            clienteSelect.innerHTML += option;
+            editarClienteSelect.innerHTML += option;
+        });
+
+    } catch (error) {
+        console.log(error);
+        alert("Erro ao carregar clientes.");
+    }
 }
 
 async function carregarServicos() {
-
-    const response = await fetch(
-        "http://localhost:3000/servicos",
-        {
-            headers: {
-                Authorization: `Bearer ${token}`
+    try {
+        const response = await fetch(
+            `${API_URL}/servicos`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
             }
-        }
-    );
+        );
 
-    servicos = await response.json();
+        servicos = await response.json();
+
+    } catch (error) {
+        console.log(error);
+        alert("Erro ao carregar serviços.");
+    }
 }
 
 async function carregarPropostas() {
-
-    const response = await fetch(
-        "http://localhost:3000/propostas",
-        {
-            headers: {
-                Authorization: `Bearer ${token}`
+    try {
+        const response = await fetch(
+            `${API_URL}/propostas`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
             }
-        }
-    );
+        );
 
-    propostas = await response.json();
+        propostas = await response.json();
+        propostasCache = propostas;
 
-    colunaPendente.innerHTML = "";
-    colunaAprovada.innerHTML = "";
-    colunaExecutando.innerHTML = "";
-    colunaFaturada.innerHTML = "";
+        renderizarKanban(propostas);
+        atualizarKpis(propostas);
 
-    let pendentes = 0;
-    let aprovadas = 0;
-    let executando = 0;
-    let faturadas = 0;
+    } catch (error) {
+        console.log(error);
+        alert("Erro ao carregar propostas.");
+    }
+}
 
-    propostas.forEach(proposta => {
-
-        const card = criarCardProposta(proposta);
-
-        if (proposta.status === "PENDENTE") {
-            colunaPendente.innerHTML += card;
-            pendentes++;
-        }
-
-        if (proposta.status === "APROVADA") {
-            colunaAprovada.innerHTML += card;
-            aprovadas++;
-        }
-
-        if (proposta.status === "EXECUTANDO") {
-            colunaExecutando.innerHTML += card;
-            executando++;
-        }
-
-        if (proposta.status === "FATURADA") {
-            colunaFaturada.innerHTML += card;
-            faturadas++;
-        }
-
-    });
+function atualizarKpis(lista) {
+    const pendentes = lista.filter(p => p.status === "PENDENTE").length;
+    const aprovadas = lista.filter(p => p.status === "APROVADA").length;
+    const executando = lista.filter(p => p.status === "EXECUTANDO").length;
+    const faturadas = lista.filter(p => p.status === "FATURADA").length;
 
     document.getElementById("kpiPendentes").innerText = pendentes;
     document.getElementById("kpiAprovadas").innerText = aprovadas;
     document.getElementById("kpiExecutando").innerText = executando;
     document.getElementById("kpiFaturadas").innerText = faturadas;
 
-    iniciarSortableKanban();
+    document.getElementById("countPendentes").innerText = pendentes;
+    document.getElementById("countAprovadas").innerText = aprovadas;
+    document.getElementById("countExecutando").innerText = executando;
+    document.getElementById("countFaturadas").innerText = faturadas;
 }
 
 function criarCardProposta(proposta) {
-
     return `
         <div
             class="proposal-card"
             data-id="${proposta.propostaid}"
             onclick="abrirModalProposta(${proposta.propostaid})"
         >
+            <span class="proposal-number">
+                ${textoSeguro(proposta.numero)}
+            </span>
 
-            <small>${proposta.numero}</small>
+            <div class="proposal-tags">
+                ${proposta.prioridade ? `
+                    <div class="proposal-tag tag-prioridade">
+                        ${textoSeguro(proposta.prioridade)}
+                    </div>
+                ` : ""}
 
-            <h4>${proposta.cliente?.nome || "-"}</h4>
+                ${proposta.origem ? `
+                    <div class="proposal-tag tag-origem">
+                        ${textoSeguro(proposta.origem)}
+                    </div>
+                ` : ""}
 
-            <p>${proposta.titulo}</p>
-
-            <div class="proposal-footer">
-                <strong>
-                    R$ ${Number(proposta.total).toFixed(2)}
-                </strong>
-
-                <span>
-                    ${new Date(proposta.createdAt).toLocaleDateString("pt-BR")}
-                </span>
+                ${proposta.etapaAtual ? `
+                    <div class="proposal-tag tag-etapa">
+                        ${textoSeguro(proposta.etapaAtual)}
+                    </div>
+                ` : ""}
             </div>
 
+            <div class="proposal-title">
+                ${textoSeguro(proposta.titulo)}
+            </div>
+
+            <div class="proposal-client">
+                ${textoSeguro(proposta.cliente?.nome)}
+            </div>
+
+            <div class="proposal-desc">
+                ${textoSeguro(proposta.descricao || proposta.subtitulo || "Sem descrição")}
+            </div>
+
+            <div class="proposal-footer">
+                <div class="proposal-value">
+                    ${moeda(proposta.total)}
+                </div>
+
+                <div class="proposal-date">
+                    ${new Date(proposta.createdAt).toLocaleDateString("pt-BR")}
+                </div>
+            </div>
         </div>
     `;
 }
 
-function iniciarSortableKanban() {
+function renderizarKanban(lista) {
+    colunaPendente.innerHTML = "";
+    colunaAprovada.innerHTML = "";
+    colunaExecutando.innerHTML = "";
+    colunaFaturada.innerHTML = "";
 
+    lista.forEach(proposta => {
+        const card = criarCardProposta(proposta);
+
+        if (proposta.status === "PENDENTE" || proposta.status === "RASCUNHO") {
+            colunaPendente.innerHTML += card;
+        }
+
+        if (proposta.status === "APROVADA") {
+            colunaAprovada.innerHTML += card;
+        }
+
+        if (proposta.status === "EXECUTANDO") {
+            colunaExecutando.innerHTML += card;
+        }
+
+        if (proposta.status === "FATURADA") {
+            colunaFaturada.innerHTML += card;
+        }
+    });
+
+    iniciarSortableKanban();
+}
+
+function iniciarSortableKanban() {
     sortableInstances.forEach(instance => instance.destroy());
     sortableInstances = [];
 
     const listas = document.querySelectorAll(".kanban-list");
 
     listas.forEach(lista => {
-
         const sortable = new Sortable(lista, {
-
             group: "propostas-kanban",
-
             animation: 180,
-
             forceFallback: true,
-
             fallbackOnBody: true,
-
             swapThreshold: 0.65,
-
             ghostClass: "kanban-ghost",
-
             chosenClass: "kanban-chosen",
-
             dragClass: "kanban-drag",
 
             onStart: function () {
@@ -177,7 +315,6 @@ function iniciarSortableKanban() {
             },
 
             onEnd: async function (evt) {
-
                 document.body.classList.remove("kanban-is-dragging");
 
                 setTimeout(() => {
@@ -190,21 +327,17 @@ function iniciarSortableKanban() {
                 if (!propostaId || !novoStatus) return;
 
                 await atualizarStatusProposta(propostaId, novoStatus);
-
                 await carregarPropostas();
             }
-
         });
 
         sortableInstances.push(sortable);
-
     });
 }
 
 async function atualizarStatusProposta(id, status) {
-
     await fetch(
-        `http://localhost:3000/propostas/${id}`,
+        `${API_URL}/propostas/${id}`,
         {
             method: "PUT",
 
@@ -220,211 +353,674 @@ async function atualizarStatusProposta(id, status) {
     );
 }
 
-function abrirModalProposta(id) {
+function montarOptionsServicos(servicoSelecionado = "") {
+    return servicos.map(servico => {
+        const selected = Number(servicoSelecionado) === Number(servico.servicoid)
+            ? "selected"
+            : "";
 
-    if (estaArrastando) return;
-
-    const proposta = propostas.find(
-        p => p.propostaid == id
-    );
-
-    if (!proposta) return;
-
-    document.getElementById("editarId").value = proposta.propostaid;
-    document.getElementById("editarStatus").value = proposta.status;
-
-    const modal = new bootstrap.Modal(
-        document.getElementById("modalProposta")
-    );
-
-    modal.show();
+        return `
+            <option
+                value="${servico.servicoid}"
+                data-codigo="${textoSeguro(servico.codigo || "")}"
+                data-nome="${textoSeguro(servico.nome || "")}"
+                data-descricao="${textoSeguro(servico.descricao || servico.nome || "")}"
+                data-unidade="${textoSeguro(servico.unidade || "UN")}"
+                data-valor="${servico.valor || 0}"
+                ${selected}
+            >
+                ${textoSeguro(servico.nome)} - ${moeda(servico.valor)}
+            </option>
+        `;
+    }).join("");
 }
 
-document.getElementById("btnAdicionarServico").addEventListener("click", () => {
+function adicionarItemProposta(item = null) {
+    const index = document.querySelectorAll(".item-servico").length + 1;
 
-    if (servicos.length === 0) {
-        alert("Cadastre um serviço antes de criar a proposta.");
-        return;
-    }
+    const servicoId = item?.servicoId || item?.servico?.servicoid || "";
+    const quantidade = item?.quantidade || 1;
+    const valorUnitario = item?.valorUnitario || 0;
+    const desconto = item?.desconto || 0;
+    const acrescimo = item?.acrescimo || 0;
+    const subtotal = item?.subtotal || 0;
 
     const html = `
         <div class="item-servico">
 
-            <select class="form-control servico-select">
+            <div class="item-title">
+                <strong>Item ${index}</strong>
 
-                ${servicos.map(servico => `
-                    <option
-                        value="${servico.servicoid}"
-                        data-nome="${servico.nome}"
-                        data-valor="${servico.valor}"
-                    >
-                        ${servico.nome} - R$ ${Number(servico.valor).toFixed(2)}
-                    </option>
-                `).join("")}
+                <button type="button" class="btn-remove-item">
+                    X
+                </button>
+            </div>
 
-            </select>
+            <div class="row">
 
-            <input
-                type="number"
-                class="form-control quantidade-input"
-                value="1"
-                min="1"
-            >
+                <div class="col-md-5 mb-3">
+                    <label>Serviço</label>
+                    <select class="form-control premium-input-light servico-select">
+                        ${montarOptionsServicos(servicoId)}
+                    </select>
+                </div>
 
-            <button
-                type="button"
-                class="btn btn-danger btn-remover-item"
-            >
-                X
-            </button>
+                <div class="col-md-3 mb-3">
+                    <label>Código</label>
+                    <input type="text" class="form-control premium-input-light item-codigo"
+                        value="${textoSeguro(item?.codigo || "")}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Unidade</label>
+                    <input type="text" class="form-control premium-input-light item-unidade"
+                        value="${textoSeguro(item?.unidade || "UN")}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Ordem</label>
+                    <input type="number" class="form-control premium-input-light item-ordem"
+                        value="${item?.ordem || index}">
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    <label>Descrição</label>
+                    <input type="text" class="form-control premium-input-light item-descricao"
+                        value="${textoSeguro(item?.descricao || "")}">
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    <label>Detalhes</label>
+                    <textarea class="form-control premium-input-light textarea-premium item-detalhes">${item?.detalhes || ""}</textarea>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Quantidade</label>
+                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-quantidade"
+                        value="${quantidade}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Valor unitário</label>
+                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-valor"
+                        value="${valorUnitario}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Desconto</label>
+                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-desconto"
+                        value="${desconto}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Acréscimo</label>
+                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-acrescimo"
+                        value="${acrescimo}">
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>Subtotal</label>
+                    <input type="number" step="0.01" class="form-control premium-input-light item-subtotal"
+                        value="${subtotal}">
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    <label>Observações do item</label>
+                    <textarea class="form-control premium-input-light textarea-premium item-observacoes">${item?.observacoes || ""}</textarea>
+                </div>
+
+            </div>
 
         </div>
     `;
 
-    listaItensProposta.innerHTML += html;
+    listaItensProposta.insertAdjacentHTML("beforeend", html);
+
+    const novoItem = listaItensProposta.lastElementChild;
+    const select = novoItem.querySelector(".servico-select");
+
+    preencherItemComServico(select);
 
     atualizarTotal();
+}
+
+function preencherItemComServico(select) {
+    const item = select.closest(".item-servico");
+    const option = select.options[select.selectedIndex];
+
+    if (!option) return;
+
+    const codigoInput = item.querySelector(".item-codigo");
+    const descricaoInput = item.querySelector(".item-descricao");
+    const unidadeInput = item.querySelector(".item-unidade");
+    const valorInput = item.querySelector(".item-valor");
+
+    if (!codigoInput.value) {
+        codigoInput.value = option.dataset.codigo || "";
+    }
+
+    if (!descricaoInput.value) {
+        descricaoInput.value = option.dataset.descricao || option.dataset.nome || "";
+    }
+
+    if (!unidadeInput.value) {
+        unidadeInput.value = option.dataset.unidade || "UN";
+    }
+
+    if (!valorInput.value || Number(valorInput.value) === 0) {
+        valorInput.value = Number(option.dataset.valor || 0);
+    }
+}
+
+document.getElementById("btnAdicionarServico").addEventListener("click", () => {
+    if (servicos.length === 0) {
+        alert("Cadastre um serviço antes de criar uma proposta.");
+        return;
+    }
+
+    adicionarItemProposta();
 });
 
 document.addEventListener("click", (e) => {
-
-    if (e.target.classList.contains("btn-remover-item")) {
-        e.target.parentElement.remove();
+    if (e.target.classList.contains("btn-remove-item")) {
+        e.target.closest(".item-servico").remove();
         atualizarTotal();
     }
 });
 
-document.addEventListener("change", atualizarTotal);
-document.addEventListener("input", atualizarTotal);
-
-function atualizarTotal() {
-
-    let total = 0;
-
-    const itensDOM = document.querySelectorAll(".item-servico");
-
-    itensDOM.forEach(item => {
-
-        const select = item.querySelector(".servico-select");
-        const quantidade = item.querySelector(".quantidade-input");
-
-        if (!select || !quantidade) return;
-
-        const option = select.options[select.selectedIndex];
-
-        const valor = Number(option.dataset.valor || 0);
-        const qtd = Number(quantidade.value || 0);
-
-        total += valor * qtd;
-    });
-
-    valorTotal.innerText = total.toLocaleString(
-        "pt-BR",
-        {
-            style: "currency",
-            currency: "BRL"
-        }
-    );
-}
-
-document.getElementById("formNovaProposta").addEventListener("submit", async (e) => {
-
-    e.preventDefault();
-
-    const itensDOM = document.querySelectorAll(".item-servico");
-
-    if (itensDOM.length === 0) {
-        alert("Adicione pelo menos um serviço na proposta.");
-        return;
+document.addEventListener("change", (e) => {
+    if (e.target.classList.contains("servico-select")) {
+        preencherItemComServico(e.target);
     }
 
-    const itens = [];
+    atualizarTotal();
+});
 
-    let total = 0;
+document.addEventListener("input", () => {
+    atualizarTotal();
+});
+
+function atualizarTotal() {
+    let subtotalGeral = 0;
+
+    const itensDOM = document.querySelectorAll(".item-servico");
 
     itensDOM.forEach(item => {
+        const quantidade = Number(item.querySelector(".item-quantidade")?.value || 0);
+        const valor = Number(item.querySelector(".item-valor")?.value || 0);
+        const desconto = Number(item.querySelector(".item-desconto")?.value || 0);
+        const acrescimo = Number(item.querySelector(".item-acrescimo")?.value || 0);
+        const subtotalInput = item.querySelector(".item-subtotal");
 
+        const subtotal = (quantidade * valor) - desconto + acrescimo;
+
+        subtotalInput.value = subtotal.toFixed(2);
+
+        subtotalGeral += subtotal;
+    });
+
+    const desconto = Number(pegarNumero("desconto") || 0);
+    const acrescimo = Number(pegarNumero("acrescimo") || 0);
+    const frete = Number(pegarNumero("frete") || 0);
+    const impostos = Number(pegarNumero("impostos") || 0);
+
+    const total = subtotalGeral - desconto + acrescimo + frete + impostos;
+
+    valorTotal.innerText = moeda(total);
+}
+
+function montarItens() {
+    const itens = [];
+
+    const itensDOM = document.querySelectorAll(".item-servico");
+
+    itensDOM.forEach((item, index) => {
         const select = item.querySelector(".servico-select");
-        const quantidade = item.querySelector(".quantidade-input");
-
-        const option = select.options[select.selectedIndex];
-
-        const valor = Number(option.dataset.valor);
-        const qtd = Number(quantidade.value);
-        const subtotal = valor * qtd;
-
-        total += subtotal;
 
         itens.push({
-            descricao: option.dataset.nome,
-            servicoId: Number(select.value),
-            quantidade: qtd,
-            valorUnitario: valor,
-            subtotal
+            codigo: item.querySelector(".item-codigo")?.value || `ITEM-${index + 1}`,
+
+            descricao: item.querySelector(".item-descricao")?.value || "",
+
+            detalhes: item.querySelector(".item-detalhes")?.value || null,
+
+            unidade: item.querySelector(".item-unidade")?.value || "UN",
+
+            quantidade: Number(item.querySelector(".item-quantidade")?.value || 0),
+
+            valorUnitario: Number(item.querySelector(".item-valor")?.value || 0),
+
+            desconto: Number(item.querySelector(".item-desconto")?.value || 0),
+
+            acrescimo: Number(item.querySelector(".item-acrescimo")?.value || 0),
+
+            subtotal: Number(item.querySelector(".item-subtotal")?.value || 0),
+
+            ordem: Number(item.querySelector(".item-ordem")?.value || index + 1),
+
+            observacoes: item.querySelector(".item-observacoes")?.value || null,
+
+            servicoId: select?.value ? Number(select.value) : null
         });
     });
 
-    const body = {
-        numero: `PROP-${Date.now()}`,
-        titulo: document.getElementById("titulo").value,
-        descricao: document.getElementById("descricao").value,
-        clienteId: Number(clienteSelect.value),
-        subtotal: total,
-        desconto: 0,
-        total,
-        status: "PENDENTE",
-        itens
-    };
+    return itens;
+}
 
-    await fetch(
-        "http://localhost:3000/propostas",
-        {
-            method: "POST",
-
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-            },
-
-            body: JSON.stringify(body)
-        }
+function calcularResumoFinanceiro(itens) {
+    const subtotal = itens.reduce(
+        (total, item) => total + Number(item.subtotal || 0),
+        0
     );
 
-    location.reload();
+    const desconto = Number(pegarNumero("desconto") || 0);
+    const acrescimo = Number(pegarNumero("acrescimo") || 0);
+    const frete = Number(pegarNumero("frete") || 0);
+    const impostos = Number(pegarNumero("impostos") || 0);
+
+    const total = subtotal - desconto + acrescimo + frete + impostos;
+
+    return {
+        subtotal,
+        desconto,
+        acrescimo,
+        frete,
+        impostos,
+        total
+    };
+}
+
+function montarBodyNovaProposta() {
+    const itens = montarItens();
+    const financeiro = calcularResumoFinanceiro(itens);
+
+    return {
+        numero: pegarValor("numero") || `PROP-${Date.now()}`,
+
+        titulo: pegarValor("titulo"),
+
+        subtitulo: pegarValor("subtitulo"),
+
+        descricao: pegarValor("descricao"),
+
+        escopo: pegarValor("escopo"),
+
+        observacoes: pegarValor("observacoes"),
+
+        observacoesInternas: pegarValor("observacoesInternas"),
+
+        status: pegarValor("status") || "RASCUNHO",
+
+        prioridade: pegarValor("prioridade"),
+
+        subtotal: financeiro.subtotal,
+
+        desconto: financeiro.desconto,
+
+        acrescimo: financeiro.acrescimo,
+
+        frete: financeiro.frete,
+
+        impostos: financeiro.impostos,
+
+        total: financeiro.total,
+
+        percentualLucro: pegarNumero("percentualLucro"),
+
+        formaPagamento: pegarValor("formaPagamento"),
+
+        condicoesPagamento: pegarValor("condicoesPagamento"),
+
+        validadeDias: pegarInteiro("validadeDias"),
+
+        dataValidade: pegarValor("dataValidade"),
+
+        dataAprovacao: pegarValor("dataAprovacao"),
+
+        dataRecusa: pegarValor("dataRecusa"),
+
+        motivoRecusa: pegarValor("motivoRecusa"),
+
+        responsavel: pegarValor("responsavel"),
+
+        vendedor: pegarValor("vendedor"),
+
+        origem: pegarValor("origem"),
+
+        etapaAtual: pegarValor("etapaAtual"),
+
+        assinaturaCliente: pegarValor("assinaturaCliente"),
+
+        aprovadoCliente: pegarCheckbox("aprovadoCliente"),
+
+        enviadoEmail: pegarCheckbox("enviadoEmail"),
+
+        enviadoWhatsapp: pegarCheckbox("enviadoWhatsapp"),
+
+        visualizada: pegarCheckbox("visualizada"),
+
+        urlPublica: pegarValor("urlPublica"),
+
+        pdfUrl: pegarValor("pdfUrl"),
+
+        clienteId: Number(pegarValor("clienteId")),
+
+        itens
+    };
+}
+
+formNovaProposta.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    try {
+        const body = montarBodyNovaProposta();
+
+        if (!body.titulo) {
+            alert("Informe o título da proposta.");
+            return;
+        }
+
+        if (!body.clienteId) {
+            alert("Selecione um cliente.");
+            return;
+        }
+
+        if (!body.itens || body.itens.length === 0) {
+            alert("Adicione pelo menos um item na proposta.");
+            return;
+        }
+
+        const response = await fetch(
+            `${API_URL}/propostas`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+
+                body: JSON.stringify(body)
+            }
+        );
+
+        const resposta = await response.json();
+
+        if (!response.ok) {
+            console.log(resposta);
+            alert(resposta.error || "Erro ao criar proposta.");
+            return;
+        }
+
+        bootstrap.Modal.getInstance(
+            document.getElementById("modalNovaProposta")
+        ).hide();
+
+        formNovaProposta.reset();
+
+        listaItensProposta.innerHTML = "";
+        valorTotal.innerText = moeda(0);
+
+        await carregarPropostas();
+
+    } catch (error) {
+        console.log(error);
+        alert("Erro ao criar proposta.");
+    }
 });
 
-document.getElementById("btnSalvarStatus").addEventListener("click", async () => {
+async function abrirModalProposta(id) {
+    if (estaArrastando) return;
 
-    const id = document.getElementById("editarId").value;
-    const status = document.getElementById("editarStatus").value;
+    try {
+        const response = await fetch(
+            `${API_URL}/propostas/${id}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
 
-    await atualizarStatusProposta(id, status);
+        if (!response.ok) {
+            alert("Erro ao buscar proposta.");
+            return;
+        }
 
-    location.reload();
+        const proposta = await response.json();
+
+        preencherCampo("editarId", proposta.propostaid);
+        preencherCampo("editarNumero", proposta.numero);
+        preencherCampo("editarTitulo", proposta.titulo);
+        preencherCampo("editarClienteId", proposta.clienteId);
+        preencherCampo("editarSubtitulo", proposta.subtitulo);
+        preencherCampo("editarStatus", proposta.status);
+        preencherCampo("editarPrioridade", proposta.prioridade);
+        preencherCampo("editarDescricao", proposta.descricao);
+        preencherCampo("editarEscopo", proposta.escopo);
+        preencherCampo("editarResponsavel", proposta.responsavel);
+        preencherCampo("editarVendedor", proposta.vendedor);
+        preencherCampo("editarOrigem", proposta.origem);
+        preencherCampo("editarEtapaAtual", proposta.etapaAtual);
+        preencherCampo("editarAssinaturaCliente", proposta.assinaturaCliente);
+        preencherCampo("editarValidadeDias", proposta.validadeDias);
+        preencherCampo("editarDataValidade", dataInput(proposta.dataValidade));
+        preencherCampo("editarDataAprovacao", dataInput(proposta.dataAprovacao));
+        preencherCampo("editarDataRecusa", dataInput(proposta.dataRecusa));
+        preencherCampo("editarSubtotal", proposta.subtotal);
+        preencherCampo("editarDesconto", proposta.desconto);
+        preencherCampo("editarAcrescimo", proposta.acrescimo);
+        preencherCampo("editarFrete", proposta.frete);
+        preencherCampo("editarImpostos", proposta.impostos);
+        preencherCampo("editarTotal", proposta.total);
+        preencherCampo("editarPercentualLucro", proposta.percentualLucro);
+        preencherCampo("editarFormaPagamento", proposta.formaPagamento);
+        preencherCampo("editarCondicoesPagamento", proposta.condicoesPagamento);
+        preencherCampo("editarObservacoes", proposta.observacoes);
+        preencherCampo("editarObservacoesInternas", proposta.observacoesInternas);
+        preencherCampo("editarMotivoRecusa", proposta.motivoRecusa);
+        preencherCampo("editarUrlPublica", proposta.urlPublica);
+        preencherCampo("editarPdfUrl", proposta.pdfUrl);
+
+        preencherCheckbox("editarAprovadoCliente", proposta.aprovadoCliente);
+        preencherCheckbox("editarEnviadoEmail", proposta.enviadoEmail);
+        preencherCheckbox("editarEnviadoWhatsapp", proposta.enviadoWhatsapp);
+        preencherCheckbox("editarVisualizada", proposta.visualizada);
+
+        const modal = new bootstrap.Modal(
+            document.getElementById("modalProposta")
+        );
+
+        modal.show();
+
+    } catch (error) {
+        console.log(error);
+        alert("Erro ao abrir proposta.");
+    }
+}
+
+function montarBodyEditarProposta() {
+    return {
+        numero: pegarValor("editarNumero"),
+
+        titulo: pegarValor("editarTitulo"),
+
+        subtitulo: pegarValor("editarSubtitulo"),
+
+        descricao: pegarValor("editarDescricao"),
+
+        escopo: pegarValor("editarEscopo"),
+
+        observacoes: pegarValor("editarObservacoes"),
+
+        observacoesInternas: pegarValor("editarObservacoesInternas"),
+
+        status: pegarValor("editarStatus"),
+
+        prioridade: pegarValor("editarPrioridade"),
+
+        subtotal: pegarNumero("editarSubtotal"),
+
+        desconto: pegarNumero("editarDesconto"),
+
+        acrescimo: pegarNumero("editarAcrescimo"),
+
+        frete: pegarNumero("editarFrete"),
+
+        impostos: pegarNumero("editarImpostos"),
+
+        total: pegarNumero("editarTotal"),
+
+        percentualLucro: pegarNumero("editarPercentualLucro"),
+
+        formaPagamento: pegarValor("editarFormaPagamento"),
+
+        condicoesPagamento: pegarValor("editarCondicoesPagamento"),
+
+        validadeDias: pegarInteiro("editarValidadeDias"),
+
+        dataValidade: pegarValor("editarDataValidade"),
+
+        dataAprovacao: pegarValor("editarDataAprovacao"),
+
+        dataRecusa: pegarValor("editarDataRecusa"),
+
+        motivoRecusa: pegarValor("editarMotivoRecusa"),
+
+        responsavel: pegarValor("editarResponsavel"),
+
+        vendedor: pegarValor("editarVendedor"),
+
+        origem: pegarValor("editarOrigem"),
+
+        etapaAtual: pegarValor("editarEtapaAtual"),
+
+        assinaturaCliente: pegarValor("editarAssinaturaCliente"),
+
+        aprovadoCliente: pegarCheckbox("editarAprovadoCliente"),
+
+        enviadoEmail: pegarCheckbox("editarEnviadoEmail"),
+
+        enviadoWhatsapp: pegarCheckbox("editarEnviadoWhatsapp"),
+
+        visualizada: pegarCheckbox("editarVisualizada"),
+
+        urlPublica: pegarValor("editarUrlPublica"),
+
+        pdfUrl: pegarValor("editarPdfUrl"),
+
+        clienteId: Number(pegarValor("editarClienteId"))
+    };
+}
+
+formEditarProposta.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    try {
+        const id = pegarValor("editarId");
+
+        if (!id) {
+            alert("Proposta inválida.");
+            return;
+        }
+
+        const body = montarBodyEditarProposta();
+
+        const response = await fetch(
+            `${API_URL}/propostas/${id}`,
+            {
+                method: "PUT",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+
+                body: JSON.stringify(body)
+            }
+        );
+
+        const resposta = await response.json();
+
+        if (!response.ok) {
+            console.log(resposta);
+            alert(resposta.error || "Erro ao atualizar proposta.");
+            return;
+        }
+
+        bootstrap.Modal.getInstance(
+            document.getElementById("modalProposta")
+        ).hide();
+
+        await carregarPropostas();
+
+    } catch (error) {
+        console.log(error);
+        alert("Erro ao atualizar proposta.");
+    }
 });
 
 document.getElementById("btnExcluirProposta").addEventListener("click", async () => {
+    try {
+        const id = pegarValor("editarId");
 
-    const id = document.getElementById("editarId").value;
-
-    const confirmar = confirm(
-        "Deseja excluir esta proposta?"
-    );
-
-    if (!confirmar) return;
-
-    await fetch(
-        `http://localhost:3000/propostas/${id}`,
-        {
-            method: "DELETE",
-
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
+        if (!id) {
+            alert("Proposta inválida.");
+            return;
         }
-    );
 
-    location.reload();
+        const confirmar = confirm("Deseja excluir esta proposta?");
+
+        if (!confirmar) return;
+
+        const response = await fetch(
+            `${API_URL}/propostas/${id}`,
+            {
+                method: "DELETE",
+
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        const resposta = await response.json();
+
+        if (!response.ok) {
+            console.log(resposta);
+            alert(resposta.error || "Erro ao excluir proposta.");
+            return;
+        }
+
+        bootstrap.Modal.getInstance(
+            document.getElementById("modalProposta")
+        ).hide();
+
+        await carregarPropostas();
+
+    } catch (error) {
+        console.log(error);
+        alert("Erro ao excluir proposta.");
+    }
+});
+
+pesquisaProposta.addEventListener("input", () => {
+    const termo = pesquisaProposta.value.toLowerCase().trim();
+
+    const filtradas = propostasCache.filter(proposta => {
+        return (
+            proposta.titulo?.toLowerCase().includes(termo) ||
+            proposta.numero?.toLowerCase().includes(termo) ||
+            proposta.cliente?.nome?.toLowerCase().includes(termo) ||
+            proposta.descricao?.toLowerCase().includes(termo) ||
+            proposta.status?.toLowerCase().includes(termo) ||
+            proposta.vendedor?.toLowerCase().includes(termo) ||
+            proposta.origem?.toLowerCase().includes(termo)
+        );
+    });
+
+    renderizarKanban(filtradas);
+    atualizarKpis(filtradas);
 });
 
 async function iniciarTela() {
