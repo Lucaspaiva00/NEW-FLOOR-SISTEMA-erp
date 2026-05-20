@@ -15,91 +15,61 @@ exports.create = async (req, res) => {
             data: {
 
                 tipo: body.tipo,
-
                 nome: body.nome,
-
                 nomeFantasia: body.nomeFantasia,
-
                 razaoSocial: body.razaoSocial,
-
                 cnpj: body.cnpj,
-
                 cpf: body.cpf,
-
                 inscricaoEstadual:
                     body.inscricaoEstadual,
-
                 responsavel:
                     body.responsavel,
-
                 telefone:
                     body.telefone,
-
                 telefoneSecundario:
                     body.telefoneSecundario,
-
                 whatsapp:
                     body.whatsapp,
-
                 email:
                     body.email,
-
                 site:
                     body.site,
-
                 cep:
                     body.cep,
-
                 endereco:
                     body.endereco,
-
                 numero:
                     body.numero,
-
                 complemento:
                     body.complemento,
-
                 bairro:
                     body.bairro,
-
                 cidade:
                     body.cidade,
-
                 estado:
                     body.estado,
-
                 pais:
                     body.pais,
-
                 latitude:
                     body.latitude,
-
                 longitude:
                     body.longitude,
-
                 observacoes:
                     body.observacoes,
-
                 origemLead:
                     body.origemLead,
-
                 tags:
                     body.tags,
-
                 statusCliente:
                     body.statusCliente,
-
                 limiteCredito:
                     body.limiteCredito,
-
                 descontoPadrao:
                     body.descontoPadrao,
-
                 dataNascimento:
                     body.dataNascimento
                         ? new Date(body.dataNascimento)
                         : null
-
             }
 
         });

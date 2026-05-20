@@ -7,7 +7,9 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Clientes</title>
+    <title>
+        Clientes - NEW FLOOR ERP
+    </title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -16,6 +18,296 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        .clientes-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(auto-fit, minmax(360px, 1fr));
+
+            gap: 24px;
+
+            margin-top: 30px;
+        }
+
+        .cliente-card {
+
+            background: white;
+
+            border-radius: 24px;
+
+            padding: 24px;
+
+            border: 1px solid #e5e7eb;
+
+            transition: 0.25s;
+
+            position: relative;
+
+            overflow: hidden;
+        }
+
+        .cliente-card:hover {
+
+            transform: translateY(-4px);
+
+            box-shadow:
+                0 20px 45px rgba(15, 23, 42, 0.08);
+        }
+
+        .cliente-top {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            margin-bottom: 22px;
+        }
+
+        .cliente-profile {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 14px;
+        }
+
+        .cliente-avatar {
+
+            width: 58px;
+
+            height: 58px;
+
+            border-radius: 18px;
+
+            background: #0f172a;
+
+            color: white;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            font-size: 20px;
+
+            font-weight: 700;
+        }
+
+        .cliente-profile strong {
+
+            display: block;
+
+            font-size: 17px;
+
+            color: #0f172a;
+        }
+
+        .cliente-profile span {
+
+            font-size: 13px;
+
+            color: #64748b;
+        }
+
+        .status-badge {
+
+            padding: 8px 14px;
+
+            border-radius: 999px;
+
+            font-size: 12px;
+
+            font-weight: 600;
+        }
+
+        .status-ativo {
+
+            background: #dcfce7;
+
+            color: #166534;
+        }
+
+        .status-negociacao {
+
+            background: #fef3c7;
+
+            color: #92400e;
+        }
+
+        .status-novo {
+
+            background: #dbeafe;
+
+            color: #1d4ed8;
+        }
+
+        .cliente-info-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, 1fr);
+
+            gap: 18px;
+
+            margin-bottom: 24px;
+        }
+
+        .info-box {
+
+            background: #f8fafc;
+
+            border-radius: 16px;
+
+            padding: 14px;
+        }
+
+        .info-box small {
+
+            display: block;
+
+            color: #64748b;
+
+            font-size: 12px;
+
+            margin-bottom: 4px;
+        }
+
+        .info-box strong {
+
+            color: #0f172a;
+
+            font-size: 14px;
+
+            word-break: break-word;
+        }
+
+        .cliente-footer {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            gap: 12px;
+        }
+
+        .btn-gerenciar {
+
+            width: 100%;
+
+            height: 48px;
+
+            border: none;
+
+            border-radius: 14px;
+
+            background: #0f172a;
+
+            color: white;
+
+            font-weight: 600;
+
+            transition: 0.2s;
+        }
+
+        .btn-gerenciar:hover {
+
+            background: #111827;
+        }
+
+        .empty-state {
+
+            background: white;
+
+            border-radius: 24px;
+
+            padding: 60px;
+
+            text-align: center;
+
+            border: 1px solid #e5e7eb;
+        }
+
+        .empty-state h3 {
+
+            color: #0f172a;
+
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+
+            color: #64748b;
+        }
+
+        .form-section {
+
+            background: #f8fafc;
+
+            border-radius: 22px;
+
+            padding: 24px;
+
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+
+            font-size: 18px;
+
+            font-weight: 700;
+
+            color: #0f172a;
+
+            margin-bottom: 22px;
+        }
+
+        .premium-input-light {
+
+            height: 52px;
+
+            border-radius: 14px;
+
+            border: 1px solid #dbe2ea;
+
+            background: white;
+
+            padding: 0 16px;
+        }
+
+        .textarea-premium {
+
+            min-height: 120px;
+
+            padding-top: 14px;
+        }
+
+        .modal-premium {
+
+            border: none;
+
+            border-radius: 28px;
+        }
+
+        .modal-header {
+
+            padding: 28px 28px 0;
+        }
+
+        .modal-body {
+
+            padding: 28px;
+        }
+    </style>
 
 </head>
 
@@ -36,8 +328,15 @@
                     </div>
 
                     <div>
-                        <strong>NEW FLOOR</strong>
-                        <span>ERP PROPOSTAS</span>
+
+                        <strong>
+                            NEW FLOOR
+                        </strong>
+
+                        <span>
+                            ERP PROPOSTAS
+                        </span>
+
                     </div>
 
                 </div>
@@ -49,7 +348,9 @@
                     </a>
 
                     <a class="active" href="clientes.html">
+
                         Clientes
+
                     </a>
 
                     <a href="servicos.html">
@@ -58,6 +359,10 @@
 
                     <a href="propostas.html">
                         Propostas
+                    </a>
+
+                    <a href="agenda.html">
+                        Agenda
                     </a>
 
                 </nav>
@@ -71,8 +376,15 @@
                 </div>
 
                 <div>
-                    <strong>Lucas</strong>
-                    <span>Administrador</span>
+
+                    <strong>
+                        Lucas
+                    </strong>
+
+                    <span>
+                        Administrador
+                    </span>
+
                 </div>
 
             </div>
@@ -92,14 +404,14 @@
                     </h1>
 
                     <p>
-                        Gerencie todos os clientes cadastrados.
+                        Gestão completa dos clientes do sistema.
                     </p>
 
                 </div>
 
                 <div class="top-actions">
 
-                    <input type="text" class="search" placeholder="Pesquisar cliente...">
+                    <input type="text" class="search" placeholder="Pesquisar cliente..." id="pesquisaCliente">
 
                     <button class="btn-new" data-bs-toggle="modal" data-bs-target="#modalCliente">
 
@@ -111,35 +423,63 @@
 
             </div>
 
-            <!-- TABELA -->
+            <!-- KPIS -->
 
-            <div class="table-container">
+            <div class="kpis">
 
-                <table class="table table-borderless align-middle">
+                <div class="kpi-card">
 
-                    <thead>
+                    <span>
+                        Total clientes
+                    </span>
 
-                        <tr>
+                    <h2 id="kpiTotal">
+                        0
+                    </h2>
 
-                            <th>Cliente</th>
+                </div>
 
-                            <th>Empresa</th>
+                <div class="kpi-card">
 
-                            <th>Telefone</th>
+                    <span>
+                        Clientes ativos
+                    </span>
 
-                            <th>Email</th>
+                    <h2 id="kpiAtivos">
+                        0
+                    </h2>
 
-                            <th></th>
+                </div>
 
-                        </tr>
+                <div class="kpi-card">
 
-                    </thead>
+                    <span>
+                        Em negociação
+                    </span>
 
-                    <tbody id="listaClientes">
+                    <h2 id="kpiNegociacao">
+                        0
+                    </h2>
 
-                    </tbody>
+                </div>
 
-                </table>
+                <div class="kpi-card">
+
+                    <span>
+                        Novos leads
+                    </span>
+
+                    <h2 id="kpiNovos">
+                        0
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <!-- GRID -->
+
+            <div class="clientes-grid" id="listaClientes">
 
             </div>
 
@@ -147,21 +487,25 @@
 
     </div>
 
-    <!-- MODAL -->
+    <!-- MODAL NOVO -->
 
     <div class="modal fade" id="modalCliente" tabindex="-1">
 
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
 
             <div class="modal-content modal-premium">
 
                 <div class="modal-header border-0">
 
                     <h5 class="modal-title">
-                        Novo Cliente
+
+                        Novo cliente
+
                     </h5>
 
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
+
+                    </button>
 
                 </div>
 
@@ -169,51 +513,200 @@
 
                     <form id="formCliente">
 
-                        <div class="row">
+                        <div class="form-section">
 
-                            <div class="col-md-6 mb-3">
+                            <div class="section-title">
 
-                                <label>Nome</label>
-
-                                <input type="text" id="nome" class="form-control premium-input-light">
+                                Dados principais
 
                             </div>
 
-                            <div class="col-md-6 mb-3">
+                            <div class="row">
 
-                                <label>Empresa</label>
+                                <div class="col-md-4 mb-3">
 
-                                <input type="text" id="empresa" class="form-control premium-input-light">
+                                    <label>
+                                        Nome
+                                    </label>
 
-                            </div>
+                                    <input type="text" id="nome" class="form-control premium-input-light">
 
-                            <div class="col-md-6 mb-3">
+                                </div>
 
-                                <label>Telefone</label>
+                                <div class="col-md-4 mb-3">
 
-                                <input type="text" id="telefone" class="form-control premium-input-light">
+                                    <label>
+                                        Nome fantasia
+                                    </label>
 
-                            </div>
+                                    <input type="text" id="empresa" class="form-control premium-input-light">
 
-                            <div class="col-md-6 mb-3">
+                                </div>
 
-                                <label>Email</label>
+                                <div class="col-md-4 mb-3">
 
-                                <input type="email" id="email" class="form-control premium-input-light">
+                                    <label>
+                                        Responsável
+                                    </label>
 
-                            </div>
+                                    <input type="text" id="responsavel" class="form-control premium-input-light">
 
-                            <div class="col-12 mb-3">
+                                </div>
 
-                                <label>Endereço</label>
+                                <div class="col-md-4 mb-3">
 
-                                <input type="text" id="endereco" class="form-control premium-input-light">
+                                    <label>
+                                        CNPJ
+                                    </label>
+
+                                    <input type="text" id="cnpj" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Telefone
+                                    </label>
+
+                                    <input type="text" id="telefone" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        WhatsApp
+                                    </label>
+
+                                    <input type="text" id="whatsapp" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label>
+                                        Email
+                                    </label>
+
+                                    <input type="email" id="email" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label>
+                                        Site
+                                    </label>
+
+                                    <input type="text" id="site" class="form-control premium-input-light">
+
+                                </div>
 
                             </div>
 
                         </div>
 
-                        <button class="btn-new w-100 mt-3">
+                        <div class="form-section">
+
+                            <div class="section-title">
+
+                                Endereço
+
+                            </div>
+
+                            <div class="row">
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label>
+                                        Endereço
+                                    </label>
+
+                                    <input type="text" id="endereco" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-2 mb-3">
+
+                                    <label>
+                                        Número
+                                    </label>
+
+                                    <input type="text" id="numero" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Bairro
+                                    </label>
+
+                                    <input type="text" id="bairro" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Cidade
+                                    </label>
+
+                                    <input type="text" id="cidade" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Estado
+                                    </label>
+
+                                    <input type="text" id="estado" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Status
+                                    </label>
+
+                                    <select id="statusCliente" class="form-control premium-input-light">
+
+                                        <option value="Ativo">
+                                            Ativo
+                                        </option>
+
+                                        <option value="Negociação">
+                                            Negociação
+                                        </option>
+
+                                        <option value="Novo">
+                                            Novo
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                                <div class="col-12 mb-3">
+
+                                    <label>
+                                        Observações
+                                    </label>
+
+                                    <textarea id="observacoes"
+                                        class="form-control premium-input-light textarea-premium"></textarea>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <button class="btn-new w-100">
 
                             Salvar cliente
 
@@ -228,19 +721,36 @@
         </div>
 
     </div>
+
+    <!-- MODAL EDITAR CLIENTE -->
+
     <div class="modal fade" id="modalEditarCliente" tabindex="-1">
 
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
 
-            <div class="modal-content">
+            <div class="modal-content modal-premium">
 
                 <div class="modal-header border-0">
 
-                    <h5 class="modal-title">
-                        Gerenciar Cliente
-                    </h5>
+                    <div>
 
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title">
+
+                            Gerenciar cliente
+
+                        </h5>
+
+                        <small class="text-muted">
+
+                            Edite todas as informações do cliente
+
+                        </small>
+
+                    </div>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
+
+                    </button>
 
                 </div>
 
@@ -250,51 +760,321 @@
 
                         <input type="hidden" id="editarId">
 
-                        <div class="row">
+                        <!-- DADOS PRINCIPAIS -->
 
-                            <div class="col-md-6 mb-3">
+                        <div class="form-section">
 
-                                <label>Nome</label>
+                            <div class="section-title">
 
-                                <input type="text" id="editarNome" class="form-control premium-input-light">
-
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-
-                                <label>Empresa</label>
-
-                                <input type="text" id="editarEmpresa" class="form-control premium-input-light">
+                                Dados principais
 
                             </div>
 
-                            <div class="col-md-6 mb-3">
+                            <div class="row">
 
-                                <label>Telefone</label>
+                                <div class="col-md-3 mb-3">
 
-                                <input type="text" id="editarTelefone" class="form-control premium-input-light">
+                                    <label>
+                                        Tipo
+                                    </label>
 
-                            </div>
+                                    <select id="editarTipo" class="form-control premium-input-light">
 
-                            <div class="col-md-6 mb-3">
+                                        <option value="PESSOA_JURIDICA">
+                                            Pessoa Jurídica
+                                        </option>
 
-                                <label>Email</label>
+                                        <option value="PESSOA_FISICA">
+                                            Pessoa Física
+                                        </option>
 
-                                <input type="email" id="editarEmail" class="form-control premium-input-light">
+                                    </select>
 
-                            </div>
+                                </div>
 
-                            <div class="col-12 mb-4">
+                                <div class="col-md-5 mb-3">
 
-                                <label>Endereço</label>
+                                    <label>
+                                        Nome
+                                    </label>
 
-                                <input type="text" id="editarEndereco" class="form-control premium-input-light">
+                                    <input type="text" id="editarNome" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Nome fantasia
+                                    </label>
+
+                                    <input type="text" id="editarEmpresa" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Responsável
+                                    </label>
+
+                                    <input type="text" id="editarResponsavel" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        CNPJ
+                                    </label>
+
+                                    <input type="text" id="editarCnpj" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        CPF
+                                    </label>
+
+                                    <input type="text" id="editarCpf" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Inscrição estadual
+                                    </label>
+
+                                    <input type="text" id="editarInscricaoEstadual"
+                                        class="form-control premium-input-light">
+
+                                </div>
 
                             </div>
 
                         </div>
 
-                        <div class="d-flex gap-3">
+                        <!-- CONTATO -->
+
+                        <div class="form-section">
+
+                            <div class="section-title">
+
+                                Contato
+
+                            </div>
+
+                            <div class="row">
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Telefone
+                                    </label>
+
+                                    <input type="text" id="editarTelefone" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        WhatsApp
+                                    </label>
+
+                                    <input type="text" id="editarWhatsapp" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Email
+                                    </label>
+
+                                    <input type="email" id="editarEmail" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label>
+                                        Site
+                                    </label>
+
+                                    <input type="text" id="editarSite" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label>
+                                        Origem lead
+                                    </label>
+
+                                    <input type="text" id="editarOrigemLead" class="form-control premium-input-light">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- ENDEREÇO -->
+
+                        <div class="form-section">
+
+                            <div class="section-title">
+
+                                Endereço
+
+                            </div>
+
+                            <div class="row">
+
+                                <div class="col-md-3 mb-3">
+
+                                    <label>
+                                        CEP
+                                    </label>
+
+                                    <input type="text" id="editarCep" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label>
+                                        Endereço
+                                    </label>
+
+                                    <input type="text" id="editarEndereco" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-3 mb-3">
+
+                                    <label>
+                                        Número
+                                    </label>
+
+                                    <input type="text" id="editarNumero" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Bairro
+                                    </label>
+
+                                    <input type="text" id="editarBairro" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Cidade
+                                    </label>
+
+                                    <input type="text" id="editarCidade" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Estado
+                                    </label>
+
+                                    <input type="text" id="editarEstado" class="form-control premium-input-light">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- COMERCIAL -->
+
+                        <div class="form-section">
+
+                            <div class="section-title">
+
+                                Comercial / Financeiro
+
+                            </div>
+
+                            <div class="row">
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Status cliente
+                                    </label>
+
+                                    <select id="editarStatusCliente" class="form-control premium-input-light">
+
+                                        <option value="Ativo">
+                                            Ativo
+                                        </option>
+
+                                        <option value="Negociação">
+                                            Negociação
+                                        </option>
+
+                                        <option value="Novo">
+                                            Novo
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+
+                                    <label>
+                                        Limite crédito
+                                    </label>
+
+                                    <input type="number" id="editarLimiteCredito"
+                                        class="form-control premium-input-light">
+
+                                </div>
+
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label>
+                                        Tags
+                                    </label>
+
+                                    <input type="text" id="editarTags" class="form-control premium-input-light">
+
+                                </div>
+
+                                <div class="col-12 mb-3">
+
+                                    <label>
+                                        Observações
+                                    </label>
+
+                                    <textarea id="editarObservacoes"
+                                        class="form-control premium-input-light textarea-premium"></textarea>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- BOTÕES -->
+
+                        <div class="d-flex gap-3 mt-4">
 
                             <button class="btn-new flex-fill">
 
@@ -319,6 +1099,7 @@
         </div>
 
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script src="js/clientes.js"></script>
