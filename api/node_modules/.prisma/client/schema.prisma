@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum StatusProposta {
+  PENDENTE
+  APROVADA
+  EXECUTANDO
+  FATURADA
+  RECUSADA
+}
+
+model Cliente {
+  clienteid   Int        @id @default(autoincrement())
+  nome        String
+  empresa     String?
+  cnpj        String?
+  telefone    String?
+  email       String?
+  endereco    String?
+  observacoes String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  propostas   Proposta[]
+}
+
+model Servico {
+  servicoid Int            @id @default(autoincrement())
+  nome      String
+  descricao String?
+  valor     Decimal        @db.Decimal(10, 2)
+  unidade   String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  itens     ItemProposta[]
+}
+
+model Proposta {
+  propostaid     Int            @id @default(autoincrement())
+  numero         String         @unique
+  titulo         String
+  descricao      String?
+  status         StatusProposta @default(PENDENTE)
+  subtotal       Decimal        @db.Decimal(10, 2)
+  desconto       Decimal?       @db.Decimal(10, 2)
+  total          Decimal        @db.Decimal(10, 2)
+  formaPagamento String?
+  observacoes    String?
+  validade       DateTime?
+  clienteId      Int
+  cliente        Cliente        @relation(fields: [clienteId], references: [clienteid], onDelete: Restrict)
+  itens          ItemProposta[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model ItemProposta {
+  itempropostaid Int      @id @default(autoincrement())
+  descricao      String
+  quantidade     Decimal  @db.Decimal(10, 2)
+  valorUnitario  Decimal  @db.Decimal(10, 2)
+  subtotal       Decimal  @db.Decimal(10, 2)
+  propostaId     Int
+  proposta       Proposta @relation(fields: [propostaId], references: [propostaid], onDelete: Cascade)
+  servicoId      Int?
+  servico        Servico? @relation(fields: [servicoId], references: [servicoid])
+  createdAt      DateTime @default(now())
+}
+
+model Usuario {
+  usuarioid Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senha     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
