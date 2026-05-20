@@ -3,12 +3,11 @@ const express = require("express");
 const routes = express.Router();
 
 const auth = require("../middlewares/auth");
-
 const usuario = require("../controller/ctusuario");
-
 const cliente = require("../controller/ctcliente");
-
 const servico = require("../controller/ctservico");
+const proposta = require("../controller/ctproposta");
+const agenda = require("../controller/agenda.controller");
 
 routes.get("/", (req, res) => {
 
@@ -20,18 +19,56 @@ routes.get("/", (req, res) => {
 
 routes.post("/usuarios", usuario.create);
 
-routes.post("/usuarios/login", usuario.login);
+routes
+    .route("/clientes")
+    .get(cliente.read)
+    .post(cliente.create);
 
-routes.get("/clientes", auth, cliente.read);
+routes
+    .route("/clientes/:id")
+    .get(cliente.readOne)
+    .put(cliente.update)
+    .delete(cliente.remove);
 
-routes.post("/clientes", auth, cliente.create);
+routes
+    .route("/propostas")
+    .get(proposta.read)
+    .post(proposta.create);
 
-routes.put("/clientes/:id", auth, cliente.update);
+routes
+    .route("/propostas/dashboard")
+    .get(proposta.dashboard);
 
-routes.delete("/clientes/:id", auth, cliente.remove);
+routes
+    .route("/propostas/:id")
+    .get(proposta.readOne)
+    .put(proposta.update)
+    .delete(proposta.remove);
 
-routes.get("/servicos", auth, servico.read);
+routes
+    .route("/servicos")
+    .get(servico.read)
+    .post(servico.create);
 
-routes.post("/servicos", auth, servico.create);
+routes
+    .route("/servicos/:id")
+    .get(servico.readOne)
+    .put(servico.update)
+    .delete(servico.remove);
+
+routes
+    .route("/agenda")
+    .get(agenda.read)
+    .post(agenda.create);
+
+routes
+    .route("/agenda/dashboard")
+    .get(agenda.dashboard);
+
+routes
+    .route("/agenda/:id")
+    .get(agenda.readOne)
+    .put(agenda.update)
+    .delete(agenda.remove);
 
 module.exports = routes;

@@ -1,0 +1,50 @@
+.kanban-list {
+    min-height: 520px;
+    padding-bottom: 20px;
+}
+
+.proposal-card {
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+.proposal-card:active {
+    cursor: grabbing;
+}
+
+.kanban-is-dragging .proposal-card {
+    cursor: grabbing;
+}
+
+.kanban-chosen {
+    box-shadow: 0 16px 35px rgba(15, 23, 42, 0.18) !important;
+}
+
+.kanban-drag {
+    opacity: 1 !important;
+    transform: rotate(2deg) scale(1.02);
+    box-shadow: 0 24px 45px rgba(15, 23, 42, 0.25) !important;
+    z-index: 9999 !important;
+}
+
+.kanban-ghost {
+    opacity: 0.35 !important;
+    background: #e5e7eb !important;
+    border: 2px dashed #94a3b8 !important;
+}
+
+.sortable-fallback {
+    opacity: 1 !important;
+    pointer-events: none;
+    box-shadow: 0 24px 45px rgba(15, 23, 42, 0.25) !important;
+    transform: rotate(2deg);
+}
+
+.kanban-column {
+    overflow: visible !important;
+}
+
+.kanban {
+    overflow: visible !important;
+}

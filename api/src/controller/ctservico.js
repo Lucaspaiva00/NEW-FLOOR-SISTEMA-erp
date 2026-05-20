@@ -1,42 +1,316 @@
 const prisma = require("../prisma");
 
-module.exports = {
+/* ===================================================
+   CREATE
+=================================================== */
 
-    async create(req, res) {
+exports.create = async (req, res) => {
 
-        try {
+    try {
 
-            const servico = await prisma.servico.create({
-                data: req.body
-            });
+        const body = req.body;
 
-            return res.status(201).json(servico);
+        const servico = await prisma.servico.create({
 
-        } catch (error) {
+            data: {
 
-            return res.status(500).json(error);
+                codigo:
+                    body.codigo,
 
-        }
+                nome:
+                    body.nome,
 
-    },
+                categoria:
+                    body.categoria,
 
-    async read(req, res) {
+                descricao:
+                    body.descricao,
 
-        try {
+                descricaoInterna:
+                    body.descricaoInterna,
 
-            const servicos = await prisma.servico.findMany({
-                orderBy: {
-                    servicoid: "desc"
+                valor:
+                    body.valor,
+
+                custo:
+                    body.custo,
+
+                margemLucro:
+                    body.margemLucro,
+
+                unidade:
+                    body.unidade,
+
+                tempoExecucao:
+                    body.tempoExecucao,
+
+                garantia:
+                    body.garantia,
+
+                observacoes:
+                    body.observacoes,
+
+                ativo:
+                    body.ativo ?? true,
+
+                destaque:
+                    body.destaque ?? false,
+
+                imagem:
+                    body.imagem
+
+            }
+
+        });
+
+        return res.status(201).json(servico);
+
+    } catch (error) {
+
+        console.log(error);
+
+        return res.status(500).json({
+
+            error: "Erro ao cadastrar serviço"
+
+        });
+
+    }
+
+};
+
+/* ===================================================
+   READ
+=================================================== */
+
+exports.read = async (req, res) => {
+
+    try {
+
+        const servicos = await prisma.servico.findMany({
+
+            include: {
+
+                itens: {
+
+                    include: {
+
+                        proposta: true
+
+                    }
+
                 }
+
+            },
+
+            orderBy: {
+
+                createdAt: "desc"
+
+            }
+
+        });
+
+        return res.status(200).json(servicos);
+
+    } catch (error) {
+
+        console.log(error);
+
+        return res.status(500).json({
+
+            error: "Erro ao buscar serviços"
+
+        });
+
+    }
+
+};
+
+/* ===================================================
+   READ ONE
+=================================================== */
+
+exports.readOne = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const servico =
+            await prisma.servico.findUnique({
+
+                where: {
+
+                    servicoid: Number(id)
+
+                },
+
+                include: {
+
+                    itens: {
+
+                        include: {
+
+                            proposta: true
+
+                        }
+
+                    }
+
+                }
+
             });
 
-            return res.json(servicos);
+        if (!servico) {
 
-        } catch (error) {
+            return res.status(404).json({
 
-            return res.status(500).json(error);
+                error: "Serviço não encontrado"
+
+            });
 
         }
+
+        return res.status(200).json(servico);
+
+    } catch (error) {
+
+        console.log(error);
+
+        return res.status(500).json({
+
+            error: "Erro ao buscar serviço"
+
+        });
+
+    }
+
+};
+
+/* ===================================================
+   UPDATE
+=================================================== */
+
+exports.update = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const body = req.body;
+
+        const servico =
+            await prisma.servico.update({
+
+                where: {
+
+                    servicoid: Number(id)
+
+                },
+
+                data: {
+
+                    codigo:
+                        body.codigo,
+
+                    nome:
+                        body.nome,
+
+                    categoria:
+                        body.categoria,
+
+                    descricao:
+                        body.descricao,
+
+                    descricaoInterna:
+                        body.descricaoInterna,
+
+                    valor:
+                        body.valor,
+
+                    custo:
+                        body.custo,
+
+                    margemLucro:
+                        body.margemLucro,
+
+                    unidade:
+                        body.unidade,
+
+                    tempoExecucao:
+                        body.tempoExecucao,
+
+                    garantia:
+                        body.garantia,
+
+                    observacoes:
+                        body.observacoes,
+
+                    ativo:
+                        body.ativo,
+
+                    destaque:
+                        body.destaque,
+
+                    imagem:
+                        body.imagem
+
+                }
+
+            });
+
+        return res.status(200).json(servico);
+
+    } catch (error) {
+
+        console.log(error);
+
+        return res.status(500).json({
+
+            error: "Erro ao atualizar serviço"
+
+        });
+
+    }
+
+};
+
+/* ===================================================
+   DELETE
+=================================================== */
+
+exports.remove = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        await prisma.servico.delete({
+
+            where: {
+
+                servicoid: Number(id)
+
+            }
+
+        });
+
+        return res.status(200).json({
+
+            message: "Serviço removido"
+
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        return res.status(500).json({
+
+            error: "Erro ao remover serviço"
+
+        });
 
     }
 
