@@ -144,6 +144,9 @@ model Proposta {
   agendas             Agenda[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
+
+  templateProposta           TemplateProposta? @relation(fields: [templatePropostaTemplateid], references: [templateid])
+  templatePropostaTemplateid Int?
 }
 
 model ItemProposta {
@@ -202,4 +205,30 @@ model Usuario {
   ultimoLogin DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model TemplateProposta {
+  templateid        Int        @id @default(autoincrement())
+  nome              String
+  descricao         String?    @db.Text
+  ativo             Boolean    @default(true)
+  logo              String?
+  corPrimaria       String?
+  corSecundaria     String?
+  cabecalho         String?    @db.Text
+  rodape            String?    @db.Text
+  textoApresentacao String?    @db.Text
+  textoGarantia     String?    @db.Text
+  textoPagamento    String?    @db.Text
+  textoObservacao   String?    @db.Text
+  exibirLogo        Boolean    @default(true)
+  exibirEndereco    Boolean    @default(true)
+  exibirTelefone    Boolean    @default(true)
+  exibirEmail       Boolean    @default(true)
+  exibirAssinatura  Boolean    @default(true)
+  htmlPersonalizado String?    @db.LongText
+  cssPersonalizado  String?    @db.LongText
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  propostas         Proposta[]
 }

@@ -1,669 +1,589 @@
 const prisma = require("../prisma");
+const path = require("path");
+const fs = require("fs");
 
-/* ===================================================
-   CREATE
-=================================================== */
+const { montarHtmlProposta } = require("../services/template.service");
+const { gerarPDF } = require("../services/pdf.service");
+const { enviarEmailComPdf } = require("../services/email.service");
 
-exports.create = async (req, res) => {
+async function buscarPropostaCompleta(id) {
 
-    try {
+    return await prisma.proposta.findUnique({
 
-        const body = req.body;
+        where: {
+            propostaid: Number(id)
+        },
 
-        const proposta = await prisma.proposta.create({
+        include: {
 
-            data: {
+            cliente: true,
 
-                numero:
-                    body.numero,
+            templateProposta: true,
 
-                titulo:
-                    body.titulo,
+            itens: {
 
-                subtitulo:
-                    body.subtitulo,
-
-                descricao:
-                    body.descricao,
-
-                escopo:
-                    body.escopo,
-
-                observacoes:
-                    body.observacoes,
-
-                observacoesInternas:
-                    body.observacoesInternas,
-
-                status:
-                    body.status || "RASCUNHO",
-
-                prioridade:
-                    body.prioridade,
-
-                subtotal:
-                    body.subtotal,
-
-                desconto:
-                    body.desconto,
-
-                acrescimo:
-                    body.acrescimo,
-
-                frete:
-                    body.frete,
-
-                impostos:
-                    body.impostos,
-
-                total:
-                    body.total,
-
-                percentualLucro:
-                    body.percentualLucro,
-
-                formaPagamento:
-                    body.formaPagamento,
-
-                condicoesPagamento:
-                    body.condicoesPagamento,
-
-                validadeDias:
-                    body.validadeDias,
-
-                dataValidade:
-                    body.dataValidade
-                        ? new Date(body.dataValidade)
-                        : null,
-
-                dataAprovacao:
-                    body.dataAprovacao
-                        ? new Date(body.dataAprovacao)
-                        : null,
-
-                dataRecusa:
-                    body.dataRecusa
-                        ? new Date(body.dataRecusa)
-                        : null,
-
-                motivoRecusa:
-                    body.motivoRecusa,
-
-                responsavel:
-                    body.responsavel,
-
-                vendedor:
-                    body.vendedor,
-
-                origem:
-                    body.origem,
-
-                etapaAtual:
-                    body.etapaAtual,
-
-                assinaturaCliente:
-                    body.assinaturaCliente,
-
-                aprovadoCliente:
-                    body.aprovadoCliente ?? false,
-
-                enviadoEmail:
-                    body.enviadoEmail ?? false,
-
-                enviadoWhatsapp:
-                    body.enviadoWhatsapp ?? false,
-
-                visualizada:
-                    body.visualizada ?? false,
-
-                urlPublica:
-                    body.urlPublica,
-
-                pdfUrl:
-                    body.pdfUrl,
-
-                clienteId:
-                    body.clienteId,
-
-                itens: {
-
-                    create: body.itens.map(item => ({
-
-                        codigo:
-                            item.codigo,
-
-                        descricao:
-                            item.descricao,
-
-                        detalhes:
-                            item.detalhes,
-
-                        unidade:
-                            item.unidade,
-
-                        quantidade:
-                            item.quantidade,
-
-                        valorUnitario:
-                            item.valorUnitario,
-
-                        desconto:
-                            item.desconto,
-
-                        acrescimo:
-                            item.acrescimo,
-
-                        subtotal:
-                            item.subtotal,
-
-                        ordem:
-                            item.ordem,
-
-                        observacoes:
-                            item.observacoes,
-
-                        servicoId:
-                            item.servicoId || null
-
-                    }))
-
+                include: {
+                    servico: true
                 }
 
             },
 
-            include: {
+            agendas: true
 
-                cliente: true,
+        }
+
+    });
+
+}
+
+async function buscarTemplatePadrao() {
+    const templateAtivo = await prisma.templateProposta.findFirst({
+        where: {
+            ativo: true
+        },
+        orderBy: {
+            createdAt: "desc"
+        }
+    });
+
+    if (templateAtivo) {
+        return templateAtivo;
+    }
+
+    return await prisma.templateProposta.create({
+        data: {
+            nome: "Template Padrão NEW FLOOR",
+            ativo: true,
+            corPrimaria: "#111827",
+            corSecundaria: "#e5e7eb",
+            cabecalho: "NEW FLOOR",
+            textoApresentacao: "Proposta comercial personalizada",
+            textoGarantia: "Garantia conforme condições comerciais apresentadas.",
+            textoPagamento: "Condições de pagamento conforme negociação.",
+            textoObservacao: "Valores sujeitos à aprovação e validade da proposta.",
+            rodape: "Documento gerado automaticamente pelo sistema NEW FLOOR ERP."
+        }
+    });
+}
+
+async function gerarPdfInterno(id) {
+    let proposta = await buscarPropostaCompleta(id);
+
+    if (!proposta) {
+        throw new Error("Proposta não encontrada");
+    }
+
+    let template = proposta.templateProposta;
+
+    if (!template) {
+        template = await buscarTemplatePadrao();
+    }
+
+    const html = montarHtmlProposta(proposta, template);
+
+    const nomeArquivo = `proposta-${proposta.propostaid}-${Date.now()}.pdf`;
+
+    const pdf = await gerarPDF(html, nomeArquivo);
+
+    const propostaAtualizada = await prisma.proposta.update({
+        where: {
+            propostaid: proposta.propostaid
+        },
+        data: {
+            pdfUrl: pdf.url
+        }
+    });
+
+    return {
+        proposta: propostaAtualizada,
+        caminho: pdf.caminho,
+        pdfUrl: pdf.url
+    };
+}
+
+exports.create = async (req, res) => {
+    try {
+        const body = req.body;
+
+        const proposta = await prisma.proposta.create({
+            data: {
+                numero: body.numero,
+                titulo: body.titulo,
+                subtitulo: body.subtitulo,
+                descricao: body.descricao,
+                escopo: body.escopo,
+                observacoes: body.observacoes,
+                observacoesInternas: body.observacoesInternas,
+                status: body.status || "RASCUNHO",
+                prioridade: body.prioridade,
+                subtotal: body.subtotal,
+                desconto: body.desconto,
+                acrescimo: body.acrescimo,
+                frete: body.frete,
+                impostos: body.impostos,
+                total: body.total,
+                percentualLucro: body.percentualLucro,
+                formaPagamento: body.formaPagamento,
+                condicoesPagamento: body.condicoesPagamento,
+                validadeDias: body.validadeDias,
+
+                dataValidade: body.dataValidade
+                    ? new Date(body.dataValidade)
+                    : null,
+
+                dataAprovacao: body.dataAprovacao
+                    ? new Date(body.dataAprovacao)
+                    : null,
+
+                dataRecusa: body.dataRecusa
+                    ? new Date(body.dataRecusa)
+                    : null,
+
+                motivoRecusa: body.motivoRecusa,
+                responsavel: body.responsavel,
+                vendedor: body.vendedor,
+                origem: body.origem,
+                etapaAtual: body.etapaAtual,
+                assinaturaCliente: body.assinaturaCliente,
+                aprovadoCliente: body.aprovadoCliente ?? false,
+                enviadoEmail: body.enviadoEmail ?? false,
+                enviadoWhatsapp: body.enviadoWhatsapp ?? false,
+                visualizada: body.visualizada ?? false,
+                urlPublica: body.urlPublica,
+                pdfUrl: body.pdfUrl,
+                clienteId: body.clienteId,
+                templatePropostaTemplateid:
+                    body.templatePropostaTemplateid || null,
 
                 itens: {
-
-                    include: {
-
-                        servico: true
-
-                    }
-
+                    create: body.itens.map(item => ({
+                        codigo: item.codigo,
+                        descricao: item.descricao,
+                        detalhes: item.detalhes,
+                        unidade: item.unidade,
+                        quantidade: item.quantidade,
+                        valorUnitario: item.valorUnitario,
+                        desconto: item.desconto,
+                        acrescimo: item.acrescimo,
+                        subtotal: item.subtotal,
+                        ordem: item.ordem,
+                        observacoes: item.observacoes,
+                        servicoId: item.servicoId || null
+                    }))
                 }
+            },
 
+            include: {
+                cliente: true,
+                templateProposta: true,
+                itens: {
+                    include: {
+                        servico: true
+                    }
+                }
             }
-
         });
 
         return res.status(201).json(proposta);
 
     } catch (error) {
-
         console.log(error);
-
         return res.status(500).json({
-
             error: "Erro ao criar proposta"
-
         });
-
     }
-
 };
 
-/* ===================================================
-   READ
-=================================================== */
-
 exports.read = async (req, res) => {
-
     try {
-
-        const propostas =
-            await prisma.proposta.findMany({
-
-                include: {
-
-                    cliente: true,
-
-                    itens: {
-
-                        include: {
-
-                            servico: true
-
-                        }
-
-                    },
-
-                    agendas: true
-
+        const propostas = await prisma.proposta.findMany({
+            include: {
+                cliente: true,
+                templateProposta: true,
+                itens: {
+                    include: {
+                        servico: true
+                    }
                 },
-
-                orderBy: {
-
-                    createdAt: "desc"
-
-                }
-
-            });
+                agendas: true
+            },
+            orderBy: {
+                createdAt: "desc"
+            }
+        });
 
         return res.status(200).json(propostas);
 
     } catch (error) {
-
         console.log(error);
-
         return res.status(500).json({
-
             error: "Erro ao buscar propostas"
-
         });
-
     }
-
 };
-
-/* ===================================================
-   READ ONE
-=================================================== */
 
 exports.readOne = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
-        const proposta =
-            await prisma.proposta.findUnique({
-
-                where: {
-
-                    propostaid: Number(id)
-
-                },
-
-                include: {
-
-                    cliente: true,
-
-                    itens: {
-
-                        include: {
-
-                            servico: true
-
-                        }
-
-                    },
-
-                    agendas: true
-
-                }
-
-            });
+        const proposta = await buscarPropostaCompleta(id);
 
         if (!proposta) {
-
             return res.status(404).json({
-
                 error: "Proposta não encontrada"
-
             });
-
         }
 
         return res.status(200).json(proposta);
 
     } catch (error) {
-
         console.log(error);
-
         return res.status(500).json({
-
             error: "Erro ao buscar proposta"
-
         });
-
     }
-
 };
-
-/* ===================================================
-   UPDATE
-=================================================== */
 
 exports.update = async (req, res) => {
-
     try {
-
         const { id } = req.params;
-
         const body = req.body;
 
-        const propostaAtual =
-            await prisma.proposta.findUnique({
-
-                where: {
-
-                    propostaid: Number(id)
-
-                }
-
-            });
+        const propostaAtual = await prisma.proposta.findUnique({
+            where: {
+                propostaid: Number(id)
+            }
+        });
 
         if (!propostaAtual) {
-
             return res.status(404).json({
-
                 error: "Proposta não encontrada"
-
             });
-
         }
 
-        const proposta =
-            await prisma.proposta.update({
+        const proposta = await prisma.proposta.update({
+            where: {
+                propostaid: Number(id)
+            },
 
-                where: {
+            data: {
+                numero: body.numero ?? propostaAtual.numero,
+                titulo: body.titulo ?? propostaAtual.titulo,
+                subtitulo: body.subtitulo ?? propostaAtual.subtitulo,
+                descricao: body.descricao ?? propostaAtual.descricao,
+                escopo: body.escopo ?? propostaAtual.escopo,
+                observacoes: body.observacoes ?? propostaAtual.observacoes,
+                observacoesInternas: body.observacoesInternas ?? propostaAtual.observacoesInternas,
+                status: body.status ?? propostaAtual.status,
+                prioridade: body.prioridade ?? propostaAtual.prioridade,
+                subtotal: body.subtotal ?? propostaAtual.subtotal,
+                desconto: body.desconto ?? propostaAtual.desconto,
+                acrescimo: body.acrescimo ?? propostaAtual.acrescimo,
+                frete: body.frete ?? propostaAtual.frete,
+                impostos: body.impostos ?? propostaAtual.impostos,
+                total: body.total ?? propostaAtual.total,
+                percentualLucro: body.percentualLucro ?? propostaAtual.percentualLucro,
+                formaPagamento: body.formaPagamento ?? propostaAtual.formaPagamento,
+                condicoesPagamento: body.condicoesPagamento ?? propostaAtual.condicoesPagamento,
+                validadeDias: body.validadeDias ?? propostaAtual.validadeDias,
 
-                    propostaid: Number(id)
+                dataValidade: body.dataValidade
+                    ? new Date(body.dataValidade)
+                    : propostaAtual.dataValidade,
 
-                },
+                dataAprovacao: body.dataAprovacao
+                    ? new Date(body.dataAprovacao)
+                    : propostaAtual.dataAprovacao,
 
-                data: {
+                dataRecusa: body.dataRecusa
+                    ? new Date(body.dataRecusa)
+                    : propostaAtual.dataRecusa,
 
-                    numero:
-                        body.numero ??
-                        propostaAtual.numero,
+                motivoRecusa: body.motivoRecusa ?? propostaAtual.motivoRecusa,
+                responsavel: body.responsavel ?? propostaAtual.responsavel,
+                vendedor: body.vendedor ?? propostaAtual.vendedor,
+                origem: body.origem ?? propostaAtual.origem,
+                etapaAtual: body.etapaAtual ?? propostaAtual.etapaAtual,
+                assinaturaCliente: body.assinaturaCliente ?? propostaAtual.assinaturaCliente,
+                aprovadoCliente: body.aprovadoCliente ?? propostaAtual.aprovadoCliente,
+                enviadoEmail: body.enviadoEmail ?? propostaAtual.enviadoEmail,
+                enviadoWhatsapp: body.enviadoWhatsapp ?? propostaAtual.enviadoWhatsapp,
+                visualizada: body.visualizada ?? propostaAtual.visualizada,
+                urlPublica: body.urlPublica ?? propostaAtual.urlPublica,
+                pdfUrl: body.pdfUrl ?? propostaAtual.pdfUrl,
+                clienteId: body.clienteId ?? propostaAtual.clienteId,
+                templatePropostaTemplateid:
+                    body.templatePropostaTemplateid ??
+                    propostaAtual.templatePropostaTemplateid
+            },
 
-                    titulo:
-                        body.titulo ??
-                        propostaAtual.titulo,
-
-                    subtitulo:
-                        body.subtitulo ??
-                        propostaAtual.subtitulo,
-
-                    descricao:
-                        body.descricao ??
-                        propostaAtual.descricao,
-
-                    escopo:
-                        body.escopo ??
-                        propostaAtual.escopo,
-
-                    observacoes:
-                        body.observacoes ??
-                        propostaAtual.observacoes,
-
-                    observacoesInternas:
-                        body.observacoesInternas ??
-                        propostaAtual.observacoesInternas,
-
-                    status:
-                        body.status ??
-                        propostaAtual.status,
-
-                    prioridade:
-                        body.prioridade ??
-                        propostaAtual.prioridade,
-
-                    subtotal:
-                        body.subtotal ??
-                        propostaAtual.subtotal,
-
-                    desconto:
-                        body.desconto ??
-                        propostaAtual.desconto,
-
-                    acrescimo:
-                        body.acrescimo ??
-                        propostaAtual.acrescimo,
-
-                    frete:
-                        body.frete ??
-                        propostaAtual.frete,
-
-                    impostos:
-                        body.impostos ??
-                        propostaAtual.impostos,
-
-                    total:
-                        body.total ??
-                        propostaAtual.total,
-
-                    percentualLucro:
-                        body.percentualLucro ??
-                        propostaAtual.percentualLucro,
-
-                    formaPagamento:
-                        body.formaPagamento ??
-                        propostaAtual.formaPagamento,
-
-                    condicoesPagamento:
-                        body.condicoesPagamento ??
-                        propostaAtual.condicoesPagamento,
-
-                    validadeDias:
-                        body.validadeDias ??
-                        propostaAtual.validadeDias,
-
-                    dataValidade:
-                        body.dataValidade
-                            ? new Date(body.dataValidade)
-                            : propostaAtual.dataValidade,
-
-                    dataAprovacao:
-                        body.dataAprovacao
-                            ? new Date(body.dataAprovacao)
-                            : propostaAtual.dataAprovacao,
-
-                    dataRecusa:
-                        body.dataRecusa
-                            ? new Date(body.dataRecusa)
-                            : propostaAtual.dataRecusa,
-
-                    motivoRecusa:
-                        body.motivoRecusa ??
-                        propostaAtual.motivoRecusa,
-
-                    responsavel:
-                        body.responsavel ??
-                        propostaAtual.responsavel,
-
-                    vendedor:
-                        body.vendedor ??
-                        propostaAtual.vendedor,
-
-                    origem:
-                        body.origem ??
-                        propostaAtual.origem,
-
-                    etapaAtual:
-                        body.etapaAtual ??
-                        propostaAtual.etapaAtual,
-
-                    assinaturaCliente:
-                        body.assinaturaCliente ??
-                        propostaAtual.assinaturaCliente,
-
-                    aprovadoCliente:
-                        body.aprovadoCliente ??
-                        propostaAtual.aprovadoCliente,
-
-                    enviadoEmail:
-                        body.enviadoEmail ??
-                        propostaAtual.enviadoEmail,
-
-                    enviadoWhatsapp:
-                        body.enviadoWhatsapp ??
-                        propostaAtual.enviadoWhatsapp,
-
-                    visualizada:
-                        body.visualizada ??
-                        propostaAtual.visualizada,
-
-                    urlPublica:
-                        body.urlPublica ??
-                        propostaAtual.urlPublica,
-
-                    pdfUrl:
-                        body.pdfUrl ??
-                        propostaAtual.pdfUrl,
-
-                    clienteId:
-                        body.clienteId ??
-                        propostaAtual.clienteId
-
-                },
-
-                include: {
-
-                    cliente: true,
-
-                    itens: true
-
-                }
-
-            });
+            include: {
+                cliente: true,
+                templateProposta: true,
+                itens: true
+            }
+        });
 
         return res.status(200).json(proposta);
 
     } catch (error) {
-
         console.log(error);
-
         return res.status(500).json({
-
             error: "Erro ao atualizar proposta"
-
         });
-
     }
-
 };
 
-/* ===================================================
-   DELETE
-=================================================== */
-
 exports.remove = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
         await prisma.proposta.delete({
-
             where: {
-
                 propostaid: Number(id)
-
             }
-
         });
 
         return res.status(200).json({
-
             message: "Proposta removida"
-
         });
 
     } catch (error) {
-
         console.log(error);
-
         return res.status(500).json({
-
             error: "Erro ao remover proposta"
-
         });
-
     }
-
 };
 
-/* ===================================================
-   DASHBOARD
-=================================================== */
-
 exports.dashboard = async (req, res) => {
-
     try {
+        const totalPropostas = await prisma.proposta.count();
 
-        const totalPropostas =
-            await prisma.proposta.count();
+        const pendentes = await prisma.proposta.count({
+            where: {
+                status: "PENDENTE"
+            }
+        });
 
-        const pendentes =
-            await prisma.proposta.count({
+        const aprovadas = await prisma.proposta.count({
+            where: {
+                status: "APROVADA"
+            }
+        });
 
-                where: {
+        const faturadas = await prisma.proposta.count({
+            where: {
+                status: "FATURADA"
+            }
+        });
 
-                    status: "PENDENTE"
-
-                }
-
-            });
-
-        const aprovadas =
-            await prisma.proposta.count({
-
-                where: {
-
-                    status: "APROVADA"
-
-                }
-
-            });
-
-        const faturadas =
-            await prisma.proposta.count({
-
-                where: {
-
-                    status: "FATURADA"
-
-                }
-
-            });
-
-        const totalFaturado =
-            await prisma.proposta.aggregate({
-
-                _sum: {
-
-                    total: true
-
-                },
-
-                where: {
-
-                    status: "FATURADA"
-
-                }
-
-            });
+        const totalFaturado = await prisma.proposta.aggregate({
+            _sum: {
+                total: true
+            },
+            where: {
+                status: "FATURADA"
+            }
+        });
 
         return res.status(200).json({
-
             totalPropostas,
-
             pendentes,
-
             aprovadas,
-
             faturadas,
-
-            totalFaturado:
-                totalFaturado._sum.total || 0
-
+            totalFaturado: totalFaturado._sum.total || 0
         });
 
     } catch (error) {
-
         console.log(error);
-
         return res.status(500).json({
-
             error: "Erro dashboard"
+        });
+    }
+};
 
+exports.gerarPdf = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const resultado = await gerarPdfInterno(id);
+
+        return res.status(200).json({
+            message: "PDF gerado com sucesso",
+            pdfUrl: resultado.pdfUrl,
+            downloadUrl: `http://localhost:${process.env.PORT || 3000}${resultado.pdfUrl}`
         });
 
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            error: "Erro ao gerar PDF"
+        });
     }
+};
 
+exports.downloadPdf = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const proposta = await prisma.proposta.findUnique({
+            where: {
+                propostaid: Number(id)
+            }
+        });
+
+        if (!proposta) {
+            return res.status(404).json({
+                error: "Proposta não encontrada"
+            });
+        }
+
+        if (!proposta.pdfUrl) {
+            await gerarPdfInterno(id);
+        }
+
+        const propostaAtualizada = await prisma.proposta.findUnique({
+            where: {
+                propostaid: Number(id)
+            }
+        });
+
+        const caminho = path.resolve(
+            __dirname,
+            "../../public",
+            propostaAtualizada.pdfUrl.replace("/", "")
+        );
+
+        if (!fs.existsSync(caminho)) {
+            return res.status(404).json({
+                error: "Arquivo PDF não encontrado"
+            });
+        }
+
+        return res.download(caminho);
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            error: "Erro ao baixar PDF"
+        });
+    }
+};
+
+exports.enviarEmail = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const proposta = await buscarPropostaCompleta(id);
+
+        if (!proposta) {
+            return res.status(404).json({
+                error: "Proposta não encontrada"
+            });
+        }
+
+        if (!proposta.cliente?.email) {
+            return res.status(400).json({
+                error: "Cliente não possui e-mail cadastrado"
+            });
+        }
+
+        const resultadoPdf = await gerarPdfInterno(id);
+
+        await enviarEmailComPdf({
+            para: proposta.cliente.email,
+            assunto: `Proposta Comercial ${proposta.numero}`,
+            mensagem: `
+                <p>Olá, ${proposta.cliente.nome}.</p>
+                <p>Segue em anexo a proposta comercial <strong>${proposta.numero}</strong>.</p>
+                <p>Qualquer dúvida, estamos à disposição.</p>
+            `,
+            caminhoPdf: resultadoPdf.caminho
+        });
+
+        await prisma.proposta.update({
+            where: {
+                propostaid: Number(id)
+            },
+            data: {
+                enviadoEmail: true
+            }
+        });
+
+        return res.status(200).json({
+            message: "E-mail enviado com sucesso"
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            error: "Erro ao enviar e-mail"
+        });
+    }
+};
+
+exports.whatsapp = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const proposta = await buscarPropostaCompleta(id);
+
+        if (!proposta) {
+            return res.status(404).json({
+                error: "Proposta não encontrada"
+            });
+        }
+
+        const telefone =
+            proposta.cliente?.whatsapp ||
+            proposta.cliente?.telefone;
+
+        if (!telefone) {
+            return res.status(400).json({
+                error: "Cliente não possui WhatsApp/telefone cadastrado"
+            });
+        }
+
+        const resultadoPdf = await gerarPdfInterno(id);
+
+        const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+
+        const linkPdf = `${baseUrl}${resultadoPdf.pdfUrl}`;
+
+        const telefoneLimpo = telefone.replace(/\D/g, "");
+
+        const texto = `
+Olá ${proposta.cliente.nome}, tudo bem?
+
+Segue a proposta comercial ${proposta.numero}:
+
+${linkPdf}
+
+Qualquer dúvida, estou à disposição.
+        `;
+
+        const whatsappUrl =
+            `https://wa.me/55${telefoneLimpo}?text=${encodeURIComponent(texto)}`;
+
+        await prisma.proposta.update({
+            where: {
+                propostaid: Number(id)
+            },
+            data: {
+                enviadoWhatsapp: true
+            }
+        });
+
+        return res.status(200).json({
+            whatsappUrl,
+            pdfUrl: linkPdf
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            error: "Erro ao gerar WhatsApp"
+        });
+    }
 };

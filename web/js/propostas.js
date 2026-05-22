@@ -826,7 +826,7 @@ async function abrirModalProposta(id) {
         preencherCheckbox("editarEnviadoEmail", proposta.enviadoEmail);
         preencherCheckbox("editarEnviadoWhatsapp", proposta.enviadoWhatsapp);
         preencherCheckbox("editarVisualizada", proposta.visualizada);
-
+        preencherCampo("editarTemplateId", proposta.templateId);
         const modal = new bootstrap.Modal(
             document.getElementById("modalProposta")
         );
@@ -909,7 +909,9 @@ function montarBodyEditarProposta() {
 
         pdfUrl: pegarValor("editarPdfUrl"),
 
-        clienteId: Number(pegarValor("editarClienteId"))
+        clienteId: Number(pegarValor("editarClienteId")),
+
+        templateId: pegarInteiro("editarTemplateId")
     };
 }
 
@@ -1027,6 +1029,7 @@ async function iniciarTela() {
     await carregarClientes();
     await carregarServicos();
     await carregarPropostas();
+
 }
 
 iniciarTela();
