@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
-import { StatusProposta, TemplateProposta } from "@prisma/client";
 import prisma from "../prisma";
 import { montarHtmlProposta } from "../services/template.service";
 import { gerarPDF } from "../services/pdf.service";
@@ -29,7 +28,7 @@ async function buscarPropostaCompleta(id: string | number) {
   });
 }
 
-async function buscarTemplatePadrao(): Promise<TemplateProposta> {
+async function buscarTemplatePadrao() {
   const templateAtivo = await prisma.templateProposta.findFirst({
     where: {
       ativo: true
@@ -360,19 +359,19 @@ export const dashboard = async (_req: Request, res: Response): Promise<void> => 
 
     const pendentes = await prisma.proposta.count({
       where: {
-        status: StatusProposta.PENDENTE
+        status: "PENDENTE"
       }
     });
 
     const aprovadas = await prisma.proposta.count({
       where: {
-        status: StatusProposta.APROVADA
+        status: "APROVADA"
       }
     });
 
     const faturadas = await prisma.proposta.count({
       where: {
-        status: StatusProposta.FATURADA
+        status: "FATURADA"
       }
     });
 
@@ -381,7 +380,7 @@ export const dashboard = async (_req: Request, res: Response): Promise<void> => 
         total: true
       },
       where: {
-        status: StatusProposta.FATURADA
+        status: "FATURADA"
       }
     });
 

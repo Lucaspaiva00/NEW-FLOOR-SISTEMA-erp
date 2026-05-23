@@ -226,8 +226,8 @@ model TemplateProposta {
   exibirTelefone    Boolean    @default(true)
   exibirEmail       Boolean    @default(true)
   exibirAssinatura  Boolean    @default(true)
-  htmlPersonalizado String?    @db.LongText
-  cssPersonalizado  String?    @db.LongText
+  htmlPersonalizado String?    @db.Text
+  cssPersonalizado  String?    @db.Text
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   propostas         Proposta[]

@@ -5,7 +5,8 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
-    "build": "tsc && prisma generate && npm run postbuild",
+    "build": "prisma generate && tsc",
+    "prisma:generate": "prisma generate",
     "postbuild": "node -e \"require('fs').cpSync('public','dist/public',{recursive:true})\"",
     "start": "node dist/server.js"
   },

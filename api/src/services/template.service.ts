@@ -1,12 +1,59 @@
-import { Decimal } from "@prisma/client/runtime/library";
-import { Cliente, ItemProposta, Proposta, TemplateProposta } from "@prisma/client";
+type ValorNumerico = number | string | { toString(): string } | null | undefined;
 
-type PropostaComItens = Proposta & {
-  cliente: Cliente | null;
-  itens: ItemProposta[];
-};
+interface ItemPropostaPdf {
+  descricao: string;
+  detalhes?: string | null;
+  unidade?: string | null;
+  quantidade?: ValorNumerico;
+  valorUnitario?: ValorNumerico;
+  subtotal?: ValorNumerico;
+}
 
-function moeda(valor: Decimal | number | string | null | undefined): string {
+interface ClientePdf {
+  nome?: string | null;
+  nomeFantasia?: string | null;
+  cnpj?: string | null;
+  cpf?: string | null;
+  telefone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+}
+
+interface PropostaPdf {
+  numero: string;
+  titulo: string;
+  descricao?: string | null;
+  escopo?: string | null;
+  createdAt: Date;
+  dataValidade?: Date | null;
+  subtotal?: ValorNumerico;
+  desconto?: ValorNumerico;
+  acrescimo?: ValorNumerico;
+  frete?: ValorNumerico;
+  impostos?: ValorNumerico;
+  total?: ValorNumerico;
+  formaPagamento?: string | null;
+  condicoesPagamento?: string | null;
+  observacoes?: string | null;
+  cliente: ClientePdf | null;
+  itens: ItemPropostaPdf[];
+}
+
+interface TemplatePdf {
+  corPrimaria?: string | null;
+  corSecundaria?: string | null;
+  cabecalho?: string | null;
+  textoApresentacao?: string | null;
+  textoGarantia?: string | null;
+  textoPagamento?: string | null;
+  textoObservacao?: string | null;
+  exibirAssinatura?: boolean;
+  rodape?: string | null;
+}
+
+function moeda(valor: ValorNumerico): string {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL"
@@ -24,15 +71,15 @@ function texto(valor: string | null | undefined): string {
 }
 
 export const montarHtmlProposta = (
-  proposta: PropostaComItens,
-  template: TemplateProposta | null
+  proposta: PropostaPdf,
+  template: TemplatePdf | null
 ): string => {
   const corPrimaria = template?.corPrimaria || "#111827";
   const corSecundaria = template?.corSecundaria || "#e5e7eb";
 
   const itens = proposta.itens
     .map(
-      (item, index) => `
+      (item: ItemPropostaPdf, index: number) => `
         <tr>
             <td>${index + 1}</td>
             <td>
