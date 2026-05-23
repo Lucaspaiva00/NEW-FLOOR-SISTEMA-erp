@@ -9,13 +9,13 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
     const usuarioExiste = await prisma.usuario.findUnique({
       where: {
-        email
-      }
+        email,
+      },
     });
 
     if (usuarioExiste) {
       res.status(400).json({
-        error: "E-mail já cadastrado"
+        error: "E-mail já cadastrado",
       });
       return;
     }
@@ -26,13 +26,17 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       data: {
         nome,
         email,
-        senha: senhaHash
-      }
+        senha: senhaHash,
+      },
     });
 
     res.status(201).json(usuario);
   } catch (error) {
-    res.status(500).json(error);
+    console.log(error);
+    res.status(500).json({
+      error: "Erro ao cadastrar usuário",
+      message: (error as Error).message,
+    });
   }
 };
 
@@ -42,13 +46,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const usuario = await prisma.usuario.findUnique({
       where: {
-        email
-      }
+        email,
+      },
     });
 
     if (!usuario) {
       res.status(400).json({
-        error: "Usuário não encontrado"
+        error: "Usuário não encontrado",
       });
       return;
     }
@@ -57,26 +61,30 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     if (!senhaValida) {
       res.status(400).json({
-        error: "Senha inválida"
+        error: "Senha inválida",
       });
       return;
     }
 
     const token = jwt.sign(
       {
-        id: usuario.usuarioid
+        id: usuario.usuarioid,
       },
       process.env.JWT_SECRET as string,
       {
-        expiresIn: "7d"
-      }
+        expiresIn: "7d",
+      },
     );
 
     res.json({
       usuario,
-      token
+      token,
     });
   } catch (error) {
-    res.status(500).json(error);
+    console.log(error);
+    res.status(500).json({
+      error: "Erro ao fazer login",
+      message: (error as Error).message,
+    });
   }
 };
