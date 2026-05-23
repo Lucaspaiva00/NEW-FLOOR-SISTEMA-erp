@@ -1,25 +1,38 @@
-function moeda(valor) {
-    return Number(valor || 0).toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL"
-    });
+import { Decimal } from "@prisma/client/runtime/library";
+import { Cliente, ItemProposta, Proposta, TemplateProposta } from "@prisma/client";
+
+type PropostaComItens = Proposta & {
+  cliente: Cliente | null;
+  itens: ItemProposta[];
+};
+
+function moeda(valor: Decimal | number | string | null | undefined): string {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
 }
 
-function dataBR(data) {
-    if (!data) return "-";
+function dataBR(data: Date | string | null | undefined): string {
+  if (!data) return "-";
 
-    return new Date(data).toLocaleDateString("pt-BR");
+  return new Date(data).toLocaleDateString("pt-BR");
 }
 
-function texto(valor) {
-    return valor || "";
+function texto(valor: string | null | undefined): string {
+  return valor || "";
 }
 
-exports.montarHtmlProposta = (proposta, template) => {
-    const corPrimaria = template?.corPrimaria || "#111827";
-    const corSecundaria = template?.corSecundaria || "#e5e7eb";
+export const montarHtmlProposta = (
+  proposta: PropostaComItens,
+  template: TemplateProposta | null
+): string => {
+  const corPrimaria = template?.corPrimaria || "#111827";
+  const corSecundaria = template?.corSecundaria || "#e5e7eb";
 
-    const itens = proposta.itens.map((item, index) => `
+  const itens = proposta.itens
+    .map(
+      (item, index) => `
         <tr>
             <td>${index + 1}</td>
             <td>
@@ -32,9 +45,11 @@ exports.montarHtmlProposta = (proposta, template) => {
             <td>${moeda(item.valorUnitario)}</td>
             <td>${moeda(item.subtotal)}</td>
         </tr>
-    `).join("");
+    `
+    )
+    .join("");
 
-    return `
+  return `
         <!DOCTYPE html>
         <html lang="pt-BR">
         <head>
@@ -319,15 +334,16 @@ exports.montarHtmlProposta = (proposta, template) => {
                     </div>
                 </div>
 
-                ${template?.exibirAssinatura
-            ? `
+                ${
+                  template?.exibirAssinatura
+                    ? `
                         <div class="signature">
                             <div>NEW FLOOR</div>
                             <div>${proposta.cliente?.nome || "Cliente"}</div>
                         </div>
                         `
-            : ""
-        }
+                    : ""
+                }
 
                 <div class="footer">
                     ${template?.rodape || "Documento gerado automaticamente pelo sistema NEW FLOOR ERP."}
