@@ -41,7 +41,7 @@ formCadastro.addEventListener("submit", async (e) => {
     const senha = document.getElementById("cadastroSenha").value;
 
     const response = await fetch(
-        "http://localhost:3000/usuarios",
+        "https://new-floor-sistema-erp.onrender.com/usuarios",
         {
             method: "POST",
 
@@ -82,7 +82,7 @@ formLogin.addEventListener("submit", async (e) => {
     const senha = document.getElementById("loginSenha").value;
 
     const response = await fetch(
-        "http://localhost:3000/usuarios/login",
+        "https://new-floor-sistema-erp.onrender.com/usuarios/login",
         {
             method: "POST",
 
