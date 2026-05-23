@@ -64,7 +64,7 @@
 
                     <!-- LOGIN -->
 
-                    <form id="formLogin">
+                    <form id="formLogin" novalidate>
 
                         <h2>
                             Bem-vindo de volta
@@ -74,23 +74,31 @@
                             Faça login para acessar o painel.
                         </p>
 
+                        <div id="loginAlert" class="auth-alert hidden" role="alert"></div>
+
                         <div class="mb-3">
 
-                            <label>Email</label>
+                            <label for="loginEmail">Email</label>
 
-                            <input type="email" id="loginEmail" class="form-control premium-input">
+                            <input type="email" id="loginEmail" class="form-control premium-input"
+                                autocomplete="email" required>
+
+                            <div id="loginEmailErro" class="field-error hidden"></div>
 
                         </div>
 
                         <div class="mb-4">
 
-                            <label>Senha</label>
+                            <label for="loginSenha">Senha</label>
 
-                            <input type="password" id="loginSenha" class="form-control premium-input">
+                            <input type="password" id="loginSenha" class="form-control premium-input"
+                                autocomplete="current-password" required>
+
+                            <div id="loginSenhaErro" class="field-error hidden"></div>
 
                         </div>
 
-                        <button class="btn-premium">
+                        <button type="submit" class="btn-premium" id="btnEntrar">
                             Entrar
                         </button>
 
@@ -98,7 +106,7 @@
 
                     <!-- CADASTRO -->
 
-                    <form id="formCadastro" style="display: none;">
+                    <form id="formCadastro" style="display: none;" novalidate>
 
                         <h2>
                             Criar conta
@@ -108,31 +116,42 @@
                             Cadastre-se para começar.
                         </p>
 
+                        <div id="cadastroAlert" class="auth-alert hidden" role="alert"></div>
+
                         <div class="mb-3">
 
-                            <label>Nome</label>
+                            <label for="cadastroNome">Nome</label>
 
-                            <input type="text" id="cadastroNome" class="form-control premium-input">
+                            <input type="text" id="cadastroNome" class="form-control premium-input"
+                                autocomplete="name" required minlength="2">
+
+                            <div id="cadastroNomeErro" class="field-error hidden"></div>
 
                         </div>
 
                         <div class="mb-3">
 
-                            <label>Email</label>
+                            <label for="cadastroEmail">Email</label>
 
-                            <input type="email" id="cadastroEmail" class="form-control premium-input">
+                            <input type="email" id="cadastroEmail" class="form-control premium-input"
+                                autocomplete="email" required>
+
+                            <div id="cadastroEmailErro" class="field-error hidden"></div>
 
                         </div>
 
                         <div class="mb-4">
 
-                            <label>Senha</label>
+                            <label for="cadastroSenha">Senha</label>
 
-                            <input type="password" id="cadastroSenha" class="form-control premium-input">
+                            <input type="password" id="cadastroSenha" class="form-control premium-input"
+                                autocomplete="new-password" required minlength="6">
+
+                            <div id="cadastroSenhaErro" class="field-error hidden"></div>
 
                         </div>
 
-                        <button class="btn-premium">
+                        <button type="submit" class="btn-premium" id="btnCriarConta">
                             Criar conta
                         </button>
 

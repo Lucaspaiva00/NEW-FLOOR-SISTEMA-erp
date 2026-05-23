@@ -218,6 +218,51 @@ body {
         0 10px 30px rgba(255, 45, 85, 0.4);
 }
 
+.btn-premium:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.auth-alert {
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.45;
+    margin-bottom: 16px;
+}
+
+.auth-alert.hidden {
+    display: none;
+}
+
+.auth-alert.error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    color: #fecaca;
+}
+
+.auth-alert.success {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.45);
+    color: #bbf7d0;
+}
+
+.field-error {
+    font-size: 12px;
+    color: #fca5a5;
+    margin-top: 6px;
+}
+
+.field-error.hidden {
+    display: none;
+}
+
+.premium-input.is-invalid {
+    border-color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+}
+
 @media(max-width: 991px) {
 
     .login-body {
