@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Floor ERP</title>
+    <script>
+        (function () {
+            try {
+                const token = JSON.parse(
+                    localStorage.getItem("usuarioLogado")
+                )?.token;
+
+                window.location.replace(
+                    token ? "dashboard.html" : "login.html"
+                );
+            } catch {
+                window.location.replace("login.html");
+            }
+        })();
+    </script>
+</head>
+
+<body>
+    <p style="font-family: sans-serif; text-align: center; margin-top: 2rem;">
+        Redirecionando...
+    </p>
+</body>
+
+</html>
