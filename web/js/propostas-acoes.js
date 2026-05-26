@@ -224,7 +224,7 @@ if (btnWhatsapp) {
                     await request(
                         `${API_URL}/propostas/${id}/whatsapp`,
                         {
-                            method: "POST"
+                            method: "GET"
                         }
                     );
 
@@ -300,7 +300,7 @@ if (btnEmail) {
                     await request(
                         `${API_URL}/propostas/${id}/email`,
                         {
-                            method: "GET"
+                            method: "POST"
                         }
                     );
 
