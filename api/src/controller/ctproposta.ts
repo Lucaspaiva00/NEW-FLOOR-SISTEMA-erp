@@ -64,7 +64,9 @@ async function gerarPdfInterno(
 ) {
 
   const proposta =
-    await buscarPropostaCompleta(id);
+    await buscarPropostaCompleta(
+      paramId(id)
+    );
 
   if (!proposta) {
 
@@ -454,7 +456,9 @@ export const gerarPdf =
         req.params;
 
       const resultado =
-        await gerarPdfInterno(id);
+        await gerarPdfInterno(
+          paramId(id)
+        );
 
       const baseUrl =
         process.env.BASE_URL ||
@@ -522,7 +526,9 @@ export const downloadPdf =
 
       if (!proposta.pdfUrl) {
 
-        await gerarPdfInterno(id);
+        await gerarPdfInterno(
+          paramId(id)
+        );
 
       }
 
@@ -606,7 +612,9 @@ export const enviarEmail =
         req.params;
 
       const proposta =
-        await buscarPropostaCompleta(id);
+        await buscarPropostaCompleta(
+          paramId(id)
+        );
 
       if (!proposta) {
 
@@ -635,7 +643,9 @@ export const enviarEmail =
       }
 
       const resultado =
-        await gerarPdfInterno(id);
+        await gerarPdfInterno(
+          paramId(id)
+        );
 
       await enviarPropostaPorEmail({
 
@@ -702,7 +712,9 @@ export const whatsapp =
         req.params;
 
       const proposta =
-        await buscarPropostaCompleta(id);
+        await buscarPropostaCompleta(
+          paramId(id)
+        );
 
       if (!proposta) {
 
@@ -737,7 +749,9 @@ export const whatsapp =
       }
 
       const resultado =
-        await gerarPdfInterno(id);
+        await gerarPdfInterno(
+          paramId(id)
+        );
 
       const baseUrl =
         process.env.BASE_URL ||

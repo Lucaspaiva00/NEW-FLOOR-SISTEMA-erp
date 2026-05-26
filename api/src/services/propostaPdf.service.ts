@@ -61,7 +61,8 @@ export async function gerarPdfProposta(
         await page.setContent(
             html,
             {
-                waitUntil: "networkidle0"
+                waitUntil:
+                    "domcontentloaded"
             }
         );
 
