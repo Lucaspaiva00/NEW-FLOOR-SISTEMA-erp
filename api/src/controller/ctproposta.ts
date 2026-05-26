@@ -763,7 +763,7 @@ export const whatsapp =
         process.env.BASE_URL ||
         `http://localhost:${process.env.PORT || 3000}`;
       const linkPdf =
-        `${baseUrl}${resultado.pdfUrl}`;
+        `${baseUrl}/propostas/${proposta.propostaid}/download`;
 
       const whatsappUrl =
         gerarLinkWhatsapp({
