@@ -300,7 +300,7 @@ if (btnEmail) {
                     await request(
                         `${API_URL}/propostas/${id}/email`,
                         {
-                            method: "POST"
+                            method: "GET"
                         }
                     );
 
