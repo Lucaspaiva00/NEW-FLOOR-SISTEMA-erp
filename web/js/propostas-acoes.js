@@ -106,13 +106,6 @@ if (btnGerarPdf) {
 
                 }
 
-                if (campoPdf) {
-
-                    campoPdf.value =
-                        data.pdfUrl || "";
-
-                }
-
                 alert(
                     "PDF gerado com sucesso."
                 );

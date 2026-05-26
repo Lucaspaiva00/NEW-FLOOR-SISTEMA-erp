@@ -8,15 +8,19 @@ import { enviarPropostaPorEmail } from "../services/propostaEmail.service";
 import { gerarLinkWhatsapp } from "../services/propostaWhatsapp.service";
 
 function paramId(
-  id: string | number
+  id: string | string[] | number
 ): string {
+
+  if (Array.isArray(id)) {
+    return id[0];
+  }
 
   return String(id);
 
 }
 
-async function buscarPropostaCompleta(id: string | number) {
-  return await prisma.proposta.findUnique({
+async function buscarPropostaCompleta(id: string) {
+  return prisma.proposta.findUnique({
     where: {
       propostaid: Number(id)
     },
@@ -63,9 +67,7 @@ async function buscarTemplatePadrao() {
   });
 }
 
-async function gerarPdfInterno(
-  id: string | number
-) {
+async function gerarPdfInterno(id: string | string[] | number) {
 
   const proposta =
     await buscarPropostaCompleta(
