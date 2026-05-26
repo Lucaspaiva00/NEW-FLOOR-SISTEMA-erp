@@ -7,8 +7,12 @@ import { gerarPdfProposta } from "../services/propostaPdf.service";
 import { enviarPropostaPorEmail } from "../services/propostaEmail.service";
 import { gerarLinkWhatsapp } from "../services/propostaWhatsapp.service";
 
-function paramId(id: string | string[]): string {
-  return Array.isArray(id) ? id[0] : id;
+function paramId(
+  id: string | number
+): string {
+
+  return String(id);
+
 }
 
 async function buscarPropostaCompleta(id: string | number) {
