@@ -468,7 +468,7 @@ export const gerarPdf =
 
       const baseUrl =
         process.env.BASE_URL ||
-        `http://localhost:${process.env.PORT || 3000}`;
+        `${req.protocol}://${req.get("host")}`;
 
       res.status(200).json({
 
