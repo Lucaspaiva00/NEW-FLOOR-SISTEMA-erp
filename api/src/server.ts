@@ -12,8 +12,14 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
 app.use(
-  "/pdfs",
-  express.static(path.resolve(__dirname, "../public/pdfs"))
+  "/propostas",
+  express.static(
+    path.join(
+      process.cwd(),
+      "public",
+      "propostas"
+    )
+  )
 );
 
 app.use(routes);

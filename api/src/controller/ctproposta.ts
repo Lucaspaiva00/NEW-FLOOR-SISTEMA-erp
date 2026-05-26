@@ -2,9 +2,10 @@ import { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
 import prisma from "../prisma";
-import { montarHtmlProposta } from "../services/template.service";
-import { gerarPDF } from "../services/pdf.service";
-import { enviarEmailComPdf } from "../services/email.service";
+import { gerarHtmlProposta } from "../services/propostaHtml.service";
+import { gerarPdfProposta } from "../services/propostaPdf.service";
+import { enviarPropostaPorEmail } from "../services/propostaEmail.service";
+import { gerarLinkWhatsapp } from "../services/propostaWhatsapp.service";
 
 function paramId(id: string | string[]): string {
   return Array.isArray(id) ? id[0] : id;
@@ -58,39 +59,81 @@ async function buscarTemplatePadrao() {
   });
 }
 
-async function gerarPdfInterno(id: string | number) {
-  const proposta = await buscarPropostaCompleta(id);
+async function gerarPdfInterno(
+  id: string | number
+) {
+
+  const proposta =
+    await buscarPropostaCompleta(id);
 
   if (!proposta) {
-    throw new Error("Proposta não encontrada");
+
+    throw new Error(
+      "Proposta não encontrada"
+    );
+
   }
 
-  let template = proposta.templateProposta;
+  let template =
+    proposta.templateProposta;
 
   if (!template) {
-    template = await buscarTemplatePadrao();
+
+    template =
+      await buscarTemplatePadrao();
+
   }
 
-  const html = montarHtmlProposta(proposta, template);
+  const html =
+    gerarHtmlProposta({
 
-  const nomeArquivo = `proposta-${proposta.propostaid}-${Date.now()}.pdf`;
+      proposta,
 
-  const pdf = await gerarPDF(html, nomeArquivo);
+      cliente:
+        proposta.cliente,
 
-  const propostaAtualizada = await prisma.proposta.update({
+      itens:
+        proposta.itens,
+
+      template
+
+    });
+
+  const nomeArquivo =
+    `proposta-${proposta.numero}-${Date.now()}.pdf`;
+
+  const pdf =
+    await gerarPdfProposta(
+      html,
+      nomeArquivo
+    );
+
+  await prisma.proposta.update({
+
     where: {
-      propostaid: proposta.propostaid
+      propostaid:
+        proposta.propostaid
     },
+
     data: {
-      pdfUrl: pdf.url
+      pdfUrl:
+        pdf.url
     }
+
   });
 
   return {
-    proposta: propostaAtualizada,
-    caminho: pdf.caminho,
-    pdfUrl: pdf.url
+
+    proposta,
+
+    caminho:
+      pdf.caminho,
+
+    pdfUrl:
+      pdf.url
+
   };
+
 }
 
 export const create = async (req: Request, res: Response): Promise<void> => {
@@ -399,202 +442,358 @@ export const dashboard = async (_req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const gerarPdf = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
+export const gerarPdf =
+  async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
 
-    const resultado = await gerarPdfInterno(paramId(id));
+    try {
 
-    res.status(200).json({
-      message: "PDF gerado com sucesso",
-      pdfUrl: resultado.pdfUrl,
-      downloadUrl: `http://localhost:${process.env.PORT || 3000}${resultado.pdfUrl}`
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      error: "Erro ao gerar PDF"
-    });
-  }
-};
+      const { id } =
+        req.params;
 
-export const downloadPdf = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const { id } = req.params;
+      const resultado =
+        await gerarPdfInterno(id);
 
-    const proposta = await prisma.proposta.findUnique({
-      where: {
-        propostaid: Number(id)
+      const baseUrl =
+        process.env.BASE_URL ||
+        `http://localhost:${process.env.PORT || 3000}`;
+
+      res.status(200).json({
+
+        success: true,
+
+        pdfUrl:
+          resultado.pdfUrl,
+
+        downloadUrl:
+          `${baseUrl}${resultado.pdfUrl}`
+
+      });
+
+    } catch (error: any) {
+
+      console.error(error);
+
+      res.status(500).json({
+
+        error:
+          error.message ||
+          "Erro ao gerar PDF"
+
+      });
+
+    }
+
+  };
+
+export const downloadPdf =
+  async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+
+    try {
+
+      const { id } =
+        req.params;
+
+      const proposta =
+        await prisma.proposta.findUnique({
+
+          where: {
+            propostaid:
+              Number(id)
+          }
+
+        });
+
+      if (!proposta) {
+
+        res.status(404).json({
+          error:
+            "Proposta não encontrada"
+        });
+
+        return;
+
       }
-    });
 
-    if (!proposta) {
-      res.status(404).json({
-        error: "Proposta não encontrada"
-      });
-      return;
-    }
+      if (!proposta.pdfUrl) {
 
-    if (!proposta.pdfUrl) {
-      await gerarPdfInterno(paramId(id));
-    }
+        await gerarPdfInterno(id);
 
-    const propostaAtualizada = await prisma.proposta.findUnique({
-      where: {
-        propostaid: Number(id)
       }
-    });
 
-    if (!propostaAtualizada?.pdfUrl) {
-      res.status(404).json({
-        error: "Arquivo PDF não encontrado"
-      });
-      return;
-    }
+      const propostaAtualizada =
+        await prisma.proposta.findUnique({
 
-    const caminho = path.resolve(
-      __dirname,
-      "../../public",
-      propostaAtualizada.pdfUrl.replace("/", "")
-    );
+          where: {
+            propostaid:
+              Number(id)
+          }
 
-    if (!fs.existsSync(caminho)) {
-      res.status(404).json({
-        error: "Arquivo PDF não encontrado"
-      });
-      return;
-    }
+        });
 
-    res.download(caminho);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      error: "Erro ao baixar PDF"
-    });
-  }
-};
+      if (
+        !propostaAtualizada?.pdfUrl
+      ) {
 
-export const enviarEmail = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const { id } = req.params;
+        res.status(404).json({
 
-    const proposta = await buscarPropostaCompleta(paramId(id));
+          error:
+            "PDF não encontrado"
 
-    if (!proposta) {
-      res.status(404).json({
-        error: "Proposta não encontrada"
-      });
-      return;
-    }
+        });
 
-    if (!proposta.cliente?.email) {
-      res.status(400).json({
-        error: "Cliente não possui e-mail cadastrado"
-      });
-      return;
-    }
+        return;
 
-    const resultadoPdf = await gerarPdfInterno(paramId(id));
-
-    await enviarEmailComPdf({
-      para: proposta.cliente.email,
-      assunto: `Proposta Comercial ${proposta.numero}`,
-      mensagem: `
-                <p>Olá, ${proposta.cliente.nome}.</p>
-                <p>Segue em anexo a proposta comercial <strong>${proposta.numero}</strong>.</p>
-                <p>Qualquer dúvida, estamos à disposição.</p>
-            `,
-      caminhoPdf: resultadoPdf.caminho
-    });
-
-    await prisma.proposta.update({
-      where: {
-        propostaid: Number(id)
-      },
-      data: {
-        enviadoEmail: true
       }
-    });
 
-    res.status(200).json({
-      message: "E-mail enviado com sucesso"
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      error: "Erro ao enviar e-mail"
-    });
-  }
-};
+      const caminhoArquivo =
+        path.join(
+          process.cwd(),
+          "public",
+          propostaAtualizada.pdfUrl.replace(/^\//, "")
+        );
 
-export const whatsapp = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
+      if (
+        !fs.existsSync(
+          caminhoArquivo
+        )
+      ) {
 
-    const proposta = await buscarPropostaCompleta(paramId(id));
+        res.status(404).json({
 
-    if (!proposta) {
-      res.status(404).json({
-        error: "Proposta não encontrada"
-      });
-      return;
-    }
+          error:
+            "Arquivo inexistente"
 
-    const telefone =
-      proposta.cliente?.whatsapp || proposta.cliente?.telefone;
+        });
 
-    if (!telefone) {
-      res.status(400).json({
-        error: "Cliente não possui WhatsApp/telefone cadastrado"
-      });
-      return;
-    }
+        return;
 
-    const resultadoPdf = await gerarPdfInterno(paramId(id));
-
-    const baseUrl =
-      process.env.BASE_URL ||
-      `http://localhost:${process.env.PORT || 3000}`;
-
-    const linkPdf = `${baseUrl}${resultadoPdf.pdfUrl}`;
-
-    const telefoneLimpo = telefone.replace(/\D/g, "");
-
-    const texto = `
-Olá ${proposta.cliente?.nome}, tudo bem?
-
-Segue a proposta comercial ${proposta.numero}:
-
-${linkPdf}
-
-Qualquer dúvida, estou à disposição.
-        `;
-
-    const whatsappUrl = `https://wa.me/55${telefoneLimpo}?text=${encodeURIComponent(texto)}`;
-
-    await prisma.proposta.update({
-      where: {
-        propostaid: Number(id)
-      },
-      data: {
-        enviadoWhatsapp: true
       }
-    });
 
-    res.status(200).json({
-      whatsappUrl,
-      pdfUrl: linkPdf
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      error: "Erro ao gerar WhatsApp"
-    });
-  }
-};
+      res.download(
+        caminhoArquivo
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+
+        error:
+          "Erro download PDF"
+
+      });
+
+    }
+
+  };
+
+export const enviarEmail =
+  async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+
+    try {
+
+      const { id } =
+        req.params;
+
+      const proposta =
+        await buscarPropostaCompleta(id);
+
+      if (!proposta) {
+
+        res.status(404).json({
+          error:
+            "Proposta não encontrada"
+        });
+
+        return;
+
+      }
+
+      if (
+        !proposta.cliente?.email
+      ) {
+
+        res.status(400).json({
+
+          error:
+            "Cliente sem e-mail"
+
+        });
+
+        return;
+
+      }
+
+      const resultado =
+        await gerarPdfInterno(id);
+
+      await enviarPropostaPorEmail({
+
+        destinatario:
+          proposta.cliente.email,
+
+        clienteNome:
+          proposta.cliente.nome,
+
+        numeroProposta:
+          proposta.numero,
+
+        caminhoPdf:
+          resultado.caminho
+
+      });
+
+      await prisma.proposta.update({
+
+        where: {
+          propostaid:
+            proposta.propostaid
+        },
+
+        data: {
+          enviadoEmail:
+            true
+        }
+
+      });
+
+      res.status(200).json({
+
+        success: true,
+
+        message:
+          "E-mail enviado"
+
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+
+        error:
+          "Erro envio e-mail"
+
+      });
+
+    }
+
+  };
+export const whatsapp =
+  async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+
+    try {
+
+      const { id } =
+        req.params;
+
+      const proposta =
+        await buscarPropostaCompleta(id);
+
+      if (!proposta) {
+
+        res.status(404).json({
+
+          error:
+            "Proposta não encontrada"
+
+        });
+
+        return;
+
+      }
+
+      const telefone =
+
+        proposta.cliente?.whatsapp ||
+
+        proposta.cliente?.telefone;
+
+      if (!telefone) {
+
+        res.status(400).json({
+
+          error:
+            "Cliente sem telefone"
+
+        });
+
+        return;
+
+      }
+
+      const resultado =
+        await gerarPdfInterno(id);
+
+      const baseUrl =
+        process.env.BASE_URL ||
+        `http://localhost:${process.env.PORT || 3000}`;
+      const linkPdf =
+        `${baseUrl}${resultado.pdfUrl}`;
+
+      const whatsappUrl =
+        gerarLinkWhatsapp({
+
+          clienteNome:
+            proposta.cliente.nome,
+
+          telefone,
+
+          numeroProposta:
+            proposta.numero,
+
+          linkPdf
+
+        });
+
+      await prisma.proposta.update({
+
+        where: {
+          propostaid:
+            proposta.propostaid
+        },
+
+        data: {
+          enviadoWhatsapp:
+            true
+        }
+
+      });
+
+      res.status(200).json({
+
+        whatsappUrl,
+
+        pdfUrl:
+          linkPdf
+
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+
+        error:
+          "Erro WhatsApp"
+
+      });
+
+    }
+
+  };

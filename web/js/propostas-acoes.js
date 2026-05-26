@@ -16,12 +16,35 @@ async function request(url, options = {}) {
         }
     });
 
-    const data = await response.json();
+    const text =
+        await response.text();
+
+    let data = null;
+
+    try {
+
+        data =
+            JSON.parse(text);
+
+    } catch {
+
+        if (!response.ok) {
+
+            throw new Error(
+                text ||
+                "Erro na requisição"
+            );
+
+        }
+
+        return text;
+
+    }
 
     if (!response.ok) {
 
         throw new Error(
-            data.error ||
+            data?.error ||
             "Erro na requisição"
         );
 
@@ -83,9 +106,25 @@ if (btnGerarPdf) {
 
                 }
 
+                if (campoPdf) {
+
+                    campoPdf.value =
+                        data.pdfUrl || "";
+
+                }
+
                 alert(
                     "PDF gerado com sucesso."
                 );
+
+                if (data.downloadUrl) {
+
+                    window.open(
+                        data.downloadUrl,
+                        "_blank"
+                    );
+
+                }
 
             } catch (error) {
 
