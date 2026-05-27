@@ -20,6 +20,7 @@ const valorTotal = document.getElementById("valorTotal");
 const pesquisaProposta = document.getElementById("pesquisaProposta");
 const formNovaProposta = document.getElementById("formNovaProposta");
 const formEditarProposta = document.getElementById("formEditarProposta");
+const listaItensEditar = document.getElementById("listaItensEditar");
 
 let propostas = [];
 let propostasCache = [];
@@ -484,6 +485,115 @@ function adicionarItemProposta(item = null) {
     atualizarTotal();
 }
 
+function adicionarItemEditar(item = null) {
+    const index = document.querySelectorAll(".item-servico").length + 1;
+
+    const servicoId = item?.servicoId || item?.servico?.servicoid || "";
+    const quantidade = item?.quantidade || 1;
+    const valorUnitario = item?.valorUnitario || 0;
+    const desconto = item?.desconto || 0;
+    const acrescimo = item?.acrescimo || 0;
+    const subtotal = item?.subtotal || 0;
+
+    const html = `
+        <div class="item-servico">
+
+            <div class="item-title">
+                <strong>Item ${index}</strong>
+
+                <button type="button" class="btn-remove-item">
+                    X
+                </button>
+            </div>
+
+            <div class="row">
+
+                <div class="col-md-5 mb-3">
+                    <label>Serviço</label>
+                    <select class="form-control premium-input-light servico-select">
+                        ${montarOptionsServicos(servicoId)}
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label>Código</label>
+                    <input type="text" class="form-control premium-input-light item-codigo"
+                        value="${textoSeguro(item?.codigo || "")}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Unidade</label>
+                    <input type="text" class="form-control premium-input-light item-unidade"
+                        value="${textoSeguro(item?.unidade || "UN")}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Ordem</label>
+                    <input type="number" class="form-control premium-input-light item-ordem"
+                        value="${item?.ordem || index}">
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    <label>Descrição</label>
+                    <input type="text" class="form-control premium-input-light item-descricao"
+                        value="${textoSeguro(item?.descricao || "")}">
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    <label>Detalhes</label>
+                    <textarea class="form-control premium-input-light textarea-premium item-detalhes">${item?.detalhes || ""}</textarea>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Quantidade</label>
+                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-quantidade"
+                        value="${quantidade}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Valor unitário</label>
+                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-valor"
+                        value="${valorUnitario}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Desconto</label>
+                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-desconto"
+                        value="${desconto}">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label>Acréscimo</label>
+                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-acrescimo"
+                        value="${acrescimo}">
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label>Subtotal</label>
+                    <input type="number" step="0.01" class="form-control premium-input-light item-subtotal"
+                        value="${subtotal}">
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    <label>Observações do item</label>
+                    <textarea class="form-control premium-input-light textarea-premium item-observacoes">${item?.observacoes || ""}</textarea>
+                </div>
+
+            </div>
+
+        </div>
+    `;
+
+    listaItensEditar.insertAdjacentHTML("beforeend", html);
+
+    const novoItem = listaItensEditar.lastElementChild;
+    const select = novoItem.querySelector(".servico-select");
+
+    preencherItemComServico(select);
+
+    atualizarTotal();
+}
+
 function preencherItemComServico(select) {
     const item = select.closest(".item-servico");
     const option = select.options[select.selectedIndex];
@@ -606,7 +716,105 @@ function montarItens() {
 
     return itens;
 }
+function montarItensEditar() {
 
+    const itens = [];
+
+    const itensDOM =
+        listaItensEditar.querySelectorAll(
+            ".item-servico"
+        );
+
+    itensDOM.forEach(
+        (item, index) => {
+
+            const select =
+                item.querySelector(
+                    ".servico-select"
+                );
+
+            itens.push({
+
+                codigo:
+                    item.querySelector(
+                        ".item-codigo"
+                    )?.value || `ITEM-${index + 1}`,
+
+                descricao:
+                    item.querySelector(
+                        ".item-descricao"
+                    )?.value || "",
+
+                detalhes:
+                    item.querySelector(
+                        ".item-detalhes"
+                    )?.value || null,
+
+                unidade:
+                    item.querySelector(
+                        ".item-unidade"
+                    )?.value || "UN",
+
+                quantidade:
+                    Number(
+                        item.querySelector(
+                            ".item-quantidade"
+                        )?.value || 0
+                    ),
+
+                valorUnitario:
+                    Number(
+                        item.querySelector(
+                            ".item-valor"
+                        )?.value || 0
+                    ),
+
+                desconto:
+                    Number(
+                        item.querySelector(
+                            ".item-desconto"
+                        )?.value || 0
+                    ),
+
+                acrescimo:
+                    Number(
+                        item.querySelector(
+                            ".item-acrescimo"
+                        )?.value || 0
+                    ),
+
+                subtotal:
+                    Number(
+                        item.querySelector(
+                            ".item-subtotal"
+                        )?.value || 0
+                    ),
+
+                ordem:
+                    Number(
+                        item.querySelector(
+                            ".item-ordem"
+                        )?.value || index + 1
+                    ),
+
+                observacoes:
+                    item.querySelector(
+                        ".item-observacoes"
+                    )?.value || null,
+
+                servicoId:
+                    select?.value
+                        ? Number(select.value)
+                        : null
+
+            });
+
+        }
+    );
+
+    return itens;
+
+}
 function calcularResumoFinanceiro(itens) {
     const subtotal = itens.reduce(
         (total, item) => total + Number(item.subtotal || 0),
@@ -770,9 +978,11 @@ formNovaProposta.addEventListener("submit", async (e) => {
 });
 
 async function abrirModalProposta(id) {
+
     if (estaArrastando) return;
 
     try {
+
         const response = await fetch(
             `${API_URL}/propostas/${id}`,
             {
@@ -803,116 +1013,315 @@ async function abrirModalProposta(id) {
         preencherCampo("editarOrigem", proposta.origem);
         preencherCampo("editarEtapaAtual", proposta.etapaAtual);
         preencherCampo("editarAssinaturaCliente", proposta.assinaturaCliente);
+
+        preencherCampo(
+            "editarDataValidade",
+            dataInput(proposta.dataValidade)
+        );
+
+        preencherCampo(
+            "editarDataAprovacao",
+            dataInput(proposta.dataAprovacao)
+        );
+
+        preencherCampo(
+            "editarDataRecusa",
+            dataInput(proposta.dataRecusa)
+        );
+
         preencherCampo("editarValidadeDias", proposta.validadeDias);
-        preencherCampo("editarDataValidade", dataInput(proposta.dataValidade));
-        preencherCampo("editarDataAprovacao", dataInput(proposta.dataAprovacao));
-        preencherCampo("editarDataRecusa", dataInput(proposta.dataRecusa));
+
         preencherCampo("editarSubtotal", proposta.subtotal);
         preencherCampo("editarDesconto", proposta.desconto);
         preencherCampo("editarAcrescimo", proposta.acrescimo);
         preencherCampo("editarFrete", proposta.frete);
         preencherCampo("editarImpostos", proposta.impostos);
         preencherCampo("editarTotal", proposta.total);
-        preencherCampo("editarPercentualLucro", proposta.percentualLucro);
-        preencherCampo("editarFormaPagamento", proposta.formaPagamento);
-        preencherCampo("editarCondicoesPagamento", proposta.condicoesPagamento);
-        preencherCampo("editarObservacoes", proposta.observacoes);
-        preencherCampo("editarObservacoesInternas", proposta.observacoesInternas);
-        preencherCampo("editarMotivoRecusa", proposta.motivoRecusa);
-        preencherCampo("editarUrlPublica", proposta.urlPublica);
-        preencherCampo("editarPdfUrl", proposta.pdfUrl);
 
-        preencherCheckbox("editarAprovadoCliente", proposta.aprovadoCliente);
-        preencherCheckbox("editarEnviadoEmail", proposta.enviadoEmail);
-        preencherCheckbox("editarEnviadoWhatsapp", proposta.enviadoWhatsapp);
-        preencherCheckbox("editarVisualizada", proposta.visualizada);
-        preencherCampo("editarTemplateId", proposta.templateId);
-        const modal = new bootstrap.Modal(
-            document.getElementById("modalProposta")
+        preencherCampo(
+            "editarPercentualLucro",
+            proposta.percentualLucro
         );
+
+        preencherCampo(
+            "editarFormaPagamento",
+            proposta.formaPagamento
+        );
+
+        preencherCampo(
+            "editarCondicoesPagamento",
+            proposta.condicoesPagamento
+        );
+
+        preencherCampo(
+            "editarObservacoes",
+            proposta.observacoes
+        );
+
+        preencherCampo(
+            "editarObservacoesInternas",
+            proposta.observacoesInternas
+        );
+
+        preencherCampo(
+            "editarMotivoRecusa",
+            proposta.motivoRecusa
+        );
+
+        preencherCampo(
+            "editarUrlPublica",
+            proposta.urlPublica
+        );
+
+        preencherCampo(
+            "editarPdfUrl",
+            proposta.pdfUrl
+        );
+
+        preencherCheckbox(
+            "editarAprovadoCliente",
+            proposta.aprovadoCliente
+        );
+
+        preencherCheckbox(
+            "editarEnviadoEmail",
+            proposta.enviadoEmail
+        );
+
+        preencherCheckbox(
+            "editarEnviadoWhatsapp",
+            proposta.enviadoWhatsapp
+        );
+
+        preencherCheckbox(
+            "editarVisualizada",
+            proposta.visualizada
+        );
+
+        preencherCampo(
+            "editarTemplateId",
+            proposta.templateId
+        );
+
+        /* =====================================
+           CARREGA ITENS DA PROPOSTA
+        ===================================== */
+
+        listaItensEditar.innerHTML = "";
+
+        if (
+            proposta.itens &&
+            proposta.itens.length
+        ) {
+
+            proposta.itens.forEach(item => {
+
+                adicionarItemEditar(item);
+
+            });
+
+        }
+
+        const modal =
+            new bootstrap.Modal(
+                document.getElementById(
+                    "modalProposta"
+                )
+            );
 
         modal.show();
 
     } catch (error) {
+
         console.log(error);
-        alert("Erro ao abrir proposta.");
+
+        alert(
+            "Erro ao abrir proposta."
+        );
+
     }
+
 }
 
 function montarBodyEditarProposta() {
+
     return {
-        numero: pegarValor("editarNumero"),
 
-        titulo: pegarValor("editarTitulo"),
+        numero:
+            pegarValor("editarNumero"),
 
-        subtitulo: pegarValor("editarSubtitulo"),
+        titulo:
+            pegarValor("editarTitulo"),
 
-        descricao: pegarValor("editarDescricao"),
+        subtitulo:
+            pegarValor("editarSubtitulo"),
 
-        escopo: pegarValor("editarEscopo"),
+        descricao:
+            pegarValor("editarDescricao"),
 
-        observacoes: pegarValor("editarObservacoes"),
+        escopo:
+            pegarValor("editarEscopo"),
 
-        observacoesInternas: pegarValor("editarObservacoesInternas"),
+        observacoes:
+            pegarValor("editarObservacoes"),
 
-        status: pegarValor("editarStatus"),
+        observacoesInternas:
+            pegarValor(
+                "editarObservacoesInternas"
+            ),
 
-        prioridade: pegarValor("editarPrioridade"),
+        status:
+            pegarValor(
+                "editarStatus"
+            ),
 
-        subtotal: pegarNumero("editarSubtotal"),
+        prioridade:
+            pegarValor(
+                "editarPrioridade"
+            ),
 
-        desconto: pegarNumero("editarDesconto"),
+        subtotal:
+            pegarNumero(
+                "editarSubtotal"
+            ),
 
-        acrescimo: pegarNumero("editarAcrescimo"),
+        desconto:
+            pegarNumero(
+                "editarDesconto"
+            ),
 
-        frete: pegarNumero("editarFrete"),
+        acrescimo:
+            pegarNumero(
+                "editarAcrescimo"
+            ),
 
-        impostos: pegarNumero("editarImpostos"),
+        frete:
+            pegarNumero(
+                "editarFrete"
+            ),
 
-        total: pegarNumero("editarTotal"),
+        impostos:
+            pegarNumero(
+                "editarImpostos"
+            ),
 
-        percentualLucro: pegarNumero("editarPercentualLucro"),
+        total:
+            pegarNumero(
+                "editarTotal"
+            ),
 
-        formaPagamento: pegarValor("editarFormaPagamento"),
+        percentualLucro:
+            pegarNumero(
+                "editarPercentualLucro"
+            ),
 
-        condicoesPagamento: pegarValor("editarCondicoesPagamento"),
+        formaPagamento:
+            pegarValor(
+                "editarFormaPagamento"
+            ),
 
-        validadeDias: pegarInteiro("editarValidadeDias"),
+        condicoesPagamento:
+            pegarValor(
+                "editarCondicoesPagamento"
+            ),
 
-        dataValidade: pegarValor("editarDataValidade"),
+        validadeDias:
+            pegarInteiro(
+                "editarValidadeDias"
+            ),
 
-        dataAprovacao: pegarValor("editarDataAprovacao"),
+        dataValidade:
+            pegarValor(
+                "editarDataValidade"
+            ),
 
-        dataRecusa: pegarValor("editarDataRecusa"),
+        dataAprovacao:
+            pegarValor(
+                "editarDataAprovacao"
+            ),
 
-        motivoRecusa: pegarValor("editarMotivoRecusa"),
+        dataRecusa:
+            pegarValor(
+                "editarDataRecusa"
+            ),
 
-        responsavel: pegarValor("editarResponsavel"),
+        motivoRecusa:
+            pegarValor(
+                "editarMotivoRecusa"
+            ),
 
-        vendedor: pegarValor("editarVendedor"),
+        responsavel:
+            pegarValor(
+                "editarResponsavel"
+            ),
 
-        origem: pegarValor("editarOrigem"),
+        vendedor:
+            pegarValor(
+                "editarVendedor"
+            ),
 
-        etapaAtual: pegarValor("editarEtapaAtual"),
+        origem:
+            pegarValor(
+                "editarOrigem"
+            ),
 
-        assinaturaCliente: pegarValor("editarAssinaturaCliente"),
+        etapaAtual:
+            pegarValor(
+                "editarEtapaAtual"
+            ),
 
-        aprovadoCliente: pegarCheckbox("editarAprovadoCliente"),
+        assinaturaCliente:
+            pegarValor(
+                "editarAssinaturaCliente"
+            ),
 
-        enviadoEmail: pegarCheckbox("editarEnviadoEmail"),
+        aprovadoCliente:
+            pegarCheckbox(
+                "editarAprovadoCliente"
+            ),
 
-        enviadoWhatsapp: pegarCheckbox("editarEnviadoWhatsapp"),
+        enviadoEmail:
+            pegarCheckbox(
+                "editarEnviadoEmail"
+            ),
 
-        visualizada: pegarCheckbox("editarVisualizada"),
+        enviadoWhatsapp:
+            pegarCheckbox(
+                "editarEnviadoWhatsapp"
+            ),
 
-        urlPublica: pegarValor("editarUrlPublica"),
+        visualizada:
+            pegarCheckbox(
+                "editarVisualizada"
+            ),
 
-        pdfUrl: pegarValor("editarPdfUrl"),
+        urlPublica:
+            pegarValor(
+                "editarUrlPublica"
+            ),
 
-        clienteId: Number(pegarValor("editarClienteId")),
+        pdfUrl:
+            pegarValor(
+                "editarPdfUrl"
+            ),
 
-        templateId: pegarInteiro("editarTemplateId")
+        clienteId:
+            Number(
+                pegarValor(
+                    "editarClienteId"
+                )
+            ),
+
+        templateId:
+            pegarInteiro(
+                "editarTemplateId"
+            ),
+
+        itens:
+            montarItensEditar()
+
     };
+
 }
 
 formEditarProposta.addEventListener("submit", async (e) => {
