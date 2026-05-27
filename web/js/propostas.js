@@ -631,12 +631,77 @@ document.getElementById("btnAdicionarServico").addEventListener("click", () => {
     adicionarItemProposta();
 });
 
-document.addEventListener("click", (e) => {
-    if (e.target.classList.contains("btn-remove-item")) {
-        e.target.closest(".item-servico").remove();
-        atualizarTotal();
+document.getElementById(
+    "btnAdicionarServicoEditar"
+)
+    ?.addEventListener(
+        "click",
+        () => {
+
+            if (
+                servicos.length === 0
+            ) {
+
+                alert(
+                    "Cadastre um serviço antes de criar uma proposta."
+                );
+
+                return;
+
+            }
+
+            adicionarItemEditar();
+
+        }
+    );
+
+document.addEventListener(
+    "click",
+    (e) => {
+
+        if (
+            e.target.classList.contains(
+                "btn-remove-item"
+            )
+        ) {
+
+            e.target
+                .closest(
+                    ".item-servico"
+                )
+                .remove();
+
+            document
+                .querySelectorAll(
+                    ".item-servico"
+                )
+                .forEach(
+                    (
+                        item,
+                        index
+                    ) => {
+
+                        const titulo =
+                            item.querySelector(
+                                ".item-title strong"
+                            );
+
+                        if (titulo) {
+
+                            titulo.textContent =
+                                `Item ${index + 1}`;
+
+                        }
+
+                    }
+                );
+
+            atualizarTotal();
+
+        }
+
     }
-});
+);
 
 document.addEventListener("change", (e) => {
     if (e.target.classList.contains("servico-select")) {
