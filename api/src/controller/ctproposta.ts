@@ -292,95 +292,280 @@ export const readOne = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const update = async (req: Request, res: Response): Promise<void> => {
+export const update = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+
   try {
+
     const { id } = req.params;
     const body = req.body;
 
-    const propostaAtual = await prisma.proposta.findUnique({
-      where: {
-        propostaid: Number(id)
-      }
-    });
+    const propostaAtual =
+      await prisma.proposta.findUnique({
+
+        where: {
+          propostaid: Number(id)
+        }
+
+      });
 
     if (!propostaAtual) {
+
       res.status(404).json({
         error: "Proposta não encontrada"
       });
+
       return;
+
     }
 
-    const proposta = await prisma.proposta.update({
+    await prisma.itemProposta.deleteMany({
+
       where: {
-        propostaid: Number(id)
-      },
-      data: {
-        numero: body.numero ?? propostaAtual.numero,
-        titulo: body.titulo ?? propostaAtual.titulo,
-        subtitulo: body.subtitulo ?? propostaAtual.subtitulo,
-        descricao: body.descricao ?? propostaAtual.descricao,
-        escopo: body.escopo ?? propostaAtual.escopo,
-        observacoes: body.observacoes ?? propostaAtual.observacoes,
-        observacoesInternas:
-          body.observacoesInternas ?? propostaAtual.observacoesInternas,
-        status: body.status ?? propostaAtual.status,
-        prioridade: body.prioridade ?? propostaAtual.prioridade,
-        subtotal: body.subtotal ?? propostaAtual.subtotal,
-        desconto: body.desconto ?? propostaAtual.desconto,
-        acrescimo: body.acrescimo ?? propostaAtual.acrescimo,
-        frete: body.frete ?? propostaAtual.frete,
-        impostos: body.impostos ?? propostaAtual.impostos,
-        total: body.total ?? propostaAtual.total,
-        percentualLucro:
-          body.percentualLucro ?? propostaAtual.percentualLucro,
-        formaPagamento:
-          body.formaPagamento ?? propostaAtual.formaPagamento,
-        condicoesPagamento:
-          body.condicoesPagamento ?? propostaAtual.condicoesPagamento,
-        validadeDias: body.validadeDias ?? propostaAtual.validadeDias,
-        dataValidade: body.dataValidade
-          ? new Date(body.dataValidade)
-          : propostaAtual.dataValidade,
-        dataAprovacao: body.dataAprovacao
-          ? new Date(body.dataAprovacao)
-          : propostaAtual.dataAprovacao,
-        dataRecusa: body.dataRecusa
-          ? new Date(body.dataRecusa)
-          : propostaAtual.dataRecusa,
-        motivoRecusa: body.motivoRecusa ?? propostaAtual.motivoRecusa,
-        responsavel: body.responsavel ?? propostaAtual.responsavel,
-        vendedor: body.vendedor ?? propostaAtual.vendedor,
-        origem: body.origem ?? propostaAtual.origem,
-        etapaAtual: body.etapaAtual ?? propostaAtual.etapaAtual,
-        assinaturaCliente:
-          body.assinaturaCliente ?? propostaAtual.assinaturaCliente,
-        aprovadoCliente:
-          body.aprovadoCliente ?? propostaAtual.aprovadoCliente,
-        enviadoEmail: body.enviadoEmail ?? propostaAtual.enviadoEmail,
-        enviadoWhatsapp:
-          body.enviadoWhatsapp ?? propostaAtual.enviadoWhatsapp,
-        visualizada: body.visualizada ?? propostaAtual.visualizada,
-        urlPublica: body.urlPublica ?? propostaAtual.urlPublica,
-        pdfUrl: body.pdfUrl ?? propostaAtual.pdfUrl,
-        clienteId: body.clienteId ?? propostaAtual.clienteId,
-        templatePropostaTemplateid:
-          body.templatePropostaTemplateid ??
-          propostaAtual.templatePropostaTemplateid
-      },
-      include: {
-        cliente: true,
-        templateProposta: true,
-        itens: true
+        propostaId: Number(id)
       }
+
     });
 
+    const proposta =
+      await prisma.proposta.update({
+
+        where: {
+          propostaid: Number(id)
+        },
+
+        data: {
+
+          numero:
+            body.numero ??
+            propostaAtual.numero,
+
+          titulo:
+            body.titulo ??
+            propostaAtual.titulo,
+
+          subtitulo:
+            body.subtitulo ??
+            propostaAtual.subtitulo,
+
+          descricao:
+            body.descricao ??
+            propostaAtual.descricao,
+
+          escopo:
+            body.escopo ??
+            propostaAtual.escopo,
+
+          observacoes:
+            body.observacoes ??
+            propostaAtual.observacoes,
+
+          observacoesInternas:
+            body.observacoesInternas ??
+            propostaAtual.observacoesInternas,
+
+          status:
+            body.status ??
+            propostaAtual.status,
+
+          prioridade:
+            body.prioridade ??
+            propostaAtual.prioridade,
+
+          subtotal:
+            body.subtotal ??
+            propostaAtual.subtotal,
+
+          desconto:
+            body.desconto ??
+            propostaAtual.desconto,
+
+          acrescimo:
+            body.acrescimo ??
+            propostaAtual.acrescimo,
+
+          frete:
+            body.frete ??
+            propostaAtual.frete,
+
+          impostos:
+            body.impostos ??
+            propostaAtual.impostos,
+
+          total:
+            body.total ??
+            propostaAtual.total,
+
+          percentualLucro:
+            body.percentualLucro ??
+            propostaAtual.percentualLucro,
+
+          formaPagamento:
+            body.formaPagamento ??
+            propostaAtual.formaPagamento,
+
+          condicoesPagamento:
+            body.condicoesPagamento ??
+            propostaAtual.condicoesPagamento,
+
+          validadeDias:
+            body.validadeDias ??
+            propostaAtual.validadeDias,
+
+          dataValidade:
+            body.dataValidade
+              ? new Date(body.dataValidade)
+              : propostaAtual.dataValidade,
+
+          dataAprovacao:
+            body.dataAprovacao
+              ? new Date(body.dataAprovacao)
+              : propostaAtual.dataAprovacao,
+
+          dataRecusa:
+            body.dataRecusa
+              ? new Date(body.dataRecusa)
+              : propostaAtual.dataRecusa,
+
+          motivoRecusa:
+            body.motivoRecusa ??
+            propostaAtual.motivoRecusa,
+
+          responsavel:
+            body.responsavel ??
+            propostaAtual.responsavel,
+
+          vendedor:
+            body.vendedor ??
+            propostaAtual.vendedor,
+
+          origem:
+            body.origem ??
+            propostaAtual.origem,
+
+          etapaAtual:
+            body.etapaAtual ??
+            propostaAtual.etapaAtual,
+
+          assinaturaCliente:
+            body.assinaturaCliente ??
+            propostaAtual.assinaturaCliente,
+
+          aprovadoCliente:
+            body.aprovadoCliente ??
+            propostaAtual.aprovadoCliente,
+
+          enviadoEmail:
+            body.enviadoEmail ??
+            propostaAtual.enviadoEmail,
+
+          enviadoWhatsapp:
+            body.enviadoWhatsapp ??
+            propostaAtual.enviadoWhatsapp,
+
+          visualizada:
+            body.visualizada ??
+            propostaAtual.visualizada,
+
+          urlPublica:
+            body.urlPublica ??
+            propostaAtual.urlPublica,
+
+          pdfUrl:
+            body.pdfUrl ??
+            propostaAtual.pdfUrl,
+
+          clienteId:
+            body.clienteId ??
+            propostaAtual.clienteId,
+
+          templatePropostaTemplateid:
+            body.templatePropostaTemplateid ??
+            propostaAtual.templatePropostaTemplateid,
+
+          itens: {
+
+            create:
+              (body.itens || []).map(
+                (item: any) => ({
+
+                  codigo:
+                    item.codigo || null,
+
+                  descricao:
+                    item.descricao || "",
+
+                  detalhes:
+                    item.detalhes || null,
+
+                  unidade:
+                    item.unidade || null,
+
+                  quantidade:
+                    Number(item.quantidade || 0),
+
+                  valorUnitario:
+                    Number(item.valorUnitario || 0),
+
+                  desconto:
+                    Number(item.desconto || 0),
+
+                  acrescimo:
+                    Number(item.acrescimo || 0),
+
+                  subtotal:
+                    Number(item.subtotal || 0),
+
+                  ordem:
+                    Number(item.ordem || 1),
+
+                  observacoes:
+                    item.observacoes || null,
+
+                  servicoId:
+                    item.servicoId
+                      ? Number(item.servicoId)
+                      : null
+
+                })
+              )
+
+          }
+
+        },
+
+        include: {
+
+          cliente: true,
+
+          templateProposta: true,
+
+          itens: {
+
+            include: {
+              servico: true
+            }
+
+          }
+
+        }
+
+      });
+
     res.status(200).json(proposta);
+
   } catch (error) {
+
     console.log(error);
+
     res.status(500).json({
       error: "Erro ao atualizar proposta"
     });
+
   }
+
 };
 
 export const remove = async (req: Request, res: Response): Promise<void> => {
