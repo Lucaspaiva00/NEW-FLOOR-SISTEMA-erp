@@ -362,7 +362,7 @@ NEW FLOOR PISOS E REVESTIMENTOS
 </h2>
 
 <p>
-${template?.textoApresentacao || ""}
+Proposta Técnica Comercial
 </p>
 
 </div>
