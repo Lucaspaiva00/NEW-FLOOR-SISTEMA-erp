@@ -358,7 +358,7 @@ class="logo"
         }
 
 <h1>
-${template?.cabecalho || "NEW FLOOR PISOS E REVESTIMENTOS - Proposta Técnica Comercial"}
+"NEW FLOOR PISOS E REVESTIMENTOS - Proposta Técnica Comercial"
 </h1>
 
 <p>
