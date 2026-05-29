@@ -594,7 +594,7 @@ ${proposta.observacoes ||
 <div class="assinaturas">
 
 <div class="assinatura">
-NEW FLOOR
+NEW FLOOR PISOS E REVESTIMENTOS
 </div>
 
 <div class="assinatura">
