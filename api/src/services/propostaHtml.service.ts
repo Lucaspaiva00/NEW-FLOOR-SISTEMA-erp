@@ -54,11 +54,30 @@ export function gerarHtmlProposta({
                 ) => `
 <tr>
 <td>${index + 1}</td>
-<td>${item.descricao}</td>
-<td>${item.unidade || "UN"}</td>
-<td>${item.quantidade}</td>
-<td>${moeda(item.valorUnitario)}</td>
-<td>${moeda(item.subtotal)}</td>
+
+<td>
+    ${item.servico?.nome ||
+                    item.descricao ||
+                    "-"
+                    }
+</td>
+
+<td>
+    ${item.unidade || "UN"}
+</td>
+
+<td>
+    ${item.quantidade || 0}
+</td>
+
+<td>
+    ${moeda(item.valorUnitario)}
+</td>
+
+<td>
+    ${moeda(item.subtotal)}
+</td>
+
 </tr>
 `
             )
@@ -67,32 +86,71 @@ export function gerarHtmlProposta({
     const detalhesTecnicos =
         itens
             .map(
-                item => `
+                (
+                    item,
+                    index
+                ) => `
+
 <div class="item-tecnico">
 
-    <h4>
-        ${item.descricao}
-    </h4>
+<h3>
+ITEM ${index + 1}
+</h3>
 
-    ${item.detalhes
+<h4>
+${item.servico?.nome ||
+                    item.descricao ||
+                    "Serviço"
+                    }
+</h4>
+
+<p>
+
+<strong>Quantidade:</strong>
+${item.quantidade || 0}
+
+<br>
+
+<strong>Valor Unitário:</strong>
+${moeda(item.valorUnitario)}
+
+<br>
+
+<strong>Valor Total:</strong>
+${moeda(item.subtotal)}
+
+</p>
+
+${item.detalhes
                         ? `
-            <p>
-                ${item.detalhes}
-            </p>
-            `
-                        : ""
+<p>
+${item.detalhes}
+</p>
+`
+                        : item.servico?.descricao
+                            ? `
+<p>
+${item.servico.descricao}
+</p>
+`
+                            : ""
                     }
 
-    ${item.observacoes
+${item.observacoes
                         ? `
-            <p>
-                <strong>
-                    Observações:
-                </strong>
-                ${item.observacoes}
-            </p>
-            `
-                        : ""
+<p>
+<strong>Observações:</strong>
+${item.observacoes}
+</p>
+`
+                        : item.servico?.observacoes
+                            ? `
+<p>
+<strong>Observações:</strong>
+${item.servico.observacoes}
+</p>
+`
+                            : ""
                     }
 
 </div>
