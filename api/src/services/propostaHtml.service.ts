@@ -358,7 +358,7 @@ class="logo"
         }
 
 <h2>
-"NEW FLOOR PISOS E REVESTIMENTOS"
+NEW FLOOR PISOS E REVESTIMENTOS
 </h2>
 
 <p>
