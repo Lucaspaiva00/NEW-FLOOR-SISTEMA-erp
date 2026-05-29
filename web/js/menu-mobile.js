@@ -2,77 +2,58 @@ document.addEventListener(
     "DOMContentLoaded",
     () => {
 
+        const btn =
+            document.querySelector(
+                ".mobile-menu-btn"
+            );
+
         const sidebar =
-            document.querySelector(".sidebar");
-
-        if (!sidebar) return;
-
-        const button =
-            document.createElement("button");
-
-        button.className =
-            "mobile-menu-btn";
-
-        button.innerHTML = "☰";
-
-        document.body.appendChild(button);
+            document.querySelector(
+                ".sidebar"
+            );
 
         const overlay =
-            document.createElement("div");
-
-        overlay.className =
-            "mobile-overlay";
-
-        document.body.appendChild(
-            overlay
-        );
-
-        function abrirMenu() {
-
-            sidebar.classList.add(
-                "mobile-open"
+            document.querySelector(
+                ".mobile-overlay"
             );
 
-            overlay.classList.add(
-                "active"
-            );
-
+        if (
+            !btn ||
+            !sidebar ||
+            !overlay
+        ) {
+            return;
         }
 
-        function fecharMenu() {
-
-            sidebar.classList.remove(
-                "mobile-open"
-            );
-
-            overlay.classList.remove(
-                "active"
-            );
-
-        }
-
-        button.addEventListener(
+        btn.addEventListener(
             "click",
-            abrirMenu
+            () => {
+
+                sidebar.classList.toggle(
+                    "open"
+                );
+
+                overlay.classList.toggle(
+                    "show"
+                );
+
+            }
         );
 
         overlay.addEventListener(
             "click",
-            fecharMenu
-        );
+            () => {
 
-        document
-            .querySelectorAll(
-                ".menu a"
-            )
-            .forEach(link => {
-
-                link.addEventListener(
-                    "click",
-                    fecharMenu
+                sidebar.classList.remove(
+                    "open"
                 );
 
-            });
+                overlay.classList.remove(
+                    "show"
+                );
+
+            }
+        );
 
     }
 );

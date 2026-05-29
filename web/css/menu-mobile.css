@@ -1,100 +1,92 @@
 .mobile-menu-btn {
     display: none;
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 9999;
-
-    width: 45px;
-    height: 45px;
-
-    border: none;
-    border-radius: 10px;
-
-    background: #0f172a;
-    color: white;
-
-    font-size: 22px;
-    cursor: pointer;
 }
 
 .mobile-overlay {
-    position: fixed;
-    inset: 0;
-
-    background: rgba(0, 0, 0, .55);
-
-    opacity: 0;
-    visibility: hidden;
-
-    transition: .3s;
-
-    z-index: 9997;
+    display: none;
 }
 
-.mobile-overlay.active {
-    opacity: 1;
-    visibility: visible;
-}
-
-@media (max-width: 991px) {
+@media (max-width: 900px) {
 
     .mobile-menu-btn {
+
         display: flex;
+
         align-items: center;
         justify-content: center;
+
+        position: fixed;
+
+        top: 15px;
+        left: 15px;
+
+        width: 50px;
+        height: 50px;
+
+        border: none;
+
+        border-radius: 12px;
+
+        background: #111827;
+
+        color: #fff;
+
+        font-size: 22px;
+
+        z-index: 10001;
     }
 
     .sidebar {
-        position: fixed !important;
+
+        display: flex !important;
+
+        position: fixed;
 
         top: 0;
-        left: 0;
+        left: -280px;
 
-        width: 280px !important;
+        width: 260px;
         height: 100vh;
 
-        z-index: 9998;
+        z-index: 10000;
 
-        transform: translateX(-100%);
+        background: #fff;
+
         transition: .3s ease;
     }
 
-    .sidebar.mobile-open {
-        transform: translateX(0);
+    .sidebar.open {
+
+        left: 0;
+    }
+
+    .mobile-overlay {
+
+        position: fixed;
+
+        inset: 0;
+
+        background: rgba(0, 0, 0, .55);
+
+        z-index: 9999;
+
+        display: none;
+    }
+
+    .mobile-overlay.show {
+
+        display: block;
     }
 
     .main-content {
+
         width: 100%;
-        margin-left: 0 !important;
-    }
-}
-
-@media (max-width: 768px) {
-
-    .sidebar {
-
-        position: fixed;
-        left: -280px;
-        top: 0;
-        width: 280px;
-        height: 100vh;
-        z-index: 9999;
-        transition: .3s;
-
+        padding: 70px 15px 15px 15px;
     }
 
-    .sidebar.mobile-open {
+    .layout {
 
-        left: 0;
-
-    }
-
-    .content {
-
-        margin-left: 0 !important;
-        width: 100% !important;
-
+        display: block;
     }
 
 }
