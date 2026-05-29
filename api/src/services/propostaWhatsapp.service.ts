@@ -26,7 +26,7 @@ ${linkPdf}
 Qualquer dúvida fico à disposição.
 
 Atenciosamente,
-Equipe NEW FLOOR
+Equipe NEW FLOOR PISOS E REVESTIMENTOS
 `;
 
     return `https://wa.me/55${telefoneLimpo}?text=${encodeURIComponent(
