@@ -357,9 +357,9 @@ class="logo"
             : ""
         }
 
-<h1>
-"NEW FLOOR PISOS E REVESTIMENTOS - Proposta Técnica Comercial"
-</h1>
+<h2>
+"NEW FLOOR PISOS E REVESTIMENTOS"
+</h2>
 
 <p>
 ${template?.textoApresentacao || ""}
