@@ -434,11 +434,6 @@ body {
 
 @media(max-width:900px) {
 
-    .sidebar {
-
-        display: none;
-    }
-
     .kpis,
     .kanban {
 
@@ -454,7 +449,7 @@ body {
         gap: 20px;
     }
 
-}
+}   
 
 /* TABLE */
 
