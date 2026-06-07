@@ -1131,16 +1131,6 @@ async function abrirModalProposta(id) {
             proposta.motivoRecusa
         );
 
-        preencherCampo(
-            "editarUrlPublica",
-            proposta.urlPublica
-        );
-
-        preencherCampo(
-            "editarPdfUrl",
-            proposta.pdfUrl
-        );
-
         preencherCheckbox(
             "editarAprovadoCliente",
             proposta.aprovadoCliente
@@ -1358,15 +1348,6 @@ function montarBodyEditarProposta() {
                 "editarVisualizada"
             ),
 
-        urlPublica:
-            pegarValor(
-                "editarUrlPublica"
-            ),
-
-        pdfUrl:
-            pegarValor(
-                "editarPdfUrl"
-            ),
 
         clienteId:
             Number(
