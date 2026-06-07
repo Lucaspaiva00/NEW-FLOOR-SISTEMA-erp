@@ -20,8 +20,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         garantia: body.garantia,
         observacoes: body.observacoes,
         ativo: body.ativo ?? true,
-        destaque: body.destaque ?? false,
-        imagem: body.imagem
+        destaque: body.destaque ?? false
       }
     });
 
@@ -114,8 +113,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
         garantia: body.garantia,
         observacoes: body.observacoes,
         ativo: body.ativo,
-        destaque: body.destaque,
-        imagem: body.imagem
+        destaque: body.destaque
       }
     });
 

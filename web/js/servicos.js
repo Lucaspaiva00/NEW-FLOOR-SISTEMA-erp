@@ -120,9 +120,7 @@ function montarBodyServico(prefixo = "") {
 
         ativo: pegarCheckbox(campo("ativo")),
 
-        destaque: pegarCheckbox(campo("destaque")),
-
-        imagem: pegarValor(campo("imagem"))
+        destaque: pegarCheckbox(campo("destaque"))
     };
 }
 
@@ -384,8 +382,6 @@ async function abrirModalServico(id) {
         preencherCheckbox("editarAtivo", servico.ativo);
 
         preencherCheckbox("editarDestaque", servico.destaque);
-
-        preencherCampo("editarImagem", servico.imagem);
 
         const modal = new bootstrap.Modal(
             document.getElementById("modalEditarServico")
