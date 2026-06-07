@@ -26,6 +26,7 @@ async function buscarPropostaCompleta(id: string) {
     },
     include: {
       cliente: true,
+      vendedor: true,
       templateProposta: true,
       itens: {
         include: {
@@ -144,13 +145,23 @@ async function gerarPdfInterno(id: string | string[] | number) {
 
 }
 
+
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body;
+    const ultimaProposta = await prisma.proposta.findFirst({
+      orderBy: {
+        propostaid: "desc"
+      }
+    });
 
+    const numeroAutomatico =
+      `PROP-${String(
+        (ultimaProposta?.propostaid || 0) + 1
+      ).padStart(5, "0")}`;
     const proposta = await prisma.proposta.create({
       data: {
-        numero: body.numero,
+        numero: body.numero || numeroAutomatico,
         titulo: body.titulo,
         subtitulo: body.subtitulo,
         descricao: body.descricao,
@@ -178,15 +189,15 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         dataRecusa: body.dataRecusa ? new Date(body.dataRecusa) : null,
         motivoRecusa: body.motivoRecusa,
         responsavel: body.responsavel,
-        vendedor: body.vendedor,
+        vendedorId: body.vendedorId || null,
         origem: body.origem,
-        etapaAtual: body.etapaAtual,
+
         assinaturaCliente: body.assinaturaCliente,
         aprovadoCliente: body.aprovadoCliente ?? false,
         enviadoEmail: body.enviadoEmail ?? false,
         enviadoWhatsapp: body.enviadoWhatsapp ?? false,
         visualizada: body.visualizada ?? false,
-        urlPublica: body.urlPublica,
+
         pdfUrl: body.pdfUrl,
         clienteId: body.clienteId,
         templatePropostaTemplateid:
@@ -225,6 +236,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       },
       include: {
         cliente: true,
+        vendedor: true,
         templateProposta: true,
         itens: {
           include: {
@@ -248,6 +260,7 @@ export const read = async (_req: Request, res: Response): Promise<void> => {
     const propostas = await prisma.proposta.findMany({
       include: {
         cliente: true,
+        vendedor: true,
         templateProposta: true,
         itens: {
           include: {
@@ -437,17 +450,13 @@ export const update = async (
             body.responsavel ??
             propostaAtual.responsavel,
 
-          vendedor:
-            body.vendedor ??
-            propostaAtual.vendedor,
+          vendedorId:
+            body.vendedorId ??
+            propostaAtual.vendedorId,
 
           origem:
             body.origem ??
             propostaAtual.origem,
-
-          etapaAtual:
-            body.etapaAtual ??
-            propostaAtual.etapaAtual,
 
           assinaturaCliente:
             body.assinaturaCliente ??
@@ -468,14 +477,6 @@ export const update = async (
           visualizada:
             body.visualizada ??
             propostaAtual.visualizada,
-
-          urlPublica:
-            body.urlPublica ??
-            propostaAtual.urlPublica,
-
-          pdfUrl:
-            body.pdfUrl ??
-            propostaAtual.pdfUrl,
 
           clienteId:
             body.clienteId ??
@@ -539,7 +540,7 @@ export const update = async (
         include: {
 
           cliente: true,
-
+          vendedor: true,
           templateProposta: true,
 
           itens: {
@@ -819,7 +820,7 @@ export const enviarEmail =
       }
 
       if (
-        !proposta.cliente?.email
+        !proposta.cliente?.email1
       ) {
 
         res.status(400).json({
@@ -841,10 +842,12 @@ export const enviarEmail =
       await enviarPropostaPorEmail({
 
         destinatario:
-          proposta.cliente.email,
+          proposta.cliente.email1,
 
         clienteNome:
-          proposta.cliente.nome,
+          proposta.cliente.nomeFantasia ||
+          proposta.cliente.razaoSocial ||
+          "Cliente",
 
         numeroProposta:
           proposta.numero,
@@ -921,10 +924,7 @@ export const whatsapp =
       }
 
       const telefone =
-
-        proposta.cliente?.whatsapp ||
-
-        proposta.cliente?.telefone;
+        proposta.cliente?.telefone1;
 
       if (!telefone) {
 
@@ -955,7 +955,9 @@ export const whatsapp =
         gerarLinkWhatsapp({
 
           clienteNome:
-            proposta.cliente.nome,
+            proposta.cliente.nomeFantasia ||
+            proposta.cliente.razaoSocial ||
+            "Cliente",
 
           telefone,
 

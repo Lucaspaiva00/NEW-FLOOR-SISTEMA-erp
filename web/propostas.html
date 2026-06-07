@@ -167,8 +167,9 @@
                             <div class="row">
 
                                 <div class="col-md-3 mb-3">
-                                    <label>Número *</label>
-                                    <input type="text" id="numero" class="form-control premium-input-light">
+                                    <label>Número</label>
+                                    <input type="text" id="numero" class="form-control premium-input-light"
+                                        placeholder="Gerado automaticamente" readonly>
                                 </div>
 
                                 <div class="col-md-5 mb-3">
@@ -189,7 +190,7 @@
                                 <div class="col-md-3 mb-3">
                                     <label>Status</label>
                                     <select id="status" class="form-control premium-input-light">
-                                        <option value="RASCUNHO">RASCUNHO</option>
+                                        <option value="RASCUNHO">ENCAMINHADA</option>
                                         <option value="PENDENTE">PENDENTE</option>
                                         <option value="APROVADA">APROVADA</option>
                                         <option value="EXECUTANDO">EXECUTANDO</option>
@@ -373,15 +374,6 @@
                                         class="form-control premium-input-light textarea-premium"></textarea>
                                 </div>
 
-                                <div class="col-md-6 mb-3">
-                                    <label>URL pública</label>
-                                    <input type="text" id="urlPublica" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label>PDF URL</label>
-                                    <input type="text" id="pdfUrl" class="form-control premium-input-light">
-                                </div>
 
                             </div>
 
@@ -494,7 +486,7 @@
                                 <div class="col-md-3 mb-3">
                                     <label>Status</label>
                                     <select id="editarStatus" class="form-control premium-input-light">
-                                        <option value="RASCUNHO">RASCUNHO</option>
+                                        <option value="RASCUNHO">ENCAMINHADA</option>
                                         <option value="PENDENTE">PENDENTE</option>
                                         <option value="APROVADA">APROVADA</option>
                                         <option value="EXECUTANDO">EXECUTANDO</option>
@@ -545,10 +537,6 @@
                                     <input type="text" id="editarOrigem" class="form-control premium-input-light">
                                 </div>
 
-                                <div class="col-md-4 mb-3">
-                                    <label>Etapa atual</label>
-                                    <input type="text" id="editarEtapaAtual" class="form-control premium-input-light">
-                                </div>
 
                                 <div class="col-md-4 mb-3">
                                     <label>Assinatura cliente</label>

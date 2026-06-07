@@ -4,6 +4,10 @@ const token = JSON.parse(
     localStorage.getItem("usuarioLogado")
 )?.token;
 
+const usuarioLogado = JSON.parse(
+    localStorage.getItem("usuarioLogado")
+);
+
 if (!token) {
     window.location.href = "login.html";
 }
@@ -135,7 +139,10 @@ async function carregarClientes() {
         clientes.forEach(cliente => {
             const option = `
                 <option value="${cliente.clienteid}">
-                    ${textoSeguro(cliente.nome)}
+                    ${textoSeguro(
+                cliente.nomeFantasia ||
+                cliente.razaoSocial
+            )}
                 </option>
             `;
 
@@ -232,11 +239,7 @@ function criarCardProposta(proposta) {
                     </div>
                 ` : ""}
 
-                ${proposta.etapaAtual ? `
-                    <div class="proposal-tag tag-etapa">
-                        ${textoSeguro(proposta.etapaAtual)}
-                    </div>
-                ` : ""}
+                
             </div>
 
             <div class="proposal-title">
@@ -244,7 +247,10 @@ function criarCardProposta(proposta) {
             </div>
 
             <div class="proposal-client">
-                ${textoSeguro(proposta.cliente?.nome)}
+                ${textoSeguro(
+        proposta.cliente?.nomeFantasia ||
+        proposta.cliente?.razaoSocial
+    )}
             </div>
 
             <div class="proposal-desc">
@@ -908,7 +914,7 @@ function montarBodyNovaProposta() {
     const financeiro = calcularResumoFinanceiro(itens);
 
     return {
-        numero: pegarValor("numero") || `PROP-${Date.now()}`,
+        numero: null,
 
         titulo: pegarValor("titulo"),
 
@@ -956,11 +962,7 @@ function montarBodyNovaProposta() {
 
         responsavel: pegarValor("responsavel"),
 
-        vendedor: pegarValor("vendedor"),
-
         origem: pegarValor("origem"),
-
-        etapaAtual: pegarValor("etapaAtual"),
 
         assinaturaCliente: pegarValor("assinaturaCliente"),
 
@@ -971,8 +973,6 @@ function montarBodyNovaProposta() {
         enviadoWhatsapp: pegarCheckbox("enviadoWhatsapp"),
 
         visualizada: pegarCheckbox("visualizada"),
-
-        urlPublica: pegarValor("urlPublica"),
 
         pdfUrl: pegarValor("pdfUrl"),
 
@@ -1074,9 +1074,7 @@ async function abrirModalProposta(id) {
         preencherCampo("editarDescricao", proposta.descricao);
         preencherCampo("editarEscopo", proposta.escopo);
         preencherCampo("editarResponsavel", proposta.responsavel);
-        preencherCampo("editarVendedor", proposta.vendedor);
         preencherCampo("editarOrigem", proposta.origem);
-        preencherCampo("editarEtapaAtual", proposta.etapaAtual);
         preencherCampo("editarAssinaturaCliente", proposta.assinaturaCliente);
 
         preencherCampo(
@@ -1487,10 +1485,16 @@ pesquisaProposta.addEventListener("input", () => {
         return (
             proposta.titulo?.toLowerCase().includes(termo) ||
             proposta.numero?.toLowerCase().includes(termo) ||
-            proposta.cliente?.nome?.toLowerCase().includes(termo) ||
+            (
+                proposta.cliente?.nomeFantasia ||
+                proposta.cliente?.razaoSocial ||
+                ""
+            ).toLowerCase().includes(termo) ||
             proposta.descricao?.toLowerCase().includes(termo) ||
             proposta.status?.toLowerCase().includes(termo) ||
-            proposta.vendedor?.toLowerCase().includes(termo) ||
+            (
+                proposta.vendedor?.nome || ""
+            ).toLowerCase().includes(termo) ||
             proposta.origem?.toLowerCase().includes(termo)
         );
     });
@@ -1504,6 +1508,18 @@ async function iniciarTela() {
     await carregarServicos();
     await carregarPropostas();
 
+    const nomeResponsavel =
+        usuarioLogado?.usuario?.nome ||
+        usuarioLogado?.nome ||
+        "";
+
+    const responsavel =
+        document.getElementById("responsavel");
+
+    if (responsavel && nomeResponsavel) {
+        responsavel.value = nomeResponsavel;
+    }
 }
+
 
 iniciarTela();

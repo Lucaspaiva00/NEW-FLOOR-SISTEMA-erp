@@ -66,8 +66,6 @@ function montarBodyCliente(prefixo = "") {
     return {
         tipo: pegarValor(campo("tipo")) || "PESSOA_JURIDICA",
 
-        nome: pegarValor(campo("nome")),
-
         nomeFantasia: pegarValor(campo("nomeFantasia")),
 
         razaoSocial: pegarValor(campo("razaoSocial")),
@@ -80,13 +78,23 @@ function montarBodyCliente(prefixo = "") {
 
         responsavel: pegarValor(campo("responsavel")),
 
-        telefone: pegarValor(campo("telefone")),
+        telefone1: pegarValor(campo("telefone1")),
 
-        telefoneSecundario: pegarValor(campo("telefoneSecundario")),
+        telefone2: pegarValor(campo("telefone2")),
 
-        whatsapp: pegarValor(campo("whatsapp")),
+        telefone3: pegarValor(campo("telefone3")),
 
-        email: pegarValor(campo("email")),
+        telefone4: pegarValor(campo("telefone4")),
+
+        email1: pegarValor(campo("email1")),
+
+        email2: pegarValor(campo("email2")),
+
+        email3: pegarValor(campo("email3")),
+
+        email4: pegarValor(campo("email4")),
+
+
 
         site: pegarValor(campo("site")),
 
@@ -219,73 +227,95 @@ function renderizarClientes(clientes) {
     }
 
     clientes.forEach(cliente => {
-        const primeiraLetra = cliente.nome
-            ? textoSeguro(cliente.nome.charAt(0).toUpperCase())
-            : "C";
+        const primeiraLetra =
+            (cliente.nomeFantasia ||
+                cliente.razaoSocial ||
+                "C")
+                .charAt(0)
+                .toUpperCase();
 
         listaClientes.innerHTML += `
-            <div class="cliente-card">
+    <div class="cliente-card">
 
-                <div class="cliente-header">
+        <div class="cliente-header">
 
-                    <div class="cliente-avatar">
-                        ${primeiraLetra}
-                    </div>
-
-                    <div class="cliente-header-info">
-                        <h3>${textoSeguro(cliente.nome)}</h3>
-                        <p>${textoSeguro(cliente.nomeFantasia || cliente.razaoSocial || "Sem nome fantasia")}</p>
-                    </div>
-
-                    ${renderizarStatus(cliente.statusCliente)}
-
-                </div>
-
-                <div class="cliente-body">
-
-                    <div class="cliente-item">
-                        <span>Responsável</span>
-                        <strong>${textoSeguro(cliente.responsavel)}</strong>
-                    </div>
-
-                    <div class="cliente-item">
-                        <span>Telefone</span>
-                        <strong>${textoSeguro(cliente.telefone)}</strong>
-                    </div>
-
-                    <div class="cliente-item">
-                        <span>WhatsApp</span>
-                        <strong>${textoSeguro(cliente.whatsapp)}</strong>
-                    </div>
-
-                    <div class="cliente-item">
-                        <span>Email</span>
-                        <strong>${textoSeguro(cliente.email)}</strong>
-                    </div>
-
-                    <div class="cliente-item">
-                        <span>Cidade</span>
-                        <strong>${textoSeguro(cliente.cidade)}</strong>
-                    </div>
-
-                    <div class="cliente-item">
-                        <span>CNPJ / CPF</span>
-                        <strong>${textoSeguro(cliente.cnpj || cliente.cpf)}</strong>
-                    </div>
-
-                </div>
-
-                <div class="cliente-footer">
-                    <button
-                        class="btn-gerenciar"
-                        onclick="abrirModalCliente(${cliente.clienteid})"
-                    >
-                        Gerenciar cliente
-                    </button>
-                </div>
-
+            <div class="cliente-avatar">
+                ${textoSeguro(
+            (cliente.nomeFantasia ||
+                cliente.razaoSocial ||
+                "C")
+                .charAt(0)
+                .toUpperCase()
+        )}
             </div>
-        `;
+
+            <div class="cliente-header-info">
+                <h3>
+                    ${textoSeguro(
+            cliente.nomeFantasia ||
+            cliente.razaoSocial ||
+            "Sem nome"
+        )}
+                </h3>
+
+                <p>
+                    ${textoSeguro(cliente.responsavel)}
+                </p>
+            </div>
+
+            ${renderizarStatus(cliente.statusCliente)}
+
+        </div>
+
+        <div class="cliente-body">
+
+            <div class="cliente-item">
+                <span>Responsável</span>
+                <strong>${textoSeguro(cliente.responsavel)}</strong>
+            </div>
+
+            <div class="cliente-item">
+                <span>Telefone</span>
+                <strong>${textoSeguro(cliente.telefone1)}</strong>
+            </div>
+
+            <div class="cliente-item">
+                <span>Telefone 2</span>
+                <strong>${textoSeguro(cliente.telefone2)}</strong>
+            </div>
+
+            <div class="cliente-item">
+                <span>Email</span>
+                <strong>${textoSeguro(cliente.email1)}</strong>
+            </div>
+
+            <div class="cliente-item">
+                <span>Cidade</span>
+                <strong>${textoSeguro(cliente.cidade)}</strong>
+            </div>
+
+            <div class="cliente-item">
+                <span>CNPJ / CPF</span>
+                <strong>
+                    ${textoSeguro(cliente.cnpj || cliente.cpf)}
+                </strong>
+            </div>
+
+        </div>
+
+        <div class="cliente-footer">
+
+            <button
+                class="btn-gerenciar"
+                onclick="abrirModalCliente(${cliente.clienteid})"
+            >
+                Gerenciar cliente
+            </button>
+
+        </div>
+
+    </div>
+`;
     });
 }
 
@@ -297,12 +327,11 @@ if (pesquisaCliente) {
 
             const filtrados = clientesCache.filter(cliente => {
                 return (
-                    cliente.nome?.toLowerCase().includes(termo) ||
+                    cliente.nomeFantasia?.toLowerCase().includes(termo) ||
                     cliente.nomeFantasia?.toLowerCase().includes(termo) ||
                     cliente.razaoSocial?.toLowerCase().includes(termo) ||
-                    cliente.email?.toLowerCase().includes(termo) ||
-                    cliente.telefone?.toLowerCase().includes(termo) ||
-                    cliente.whatsapp?.toLowerCase().includes(termo) ||
+                    cliente.email1?.toLowerCase().includes(termo) ||
+                    cliente.telefone1?.toLowerCase().includes(termo) ||
                     cliente.cnpj?.toLowerCase().includes(termo) ||
                     cliente.cpf?.toLowerCase().includes(termo) ||
                     cliente.cidade?.toLowerCase().includes(termo)
@@ -322,8 +351,8 @@ formCliente.addEventListener(
         try {
             const body = montarBodyCliente();
 
-            if (!body.nome) {
-                alert("Informe o nome do cliente.");
+            if (!body.nomeFantasia && !body.razaoSocial) {
+                alert("Informe o Nome Fantasia ou Razão Social.");
                 return;
             }
 
@@ -392,8 +421,6 @@ async function abrirModalCliente(id) {
 
         preencherCampo("editarTipo", cliente.tipo || "PESSOA_JURIDICA");
 
-        preencherCampo("editarNome", cliente.nome);
-
         preencherCampo("editarNomeFantasia", cliente.nomeFantasia);
 
         preencherCampo("editarRazaoSocial", cliente.razaoSocial);
@@ -406,13 +433,15 @@ async function abrirModalCliente(id) {
 
         preencherCampo("editarResponsavel", cliente.responsavel);
 
-        preencherCampo("editarTelefone", cliente.telefone);
+        preencherCampo("editarTelefone1", cliente.telefone1);
+        preencherCampo("editarTelefone2", cliente.telefone2);
+        preencherCampo("editarTelefone3", cliente.telefone3);
+        preencherCampo("editarTelefone4", cliente.telefone4);
 
-        preencherCampo("editarTelefoneSecundario", cliente.telefoneSecundario);
-
-        preencherCampo("editarWhatsapp", cliente.whatsapp);
-
-        preencherCampo("editarEmail", cliente.email);
+        preencherCampo("editarEmail1", cliente.email1);
+        preencherCampo("editarEmail2", cliente.email2);
+        preencherCampo("editarEmail3", cliente.email3);
+        preencherCampo("editarEmail4", cliente.email4);
 
         preencherCampo("editarSite", cliente.site);
 
@@ -477,8 +506,8 @@ formEditarCliente.addEventListener(
 
             const body = montarBodyCliente("editar");
 
-            if (!body.nome) {
-                alert("Informe o nome do cliente.");
+            if (!body.nomeFantasia && !body.razaoSocial) {
+                alert("Informe o Nome Fantasia ou Razão Social.");
                 return;
             }
 

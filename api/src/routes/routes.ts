@@ -6,6 +6,7 @@ import * as servico from "../controller/ctservico";
 import * as proposta from "../controller/ctproposta";
 import * as agenda from "../controller/agenda.controller";
 import * as template from "../controller/cttemplate";
+import * as vendedor from "../controller/ctvendedor";
 
 const routes = express.Router();
 
@@ -68,5 +69,13 @@ routes
   .get(template.readOne)
   .put(template.update)
   .delete(template.remove);
+
+routes.route("/vendedores").get(vendedor.read).post(vendedor.create);
+
+routes
+  .route("/vendedores/:id")
+  .get(vendedor.readOne)
+  .put(vendedor.update)
+  .delete(vendedor.remove);
 
 export default routes;

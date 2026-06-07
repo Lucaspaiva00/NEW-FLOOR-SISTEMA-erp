@@ -37,41 +37,45 @@ enum TipoCliente {
 }
 
 model Cliente {
-  clienteid          Int         @id @default(autoincrement())
-  tipo               TipoCliente @default(PESSOA_JURIDICA)
-  nome               String
-  nomeFantasia       String?
-  razaoSocial        String?
-  cnpj               String?     @unique
-  cpf                String?     @unique
-  inscricaoEstadual  String?
-  responsavel        String?
-  telefone           String?
-  telefoneSecundario String?
-  whatsapp           String?
-  email              String?
-  site               String?
-  cep                String?
-  endereco           String?
-  numero             String?
-  complemento        String?
-  bairro             String?
-  cidade             String?
-  estado             String?
-  pais               String?     @default("Brasil")
-  latitude           String?
-  longitude          String?
-  observacoes        String?     @db.Text
-  origemLead         String?
-  tags               String?
-  statusCliente      String?
-  limiteCredito      Decimal?    @db.Decimal(10, 2)
-  descontoPadrao     Decimal?    @db.Decimal(10, 2)
-  dataNascimento     DateTime?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  propostas          Proposta[]
-  agendas            Agenda[]
+  clienteid         Int         @id @default(autoincrement())
+  tipo              TipoCliente @default(PESSOA_JURIDICA)
+  nomeFantasia      String?
+  razaoSocial       String?
+  cnpj              String?     @unique
+  cpf               String?     @unique
+  inscricaoEstadual String?
+  responsavel       String?
+  telefone1         String?
+  telefone2         String?
+  telefone3         String?
+  telefone4         String?
+
+  email1         String?
+  email2         String?
+  email3         String?
+  email4         String?
+  site           String?
+  cep            String?
+  endereco       String?
+  numero         String?
+  complemento    String?
+  bairro         String?
+  cidade         String?
+  estado         String?
+  pais           String?    @default("Brasil")
+  latitude       String?
+  longitude      String?
+  observacoes    String?    @db.Text
+  origemLead     String?
+  tags           String?
+  statusCliente  String?
+  limiteCredito  Decimal?   @db.Decimal(10, 2)
+  descontoPadrao Decimal?   @db.Decimal(10, 2)
+  dataNascimento DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  propostas      Proposta[]
+  agendas        Agenda[]
 }
 
 model Servico {
@@ -122,22 +126,22 @@ model Proposta {
   dataRecusa          DateTime?
   motivoRecusa        String?        @db.Text
   responsavel         String?
-  vendedor            String?
-  origem              String?
-  etapaAtual          String?
-  assinaturaCliente   String?
-  aprovadoCliente     Boolean        @default(false)
-  enviadoEmail        Boolean        @default(false)
-  enviadoWhatsapp     Boolean        @default(false)
-  visualizada         Boolean        @default(false)
-  urlPublica          String?
-  pdfUrl              String?
-  clienteId           Int
-  cliente             Cliente        @relation(fields: [clienteId], references: [clienteid], onDelete: Restrict)
-  itens               ItemProposta[]
-  agendas             Agenda[]
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  vendedorId          Int?
+
+  vendedor Vendedor? @relation(fields: [vendedorId], references: [vendedorid])
+  origem   String?
+
+  assinaturaCliente String?
+  aprovadoCliente   Boolean        @default(false)
+  enviadoEmail      Boolean        @default(false)
+  enviadoWhatsapp   Boolean        @default(false)
+  visualizada       Boolean        @default(false)
+  clienteId         Int
+  cliente           Cliente        @relation(fields: [clienteId], references: [clienteid], onDelete: Restrict)
+  itens             ItemProposta[]
+  agendas           Agenda[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   templateProposta           TemplateProposta? @relation(fields: [templatePropostaTemplateid], references: [templateid])
   templatePropostaTemplateid Int?
@@ -225,4 +229,21 @@ model TemplateProposta {
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   propostas         Proposta[]
+}
+
+model Vendedor {
+  vendedorid Int @id @default(autoincrement())
+
+  nome String
+
+  email String?
+
+  telefone String?
+
+  ativo Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime   @updatedAt
+  propostas Proposta[]
 }
