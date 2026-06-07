@@ -240,9 +240,7 @@ function renderizarServicos(servicos) {
 
                 </div>
 
-                <p class="servico-desc">
-                    ${textoSeguro(servico.descricao || "Sem descrição cadastrada.")}
-                </p>
+               
 
                 <div class="preco-box">
                     <small>Valor de venda</small>
