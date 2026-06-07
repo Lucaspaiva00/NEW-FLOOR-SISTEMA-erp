@@ -177,7 +177,6 @@ function atualizarKpis(servicos) {
     document.getElementById("kpiTotal").innerText = total;
     document.getElementById("kpiAtivos").innerText = ativos;
     document.getElementById("kpiDestaques").innerText = destaques;
-    document.getElementById("kpiValorMedio").innerText = moeda(valorMedio);
 }
 
 function renderizarStatus(servico) {
@@ -240,46 +239,6 @@ function renderizarServicos(servicos) {
 
                 </div>
 
-               
-
-                <div class="preco-box">
-                    <small>Valor de venda</small>
-                    <strong>${moeda(servico.valor)}</strong>
-                </div>
-
-                <div class="servico-info-grid">
-
-                    <div class="info-box">
-                        <small>Código</small>
-                        <strong>${textoSeguro(servico.codigo)}</strong>
-                    </div>
-
-                    <div class="info-box">
-                        <small>Unidade</small>
-                        <strong>${textoSeguro(servico.unidade)}</strong>
-                    </div>
-
-                    <div class="info-box">
-                        <small>Custo</small>
-                        <strong>${moeda(servico.custo)}</strong>
-                    </div>
-
-                    <div class="info-box">
-                        <small>Margem</small>
-                        <strong>${textoSeguro(servico.margemLucro ? `${servico.margemLucro}%` : "-")}</strong>
-                    </div>
-
-                    <div class="info-box">
-                        <small>Execução</small>
-                        <strong>${textoSeguro(servico.tempoExecucao)}</strong>
-                    </div>
-
-                    <div class="info-box">
-                        <small>Garantia</small>
-                        <strong>${textoSeguro(servico.garantia)}</strong>
-                    </div>
-
-                </div>
 
                 <div class="servico-footer">
                     <button
