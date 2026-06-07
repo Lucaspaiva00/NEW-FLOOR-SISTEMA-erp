@@ -127,9 +127,9 @@ model Proposta {
   motivoRecusa        String?        @db.Text
   responsavel         String?
   vendedorId          Int?
-
-  vendedor Vendedor? @relation(fields: [vendedorId], references: [vendedorid])
-  origem   String?
+  pdfUrl              String?
+  vendedor            Vendedor?      @relation(fields: [vendedorId], references: [vendedorid])
+  origem              String?
 
   assinaturaCliente String?
   aprovadoCliente   Boolean        @default(false)
