@@ -488,7 +488,7 @@ function adicionarItemProposta(item = null) {
 
     preencherItemComServico(select);
 
-    atualizarTotal();
+    
 }
 
 function adicionarItemEditar(item = null) {
@@ -597,7 +597,7 @@ function adicionarItemEditar(item = null) {
 
     preencherItemComServico(select);
 
-    atualizarTotal();
+    
 }
 
 function preencherItemComServico(select) {
@@ -702,7 +702,7 @@ document.addEventListener(
                     }
                 );
 
-            atualizarTotal();
+            
 
         }
 
@@ -714,41 +714,13 @@ document.addEventListener("change", (e) => {
         preencherItemComServico(e.target);
     }
 
-    atualizarTotal();
+    
 });
 
 document.addEventListener("input", () => {
-    atualizarTotal();
+    
 });
 
-function atualizarTotal() {
-    let subtotalGeral = 0;
-
-    const itensDOM = document.querySelectorAll(".item-servico");
-
-    itensDOM.forEach(item => {
-        const quantidade = Number(item.querySelector(".item-quantidade")?.value || 0);
-        const valor = Number(item.querySelector(".item-valor")?.value || 0);
-        const desconto = Number(item.querySelector(".item-desconto")?.value || 0);
-        const acrescimo = Number(item.querySelector(".item-acrescimo")?.value || 0);
-        const subtotalInput = item.querySelector(".item-subtotal");
-
-        const subtotal = (quantidade * valor) - desconto + acrescimo;
-
-        subtotalInput.value = subtotal.toFixed(2);
-
-        subtotalGeral += subtotal;
-    });
-
-    const desconto = Number(pegarNumero("desconto") || 0);
-    const acrescimo = Number(pegarNumero("acrescimo") || 0);
-    const frete = Number(pegarNumero("frete") || 0);
-    const impostos = Number(pegarNumero("impostos") || 0);
-
-    const total = subtotalGeral - desconto + acrescimo + frete + impostos;
-
-    valorTotal.innerText = moeda(total);
-}
 
 function montarItens() {
     const itens = [];
@@ -886,32 +858,10 @@ function montarItensEditar() {
     return itens;
 
 }
-function calcularResumoFinanceiro(itens) {
-    const subtotal = itens.reduce(
-        (total, item) => total + Number(item.subtotal || 0),
-        0
-    );
 
-    const desconto = Number(pegarNumero("desconto") || 0);
-    const acrescimo = Number(pegarNumero("acrescimo") || 0);
-    const frete = Number(pegarNumero("frete") || 0);
-    const impostos = Number(pegarNumero("impostos") || 0);
-
-    const total = subtotal - desconto + acrescimo + frete + impostos;
-
-    return {
-        subtotal,
-        desconto,
-        acrescimo,
-        frete,
-        impostos,
-        total
-    };
-}
 
 function montarBodyNovaProposta() {
     const itens = montarItens();
-    const financeiro = calcularResumoFinanceiro(itens);
 
     return {
         numero: null,
@@ -932,19 +882,7 @@ function montarBodyNovaProposta() {
 
         prioridade: pegarValor("prioridade"),
 
-        subtotal: financeiro.subtotal,
-
-        desconto: financeiro.desconto,
-
-        acrescimo: financeiro.acrescimo,
-
         frete: financeiro.frete,
-
-        impostos: financeiro.impostos,
-
-        total: financeiro.total,
-
-        percentualLucro: pegarNumero("percentualLucro"),
 
         formaPagamento: pegarValor("formaPagamento"),
 
@@ -1094,11 +1032,7 @@ async function abrirModalProposta(id) {
 
         preencherCampo("editarValidadeDias", proposta.validadeDias);
 
-        preencherCampo("editarSubtotal", proposta.subtotal);
-        preencherCampo("editarDesconto", proposta.desconto);
-        preencherCampo("editarAcrescimo", proposta.acrescimo);
         preencherCampo("editarFrete", proposta.frete);
-        preencherCampo("editarImpostos", proposta.impostos);
         preencherCampo("editarTotal", proposta.total);
 
         preencherCampo(
@@ -1238,34 +1172,9 @@ function montarBodyEditarProposta() {
                 "editarSubtotal"
             ),
 
-        desconto:
-            pegarNumero(
-                "editarDesconto"
-            ),
-
-        acrescimo:
-            pegarNumero(
-                "editarAcrescimo"
-            ),
-
         frete:
             pegarNumero(
                 "editarFrete"
-            ),
-
-        impostos:
-            pegarNumero(
-                "editarImpostos"
-            ),
-
-        total:
-            pegarNumero(
-                "editarTotal"
-            ),
-
-        percentualLucro:
-            pegarNumero(
-                "editarPercentualLucro"
             ),
 
         formaPagamento:
@@ -1347,6 +1256,7 @@ function montarBodyEditarProposta() {
             pegarCheckbox(
                 "editarVisualizada"
             ),
+
 
 
         clienteId:

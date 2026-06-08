@@ -112,12 +112,7 @@ model Proposta {
   status              StatusProposta @default(RASCUNHO)
   prioridade          String?
   subtotal            Decimal        @db.Decimal(10, 2)
-  desconto            Decimal?       @db.Decimal(10, 2)
-  acrescimo           Decimal?       @db.Decimal(10, 2)
   frete               Decimal?       @db.Decimal(10, 2)
-  impostos            Decimal?       @db.Decimal(10, 2)
-  total               Decimal        @db.Decimal(10, 2)
-  percentualLucro     Decimal?       @db.Decimal(10, 2)
   formaPagamento      String?
   condicoesPagamento  String?        @db.Text
   validadeDias        Int?

@@ -391,30 +391,6 @@ export const update = async (
             body.subtotal ??
             propostaAtual.subtotal,
 
-          desconto:
-            body.desconto ??
-            propostaAtual.desconto,
-
-          acrescimo:
-            body.acrescimo ??
-            propostaAtual.acrescimo,
-
-          frete:
-            body.frete ??
-            propostaAtual.frete,
-
-          impostos:
-            body.impostos ??
-            propostaAtual.impostos,
-
-          total:
-            body.total ??
-            propostaAtual.total,
-
-          percentualLucro:
-            body.percentualLucro ??
-            propostaAtual.percentualLucro,
-
           formaPagamento:
             body.formaPagamento ??
             propostaAtual.formaPagamento,
