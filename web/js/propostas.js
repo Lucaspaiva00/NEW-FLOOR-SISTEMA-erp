@@ -259,7 +259,7 @@ function criarCardProposta(proposta) {
 
             <div class="proposal-footer">
                 <div class="proposal-value">
-                    ${moeda(proposta.total)}
+                    ${moeda(proposta.subtotal)}
                 </div>
 
                 <div class="proposal-date">
@@ -488,7 +488,7 @@ function adicionarItemProposta(item = null) {
 
     preencherItemComServico(select);
 
-    
+
 }
 
 function adicionarItemEditar(item = null) {
@@ -597,7 +597,7 @@ function adicionarItemEditar(item = null) {
 
     preencherItemComServico(select);
 
-    
+
 }
 
 function preencherItemComServico(select) {
@@ -702,7 +702,7 @@ document.addEventListener(
                     }
                 );
 
-            
+
 
         }
 
@@ -714,11 +714,11 @@ document.addEventListener("change", (e) => {
         preencherItemComServico(e.target);
     }
 
-    
+
 });
 
 document.addEventListener("input", () => {
-    
+
 });
 
 
@@ -912,8 +912,6 @@ function montarBodyNovaProposta() {
 
         visualizada: pegarCheckbox("visualizada"),
 
-        pdfUrl: pegarValor("pdfUrl"),
-
         clienteId: Number(pegarValor("clienteId")),
 
         itens
@@ -1033,9 +1031,8 @@ async function abrirModalProposta(id) {
         preencherCampo("editarValidadeDias", proposta.validadeDias);
 
         preencherCampo("editarFrete", proposta.frete);
-        preencherCampo("editarTotal", proposta.total);
 
-        
+
 
         preencherCampo(
             "editarFormaPagamento",
@@ -1080,11 +1077,6 @@ async function abrirModalProposta(id) {
         preencherCheckbox(
             "editarVisualizada",
             proposta.visualizada
-        );
-
-        preencherCampo(
-            "editarTemplateId",
-            proposta.templateId
         );
 
         /* =====================================
@@ -1214,20 +1206,14 @@ function montarBodyEditarProposta() {
                 "editarResponsavel"
             ),
 
-        vendedor:
-            pegarValor(
-                "editarVendedor"
-            ),
+
 
         origem:
             pegarValor(
                 "editarOrigem"
             ),
 
-        etapaAtual:
-            pegarValor(
-                "editarEtapaAtual"
-            ),
+
 
         assinaturaCliente:
             pegarValor(
@@ -1261,11 +1247,6 @@ function montarBodyEditarProposta() {
                 pegarValor(
                     "editarClienteId"
                 )
-            ),
-
-        templateId:
-            pegarInteiro(
-                "editarTemplateId"
             ),
 
         itens:
