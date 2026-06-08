@@ -145,108 +145,229 @@ async function gerarPdfInterno(id: string | string[] | number) {
 
 }
 
+export const create = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
 
-export const create = async (req: Request, res: Response): Promise<void> => {
   try {
+
     const body = req.body;
-    const ultimaProposta = await prisma.proposta.findFirst({
-      orderBy: {
-        propostaid: "desc"
-      }
-    });
+
+    const ultimaProposta =
+      await prisma.proposta.findFirst({
+        orderBy: {
+          propostaid: "desc"
+        }
+      });
 
     const numeroAutomatico =
       `PROP-${String(
         (ultimaProposta?.propostaid || 0) + 1
       ).padStart(5, "0")}`;
-    const proposta = await prisma.proposta.create({
-      data: {
-        numero: body.numero || numeroAutomatico,
-        titulo: body.titulo,
-        subtitulo: body.subtitulo,
-        descricao: body.descricao,
-        escopo: body.escopo,
-        observacoes: body.observacoes,
-        observacoesInternas: body.observacoesInternas,
-        status: body.status || "RASCUNHO",
-        prioridade: body.prioridade,
-        frete: body.frete,
-        formaPagamento: body.formaPagamento,
-        condicoesPagamento: body.condicoesPagamento,
-        validadeDias: body.validadeDias,
-        dataValidade: body.dataValidade
-          ? new Date(body.dataValidade)
-          : null,
-        dataAprovacao: body.dataAprovacao
-          ? new Date(body.dataAprovacao)
-          : null,
-        dataRecusa: body.dataRecusa ? new Date(body.dataRecusa) : null,
-        motivoRecusa: body.motivoRecusa,
-        responsavel: body.responsavel,
-        vendedorId: body.vendedorId || null,
-        origem: body.origem,
 
-        assinaturaCliente: body.assinaturaCliente,
-        aprovadoCliente: body.aprovadoCliente ?? false,
-        enviadoEmail: body.enviadoEmail ?? false,
-        enviadoWhatsapp: body.enviadoWhatsapp ?? false,
-        visualizada: body.visualizada ?? false,
+    const subtotal =
+      (body.itens || []).reduce(
+        (total: number, item: any) =>
+          total + Number(item.subtotal || 0),
+        0
+      );
 
-        pdfUrl: body.pdfUrl,
-        clienteId: body.clienteId,
-        templatePropostaTemplateid:
-          body.templatePropostaTemplateid || null,
-        itens: {
-          create: body.itens.map(
-            (item: {
-              codigo?: string;
-              descricao: string;
-              detalhes?: string;
-              unidade?: string;
-              quantidade: number;
-              valorUnitario: number;
-              desconto?: number;
-              acrescimo?: number;
-              subtotal: number;
-              ordem?: number;
-              observacoes?: string;
-              servicoId?: number | null;
-            }) => ({
-              codigo: item.codigo,
-              descricao: item.descricao,
-              detalhes: item.detalhes,
-              unidade: item.unidade,
-              quantidade: item.quantidade,
-              valorUnitario: item.valorUnitario,
-              desconto: item.desconto,
-              acrescimo: item.acrescimo,
-              subtotal: item.subtotal,
-              ordem: item.ordem,
-              observacoes: item.observacoes,
-              servicoId: item.servicoId || null
-            })
-          )
-        }
-      },
-      include: {
-        cliente: true,
-        vendedor: true,
-        templateProposta: true,
-        itens: {
-          include: {
-            servico: true
+    const proposta =
+      await prisma.proposta.create({
+
+        data: {
+
+          numero:
+            body.numero || numeroAutomatico,
+
+          titulo:
+            body.titulo,
+
+          subtitulo:
+            body.subtitulo || null,
+
+          descricao:
+            body.descricao || null,
+
+          escopo:
+            body.escopo || null,
+
+          observacoes:
+            body.observacoes || null,
+
+          observacoesInternas:
+            body.observacoesInternas || null,
+
+          status:
+            body.status || "RASCUNHO",
+
+          prioridade:
+            body.prioridade || null,
+
+          subtotal:
+            subtotal,
+
+          frete:
+            body.frete
+              ? Number(body.frete)
+              : null,
+
+          formaPagamento:
+            body.formaPagamento || null,
+
+          condicoesPagamento:
+            body.condicoesPagamento || null,
+
+          validadeDias:
+            body.validadeDias
+              ? Number(body.validadeDias)
+              : null,
+
+          dataValidade:
+            body.dataValidade
+              ? new Date(body.dataValidade)
+              : null,
+
+          dataAprovacao:
+            body.dataAprovacao
+              ? new Date(body.dataAprovacao)
+              : null,
+
+          dataRecusa:
+            body.dataRecusa
+              ? new Date(body.dataRecusa)
+              : null,
+
+          motivoRecusa:
+            body.motivoRecusa || null,
+
+          responsavel:
+            body.responsavel || null,
+
+          vendedorId:
+            body.vendedorId
+              ? Number(body.vendedorId)
+              : null,
+
+          pdfUrl:
+            body.pdfUrl || null,
+
+          origem:
+            body.origem || null,
+
+          assinaturaCliente:
+            body.assinaturaCliente || null,
+
+          aprovadoCliente:
+            body.aprovadoCliente ?? false,
+
+          enviadoEmail:
+            body.enviadoEmail ?? false,
+
+          enviadoWhatsapp:
+            body.enviadoWhatsapp ?? false,
+
+          visualizada:
+            body.visualizada ?? false,
+
+          clienteId:
+            Number(body.clienteId),
+
+          templatePropostaTemplateid:
+            body.templatePropostaTemplateid
+              ? Number(body.templatePropostaTemplateid)
+              : null,
+
+          itens: {
+
+            create:
+              (body.itens || []).map(
+                (item: any) => ({
+
+                  codigo:
+                    item.codigo || null,
+
+                  descricao:
+                    item.descricao || "",
+
+                  detalhes:
+                    item.detalhes || null,
+
+                  unidade:
+                    item.unidade || null,
+
+                  quantidade:
+                    Number(item.quantidade || 0),
+
+                  valorUnitario:
+                    Number(item.valorUnitario || 0),
+
+                  desconto:
+                    item.desconto
+                      ? Number(item.desconto)
+                      : null,
+
+                  acrescimo:
+                    item.acrescimo
+                      ? Number(item.acrescimo)
+                      : null,
+
+                  subtotal:
+                    Number(item.subtotal || 0),
+
+                  ordem:
+                    item.ordem
+                      ? Number(item.ordem)
+                      : null,
+
+                  observacoes:
+                    item.observacoes || null,
+
+                  servicoId:
+                    item.servicoId
+                      ? Number(item.servicoId)
+                      : null
+
+                })
+              )
+
           }
+
+        },
+
+        include: {
+
+          cliente: true,
+
+          vendedor: true,
+
+          templateProposta: true,
+
+          itens: {
+
+            include: {
+              servico: true
+            }
+
+          }
+
         }
-      }
-    });
+
+      });
 
     res.status(201).json(proposta);
+
   } catch (error) {
+
     console.log(error);
+
     res.status(500).json({
       error: "Erro ao criar proposta"
     });
+
   }
+
 };
 
 export const read = async (_req: Request, res: Response): Promise<void> => {
@@ -299,235 +420,172 @@ export const readOne = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+
 export const update = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-
   try {
-
     const { id } = req.params;
     const body = req.body;
 
-    const propostaAtual =
-      await prisma.proposta.findUnique({
-
-        where: {
-          propostaid: Number(id)
-        }
-
-      });
+    const propostaAtual = await prisma.proposta.findUnique({
+      where: {
+        propostaid: Number(id)
+      }
+    });
 
     if (!propostaAtual) {
-
       res.status(404).json({
         error: "Proposta não encontrada"
       });
-
       return;
-
     }
 
-    await prisma.itemProposta.deleteMany({
+    const itensBody = body.itens || [];
 
+    const subtotal = itensBody.reduce(
+      (total: number, item: any) =>
+        total + Number(item.subtotal || 0),
+      0
+    );
+
+    await prisma.itemProposta.deleteMany({
       where: {
         propostaId: Number(id)
       }
-
     });
 
-    const proposta =
-      await prisma.proposta.update({
+    const proposta = await prisma.proposta.update({
+      where: {
+        propostaid: Number(id)
+      },
 
-        where: {
-          propostaid: Number(id)
-        },
+      data: {
+        numero: body.numero ?? propostaAtual.numero,
+        titulo: body.titulo ?? propostaAtual.titulo,
+        subtitulo: body.subtitulo ?? propostaAtual.subtitulo,
+        descricao: body.descricao ?? propostaAtual.descricao,
+        escopo: body.escopo ?? propostaAtual.escopo,
+        observacoes: body.observacoes ?? propostaAtual.observacoes,
+        observacoesInternas:
+          body.observacoesInternas ?? propostaAtual.observacoesInternas,
+        status: body.status ?? propostaAtual.status,
+        prioridade: body.prioridade ?? propostaAtual.prioridade,
 
-        data: {
+        subtotal,
 
-          numero:
-            body.numero ??
-            propostaAtual.numero,
+        frete:
+          body.frete !== undefined && body.frete !== null
+            ? Number(body.frete)
+            : propostaAtual.frete,
 
-          titulo:
-            body.titulo ??
-            propostaAtual.titulo,
+        formaPagamento:
+          body.formaPagamento ?? propostaAtual.formaPagamento,
 
-          subtitulo:
-            body.subtitulo ??
-            propostaAtual.subtitulo,
+        condicoesPagamento:
+          body.condicoesPagamento ?? propostaAtual.condicoesPagamento,
 
-          descricao:
-            body.descricao ??
-            propostaAtual.descricao,
+        validadeDias:
+          body.validadeDias !== undefined && body.validadeDias !== null
+            ? Number(body.validadeDias)
+            : propostaAtual.validadeDias,
 
-          escopo:
-            body.escopo ??
-            propostaAtual.escopo,
+        dataValidade: body.dataValidade
+          ? new Date(body.dataValidade)
+          : propostaAtual.dataValidade,
 
-          observacoes:
-            body.observacoes ??
-            propostaAtual.observacoes,
+        dataAprovacao: body.dataAprovacao
+          ? new Date(body.dataAprovacao)
+          : propostaAtual.dataAprovacao,
 
-          observacoesInternas:
-            body.observacoesInternas ??
-            propostaAtual.observacoesInternas,
+        dataRecusa: body.dataRecusa
+          ? new Date(body.dataRecusa)
+          : propostaAtual.dataRecusa,
 
-          status:
-            body.status ??
-            propostaAtual.status,
+        motivoRecusa: body.motivoRecusa ?? propostaAtual.motivoRecusa,
+        responsavel: body.responsavel ?? propostaAtual.responsavel,
 
-          prioridade:
-            body.prioridade ??
-            propostaAtual.prioridade,
+        vendedorId:
+          body.vendedorId !== undefined && body.vendedorId !== null
+            ? Number(body.vendedorId)
+            : propostaAtual.vendedorId,
 
-          subtotal:
-            body.subtotal ??
-            propostaAtual.subtotal,
+        pdfUrl: body.pdfUrl ?? propostaAtual.pdfUrl,
+        origem: body.origem ?? propostaAtual.origem,
 
-          formaPagamento:
-            body.formaPagamento ??
-            propostaAtual.formaPagamento,
+        assinaturaCliente:
+          body.assinaturaCliente ?? propostaAtual.assinaturaCliente,
 
-          condicoesPagamento:
-            body.condicoesPagamento ??
-            propostaAtual.condicoesPagamento,
+        aprovadoCliente:
+          body.aprovadoCliente ?? propostaAtual.aprovadoCliente,
 
-          validadeDias:
-            body.validadeDias ??
-            propostaAtual.validadeDias,
+        enviadoEmail:
+          body.enviadoEmail ?? propostaAtual.enviadoEmail,
 
-          dataValidade:
-            body.dataValidade
-              ? new Date(body.dataValidade)
-              : propostaAtual.dataValidade,
+        enviadoWhatsapp:
+          body.enviadoWhatsapp ?? propostaAtual.enviadoWhatsapp,
 
-          dataAprovacao:
-            body.dataAprovacao
-              ? new Date(body.dataAprovacao)
-              : propostaAtual.dataAprovacao,
+        visualizada:
+          body.visualizada ?? propostaAtual.visualizada,
 
-          dataRecusa:
-            body.dataRecusa
-              ? new Date(body.dataRecusa)
-              : propostaAtual.dataRecusa,
+        clienteId:
+          body.clienteId !== undefined && body.clienteId !== null
+            ? Number(body.clienteId)
+            : propostaAtual.clienteId,
 
-          motivoRecusa:
-            body.motivoRecusa ??
-            propostaAtual.motivoRecusa,
+        templatePropostaTemplateid:
+          body.templatePropostaTemplateid !== undefined &&
+            body.templatePropostaTemplateid !== null
+            ? Number(body.templatePropostaTemplateid)
+            : propostaAtual.templatePropostaTemplateid,
 
-          responsavel:
-            body.responsavel ??
-            propostaAtual.responsavel,
-
-          vendedorId:
-            body.vendedorId ??
-            propostaAtual.vendedorId,
-
-          origem:
-            body.origem ??
-            propostaAtual.origem,
-
-          assinaturaCliente:
-            body.assinaturaCliente ??
-            propostaAtual.assinaturaCliente,
-
-          aprovadoCliente:
-            body.aprovadoCliente ??
-            propostaAtual.aprovadoCliente,
-
-          enviadoEmail:
-            body.enviadoEmail ??
-            propostaAtual.enviadoEmail,
-
-          enviadoWhatsapp:
-            body.enviadoWhatsapp ??
-            propostaAtual.enviadoWhatsapp,
-
-          visualizada:
-            body.visualizada ??
-            propostaAtual.visualizada,
-
-          clienteId:
-            body.clienteId ??
-            propostaAtual.clienteId,
-
-          templatePropostaTemplateid:
-            body.templatePropostaTemplateid ??
-            propostaAtual.templatePropostaTemplateid,
-
-          itens: {
-
-            create:
-              (body.itens || []).map(
-                (item: any) => ({
-
-                  codigo:
-                    item.codigo || null,
-
-                  descricao:
-                    item.descricao || "",
-
-                  detalhes:
-                    item.detalhes || null,
-
-                  unidade:
-                    item.unidade || null,
-
-                  quantidade:
-                    Number(item.quantidade || 0),
-
-                  valorUnitario:
-                    Number(item.valorUnitario || 0),
-
-                  ordem:
-                    Number(item.ordem || 1),
-
-                  observacoes:
-                    item.observacoes || null,
-
-                  servicoId:
-                    item.servicoId
-                      ? Number(item.servicoId)
-                      : null
-
-                })
-              )
-
-          }
-
-        },
-
-        include: {
-
-          cliente: true,
-          vendedor: true,
-          templateProposta: true,
-
-          itens: {
-
-            include: {
-              servico: true
-            }
-
-          }
-
+        itens: {
+          create: itensBody.map((item: any) => ({
+            codigo: item.codigo || null,
+            descricao: item.descricao || "",
+            detalhes: item.detalhes || null,
+            unidade: item.unidade || null,
+            quantidade: Number(item.quantidade || 0),
+            valorUnitario: Number(item.valorUnitario || 0),
+            desconto:
+              item.desconto !== undefined && item.desconto !== null
+                ? Number(item.desconto)
+                : null,
+            acrescimo:
+              item.acrescimo !== undefined && item.acrescimo !== null
+                ? Number(item.acrescimo)
+                : null,
+            subtotal: Number(item.subtotal || 0),
+            ordem:
+              item.ordem !== undefined && item.ordem !== null
+                ? Number(item.ordem)
+                : null,
+            observacoes: item.observacoes || null,
+            servicoId: item.servicoId ? Number(item.servicoId) : null
+          }))
         }
+      },
 
-      });
+      include: {
+        cliente: true,
+        vendedor: true,
+        templateProposta: true,
+        itens: {
+          include: {
+            servico: true
+          }
+        }
+      }
+    });
 
     res.status(200).json(proposta);
-
   } catch (error) {
-
     console.log(error);
-
     res.status(500).json({
       error: "Erro ao atualizar proposta"
     });
-
   }
-
 };
 
 export const remove = async (req: Request, res: Response): Promise<void> => {
@@ -573,7 +631,7 @@ export const dashboard = async (_req: Request, res: Response): Promise<void> => 
       }
     });
 
-    
+
 
     res.status(200).json({
       totalPropostas,

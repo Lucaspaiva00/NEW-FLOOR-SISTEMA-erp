@@ -1164,7 +1164,10 @@ function montarBodyEditarProposta() {
                 "editarPrioridade"
             ),
 
-        
+        subtotal:
+            pegarNumero(
+                "editarSubtotal"
+            ),
 
         frete:
             pegarNumero(
