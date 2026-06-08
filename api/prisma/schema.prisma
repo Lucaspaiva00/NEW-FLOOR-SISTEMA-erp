@@ -7,209 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Cliente {
-  clienteid         Int         @id @default(autoincrement())
-  tipo              TipoCliente @default(PESSOA_JURIDICA)
-  nomeFantasia      String?
-  razaoSocial       String?
-  cnpj              String?     @unique
-  cpf               String?     @unique
-  inscricaoEstadual String?
-  responsavel       String?
-  site              String?
-  cep               String?
-  endereco          String?
-  numero            String?
-  complemento       String?
-  bairro            String?
-  cidade            String?
-  estado            String?
-  pais              String?     @default("Brasil")
-  latitude          String?
-  longitude         String?
-  observacoes       String?
-  origemLead        String?
-  tags              String?
-  statusCliente     String?
-  limiteCredito     Decimal?    @db.Decimal(10, 2)
-  descontoPadrao    Decimal?    @db.Decimal(10, 2)
-  dataNascimento    DateTime?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  email1            String?
-  email2            String?
-  email3            String?
-  email4            String?
-  telefone1         String?
-  telefone2         String?
-  telefone3         String?
-  telefone4         String?
-  agendas           Agenda[]
-  propostas         Proposta[]
-}
-
-model Servico {
-  servicoid        Int            @id @default(autoincrement())
-  codigo           String?        @unique
-  nome             String
-  categoria        String?
-  descricao        String?
-  descricaoInterna String?
-  valor            Decimal        @db.Decimal(10, 2)
-  custo            Decimal?       @db.Decimal(10, 2)
-  margemLucro      Decimal?       @db.Decimal(10, 2)
-  unidade          String?
-  tempoExecucao    String?
-  garantia         String?
-  observacoes      String?
-  ativo            Boolean        @default(true)
-  destaque         Boolean        @default(false)
-  imagem           String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  itens            ItemProposta[]
-}
-
-model Proposta {
-  propostaid                 Int               @id @default(autoincrement())
-  numero                     String            @unique
-  titulo                     String
-  subtitulo                  String?
-  descricao                  String?
-  escopo                     String?
-  observacoes                String?
-  observacoesInternas        String?
-  status                     StatusProposta    @default(RASCUNHO)
-  prioridade                 String?
-  subtotal                   Decimal           @db.Decimal(10, 2)
-  desconto                   Decimal?          @db.Decimal(10, 2)
-  acrescimo                  Decimal?          @db.Decimal(10, 2)
-  frete                      Decimal?          @db.Decimal(10, 2)
-  impostos                   Decimal?          @db.Decimal(10, 2)
-  total                      Decimal           @db.Decimal(10, 2)
-  percentualLucro            Decimal?          @db.Decimal(10, 2)
-  formaPagamento             String?
-  condicoesPagamento         String?
-  validadeDias               Int?
-  dataValidade               DateTime?
-  dataAprovacao              DateTime?
-  dataRecusa                 DateTime?
-  motivoRecusa               String?
-  responsavel                String?
-  origem                     String?
-  assinaturaCliente          String?
-  aprovadoCliente            Boolean           @default(false)
-  enviadoEmail               Boolean           @default(false)
-  enviadoWhatsapp            Boolean           @default(false)
-  visualizada                Boolean           @default(false)
-  clienteId                  Int
-  createdAt                  DateTime          @default(now())
-  updatedAt                  DateTime          @updatedAt
-  templatePropostaTemplateid Int?
-  vendedorId                 Int?
-  pdfUrl                     String?
-  agendas                    Agenda[]
-  itens                      ItemProposta[]
-  cliente                    Cliente           @relation(fields: [clienteId], references: [clienteid])
-  templateProposta           TemplateProposta? @relation(fields: [templatePropostaTemplateid], references: [templateid])
-  vendedor                   Vendedor?         @relation(fields: [vendedorId], references: [vendedorid])
-}
-
-model ItemProposta {
-  itempropostaid Int      @id @default(autoincrement())
-  codigo         String?
-  descricao      String
-  detalhes       String?
-  unidade        String?
-  quantidade     Decimal  @db.Decimal(10, 2)
-  valorUnitario  Decimal  @db.Decimal(10, 2)
-  desconto       Decimal? @db.Decimal(10, 2)
-  acrescimo      Decimal? @db.Decimal(10, 2)
-  subtotal       Decimal  @db.Decimal(10, 2)
-  ordem          Int?
-  observacoes    String?
-  propostaId     Int
-  servicoId      Int?
-  createdAt      DateTime @default(now())
-  proposta       Proposta @relation(fields: [propostaId], references: [propostaid], onDelete: Cascade)
-  servico        Servico? @relation(fields: [servicoId], references: [servicoid])
-}
-
-model Agenda {
-  agendaid    Int              @id @default(autoincrement())
-  titulo      String
-  descricao   String?
-  tipo        TipoAgenda
-  prioridade  PrioridadeAgenda @default(MEDIA)
-  local       String?
-  endereco    String?
-  cidade      String?
-  estado      String?
-  dataInicio  DateTime
-  dataFim     DateTime?
-  concluido   Boolean          @default(false)
-  status      String?
-  cor         String?
-  observacoes String?
-  clienteId   Int?
-  propostaId  Int?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  cliente     Cliente?         @relation(fields: [clienteId], references: [clienteid])
-  proposta    Proposta?        @relation(fields: [propostaId], references: [propostaid])
-}
-
-model Usuario {
-  usuarioid   Int       @id @default(autoincrement())
-  nome        String
-  email       String    @unique
-  senha       String
-  telefone    String?
-  cargo       String?
-  foto        String?
-  ativo       Boolean   @default(true)
-  ultimoLogin DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model TemplateProposta {
-  templateid        Int        @id @default(autoincrement())
-  nome              String
-  descricao         String?
-  ativo             Boolean    @default(true)
-  logo              String?
-  corPrimaria       String?
-  corSecundaria     String?
-  cabecalho         String?
-  rodape            String?
-  textoApresentacao String?
-  textoGarantia     String?
-  textoPagamento    String?
-  textoObservacao   String?
-  exibirLogo        Boolean    @default(true)
-  exibirEndereco    Boolean    @default(true)
-  exibirTelefone    Boolean    @default(true)
-  exibirEmail       Boolean    @default(true)
-  exibirAssinatura  Boolean    @default(true)
-  htmlPersonalizado String?
-  cssPersonalizado  String?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  propostas         Proposta[]
-}
-
-model Vendedor {
-  vendedorid Int        @id @default(autoincrement())
-  nome       String
-  email      String?
-  telefone   String?
-  ativo      Boolean    @default(true)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  propostas  Proposta[]
-}
-
 enum StatusProposta {
   RASCUNHO
   PENDENTE
@@ -237,4 +34,225 @@ enum PrioridadeAgenda {
 enum TipoCliente {
   PESSOA_FISICA
   PESSOA_JURIDICA
+}
+
+model Cliente {
+  clienteid         Int         @id @default(autoincrement())
+  tipo              TipoCliente @default(PESSOA_JURIDICA)
+  nomeFantasia      String?
+  razaoSocial       String?
+  cnpj              String?     @unique
+  cpf               String?     @unique
+  inscricaoEstadual String?
+  responsavel       String?
+  telefone1         String?
+  telefone2         String?
+  telefone3         String?
+  telefone4         String?
+
+  email1         String?
+  email2         String?
+  email3         String?
+  email4         String?
+  site           String?
+  cep            String?
+  endereco       String?
+  numero         String?
+  complemento    String?
+  bairro         String?
+  cidade         String?
+  estado         String?
+  pais           String?    @default("Brasil")
+  latitude       String?
+  longitude      String?
+  observacoes    String?    @db.Text
+  origemLead     String?
+  tags           String?
+  statusCliente  String?
+  limiteCredito  Decimal?   @db.Decimal(10, 2)
+  descontoPadrao Decimal?   @db.Decimal(10, 2)
+  dataNascimento DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  propostas      Proposta[]
+  agendas        Agenda[]
+}
+
+model Servico {
+  servicoid        Int            @id @default(autoincrement())
+  codigo           String?        @unique
+  nome             String
+  categoria        String?
+  descricao        String?        @db.Text
+  descricaoInterna String?        @db.Text
+  valor            Decimal        @db.Decimal(10, 2)
+  custo            Decimal?       @db.Decimal(10, 2)
+  margemLucro      Decimal?       @db.Decimal(10, 2)
+  unidade          String?
+  tempoExecucao    String?
+  garantia         String?
+  observacoes      String?        @db.Text
+  ativo            Boolean        @default(true)
+  destaque         Boolean        @default(false)
+  imagem           String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  itens            ItemProposta[]
+}
+
+model Proposta {
+  propostaid          Int            @id @default(autoincrement())
+  numero              String         @unique
+  titulo              String
+  subtitulo           String?
+  descricao           String?        @db.Text
+  escopo              String?        @db.Text
+  observacoes         String?        @db.Text
+  observacoesInternas String?        @db.Text
+  status              StatusProposta @default(RASCUNHO)
+  prioridade          String?
+
+  subtotal Decimal @db.Decimal(10, 2)
+
+  frete              Decimal? @db.Decimal(10, 2)
+  formaPagamento     String?
+  condicoesPagamento String?  @db.Text
+
+  validadeDias  Int?
+  dataValidade  DateTime?
+  dataAprovacao DateTime?
+  dataRecusa    DateTime?
+  motivoRecusa  String?   @db.Text
+
+  responsavel String?
+  vendedorId  Int?
+  pdfUrl      String?
+  origem      String?
+
+  vendedor Vendedor? @relation(fields: [vendedorId], references: [vendedorid])
+
+  assinaturaCliente String?
+  aprovadoCliente   Boolean @default(false)
+  enviadoEmail      Boolean @default(false)
+  enviadoWhatsapp   Boolean @default(false)
+  visualizada       Boolean @default(false)
+
+  clienteId Int
+  cliente   Cliente @relation(fields: [clienteId], references: [clienteid], onDelete: Restrict)
+
+  itens   ItemProposta[]
+  agendas Agenda[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  templateProposta           TemplateProposta? @relation(fields: [templatePropostaTemplateid], references: [templateid])
+  templatePropostaTemplateid Int?
+}
+
+model ItemProposta {
+  itempropostaid Int @id @default(autoincrement())
+
+  codigo    String?
+  descricao String  @db.Text
+  detalhes  String? @db.Text
+
+  unidade String?
+
+  quantidade    Decimal @db.Decimal(10, 2)
+  valorUnitario Decimal @db.Decimal(10, 2)
+
+  subtotal Decimal @db.Decimal(10, 2)
+
+  ordem       Int?
+  observacoes String? @db.Text
+
+  propostaId Int
+  proposta   Proposta @relation(fields: [propostaId], references: [propostaid], onDelete: Cascade)
+
+  servicoId Int?
+  servico   Servico? @relation(fields: [servicoId], references: [servicoid])
+
+  createdAt DateTime @default(now())
+}
+
+model Agenda {
+  agendaid    Int              @id @default(autoincrement())
+  titulo      String
+  descricao   String?          @db.Text
+  tipo        TipoAgenda
+  prioridade  PrioridadeAgenda @default(MEDIA)
+  local       String?
+  endereco    String?
+  cidade      String?
+  estado      String?
+  dataInicio  DateTime
+  dataFim     DateTime?
+  concluido   Boolean          @default(false)
+  status      String?
+  cor         String?
+  observacoes String?          @db.Text
+  clienteId   Int?
+  cliente     Cliente?         @relation(fields: [clienteId], references: [clienteid])
+  propostaId  Int?
+  proposta    Proposta?        @relation(fields: [propostaId], references: [propostaid])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Usuario {
+  usuarioid   Int       @id @default(autoincrement())
+  nome        String
+  email       String    @unique
+  senha       String
+  telefone    String?
+  cargo       String?
+  foto        String?
+  ativo       Boolean   @default(true)
+  ultimoLogin DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model TemplateProposta {
+  templateid        Int        @id @default(autoincrement())
+  nome              String
+  descricao         String?    @db.Text
+  ativo             Boolean    @default(true)
+  logo              String?
+  corPrimaria       String?
+  corSecundaria     String?
+  cabecalho         String?    @db.Text
+  rodape            String?    @db.Text
+  textoApresentacao String?    @db.Text
+  textoGarantia     String?    @db.Text
+  textoPagamento    String?    @db.Text
+  textoObservacao   String?    @db.Text
+  exibirLogo        Boolean    @default(true)
+  exibirEndereco    Boolean    @default(true)
+  exibirTelefone    Boolean    @default(true)
+  exibirEmail       Boolean    @default(true)
+  exibirAssinatura  Boolean    @default(true)
+  htmlPersonalizado String?    @db.Text
+  cssPersonalizado  String?    @db.Text
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  propostas         Proposta[]
+}
+
+model Vendedor {
+  vendedorid Int @id @default(autoincrement())
+
+  nome String
+
+  email String?
+
+  telefone String?
+
+  ativo Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime   @updatedAt
+  propostas Proposta[]
 }
