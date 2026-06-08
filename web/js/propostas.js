@@ -882,7 +882,7 @@ function montarBodyNovaProposta() {
 
         prioridade: pegarValor("prioridade"),
 
-        frete: financeiro.frete,
+        frete: pegarNumero("frete"),
 
         formaPagamento: pegarValor("formaPagamento"),
 
@@ -1035,10 +1035,7 @@ async function abrirModalProposta(id) {
         preencherCampo("editarFrete", proposta.frete);
         preencherCampo("editarTotal", proposta.total);
 
-        preencherCampo(
-            "editarPercentualLucro",
-            proposta.percentualLucro
-        );
+        
 
         preencherCampo(
             "editarFormaPagamento",
@@ -1167,10 +1164,7 @@ function montarBodyEditarProposta() {
                 "editarPrioridade"
             ),
 
-        subtotal:
-            pegarNumero(
-                "editarSubtotal"
-            ),
+        
 
         frete:
             pegarNumero(
