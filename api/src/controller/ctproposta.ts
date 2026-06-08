@@ -486,15 +486,6 @@ export const update = async (
                   valorUnitario:
                     Number(item.valorUnitario || 0),
 
-                  desconto:
-                    Number(item.desconto || 0),
-
-                  acrescimo:
-                    Number(item.acrescimo || 0),
-
-                  subtotal:
-                    Number(item.subtotal || 0),
-
                   ordem:
                     Number(item.ordem || 1),
 
@@ -588,21 +579,13 @@ export const dashboard = async (_req: Request, res: Response): Promise<void> => 
       }
     });
 
-    const totalFaturado = await prisma.proposta.aggregate({
-      _sum: {
-        total: true
-      },
-      where: {
-        status: "FATURADA"
-      }
-    });
+    
 
     res.status(200).json({
       totalPropostas,
       pendentes,
       aprovadas,
-      faturadas,
-      totalFaturado: totalFaturado._sum.total || 0
+      faturadas
     });
   } catch (error) {
     console.log(error);
