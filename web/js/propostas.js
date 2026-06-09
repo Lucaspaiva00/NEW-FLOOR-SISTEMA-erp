@@ -252,6 +252,11 @@ function criarCardProposta(proposta) {
         proposta.cliente?.razaoSocial
     )}
             </div>
+            <div class="proposal-client">
+    👤 ${textoSeguro(
+        proposta.vendedor?.nome
+    )}
+</div>
 
             <div class="proposal-desc">
                 ${textoSeguro(proposta.descricao || proposta.subtitulo || "Sem descrição")}
@@ -818,6 +823,77 @@ document.addEventListener("input", (e) => {
     }
 });
 
+let vendedoresCache = [];
+
+async function carregarVendedores() {
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/vendedores`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        vendedoresCache = await response.json();
+
+        preencherSelectVendedores();
+
+    } catch (error) {
+
+        console.log(error);
+
+    }
+}
+
+function preencherSelectVendedores() {
+
+    const selectNovo =
+        document.getElementById("vendedor");
+
+    const selectEditar =
+        document.getElementById("editarVendedor");
+
+    if (selectNovo) {
+
+        selectNovo.innerHTML = `
+            <option value="">
+                Selecione um vendedor
+            </option>
+        `;
+
+        vendedoresCache.forEach(vendedor => {
+
+            selectNovo.innerHTML += `
+                <option value="${vendedor.vendedorid}">
+                    ${vendedor.nome}
+                </option>
+            `;
+        });
+    }
+
+    if (selectEditar) {
+
+        selectEditar.innerHTML = `
+            <option value="">
+                Selecione um vendedor
+            </option>
+        `;
+
+        vendedoresCache.forEach(vendedor => {
+
+            selectEditar.innerHTML += `
+                <option value="${vendedor.vendedorid}">
+                    ${vendedor.nome}
+                </option>
+            `;
+        });
+    }
+}
+
 
 function montarItens() {
     const itens = [];
@@ -1011,6 +1087,11 @@ function montarBodyNovaProposta() {
 
         clienteId: Number(pegarValor("clienteId")),
 
+        vendedorId:
+            pegarValor("vendedor")
+                ? Number(pegarValor("vendedor"))
+                : null,
+
         itens
     };
 }
@@ -1101,6 +1182,10 @@ async function abrirModalProposta(id) {
         preencherCampo("editarNumero", proposta.numero);
         preencherCampo("editarTitulo", proposta.titulo);
         preencherCampo("editarClienteId", proposta.clienteId);
+        preencherCampo(
+            "editarVendedor",
+            proposta.vendedorId
+        );
         preencherCampo("editarSubtitulo", proposta.subtitulo);
         preencherCampo("editarStatus", proposta.status);
         preencherCampo("editarPrioridade", proposta.prioridade);
@@ -1346,6 +1431,11 @@ function montarBodyEditarProposta() {
                 )
             ),
 
+        vendedorId:
+            pegarValor("editarVendedor")
+                ? Number(pegarValor("editarVendedor"))
+                : null,
+
         itens:
             montarItensEditar()
 
@@ -1494,3 +1584,5 @@ async function iniciarTela() {
 
 
 iniciarTela();
+carregarVendedores();
+carregarPropostas();
