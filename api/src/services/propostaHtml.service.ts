@@ -8,26 +8,16 @@ interface DadosProposta {
 }
 
 function moeda(valor: any): string {
-
-    return Number(
-        valor || 0
-    ).toLocaleString(
-        "pt-BR",
-        {
-            style: "currency",
-            currency: "BRL"
-        }
-    );
-
+    return Number(valor || 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+    });
 }
 
 function dataBR(data?: Date | string | null): string {
-
     if (!data) return "-";
 
-    return new Date(data)
-        .toLocaleDateString("pt-BR");
-
+    return new Date(data).toLocaleDateString("pt-BR");
 }
 
 export function gerarHtmlProposta({
@@ -44,6 +34,19 @@ export function gerarHtmlProposta({
     const corSecundaria =
         template?.corSecundaria ||
         "#f3f4f6";
+
+    const subtotalCalculado = itens.reduce(
+        (acc, item) =>
+            acc + Number(item.subtotal || 0),
+        0
+    );
+
+    const totalCalculado =
+        subtotalCalculado
+        - Number(proposta.desconto || 0)
+        + Number(proposta.acrescimo || 0)
+        + Number(proposta.frete || 0)
+        + Number(proposta.impostos || 0);
 
     const tabelaItens =
         itens
@@ -370,7 +373,6 @@ Proposta Técnica Comercial
 <div class="proposta-box">
 
 <h2>
-Proposta Nº
 ${proposta.numero}
 </h2>
 
@@ -433,7 +435,7 @@ ${cliente.estado || "-"}
 <div class="section">
 
 <div class="section-title">
-Resumo da Proposta
+Resumo
 </div>
 
 <div class="card">
@@ -491,7 +493,7 @@ ${tabelaItens}
 
 <div class="total-row">
 <span>Subtotal</span>
-<strong>${moeda(proposta.subtotal)}</strong>
+<strong>${moeda(subtotalCalculado)}</strong>
 </div>
 
 <div class="total-row">
@@ -516,7 +518,7 @@ ${tabelaItens}
 
 <div class="total-row total-geral">
 <span>Total</span>
-<strong>${moeda(proposta.total)}</strong>
+<strong>${moeda(totalCalculado)}</strong>
 </div>
 
 </div>
@@ -526,7 +528,7 @@ ${tabelaItens}
 <div class="section">
 
 <div class="section-title">
-Descrição Técnica dos Serviços
+Detalhamento Técnico
 </div>
 
 <div class="card">
@@ -561,6 +563,8 @@ ${proposta.condicoesPagamento || "-"}
 
 </div>
 
+${template?.textoGarantia
+            ? `
 <div class="section">
 
 <div class="section-title">
@@ -569,16 +573,19 @@ Garantias
 
 <div class="card">
 
-${template?.textoGarantia || "-"}
+${template.textoGarantia}
 
 </div>
 
 </div>
+`
+            : ""
+        }
 
 <div class="section">
 
 <div class="section-title">
-Observações Gerais
+Observações
 </div>
 
 <div class="card">
@@ -594,7 +601,7 @@ ${proposta.observacoes ||
 <div class="assinaturas">
 
 <div class="assinatura">
-NEW FLOOR PISOS E REVESTIMENTOS
+NEW FLOOR
 </div>
 
 <div class="assinatura">

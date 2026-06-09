@@ -59,7 +59,6 @@ async function buscarTemplatePadrao() {
       corPrimaria: "#111827",
       corSecundaria: "#e5e7eb",
       cabecalho: "NEW FLOOR PISOS E REVESTIMENTOS",
-      textoApresentacao: "Proposta Técnica Comercial",
       textoGarantia: "Garantia conforme condições comerciais apresentadas.",
       textoPagamento: "Condições de pagamento conforme negociação.",
       textoObservacao: "Valores sujeitos à aprovação e validade da proposta.",
