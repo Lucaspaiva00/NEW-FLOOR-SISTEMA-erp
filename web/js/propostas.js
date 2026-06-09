@@ -492,12 +492,39 @@ function adicionarItemProposta(item = null) {
 }
 
 function adicionarItemEditar(item = null) {
+
     const index = document.querySelectorAll(".item-servico").length + 1;
 
-    const servicoId = item?.servicoId || item?.servico?.servicoid || "";
-    const quantidade = item?.quantidade || 1;
-    const valorUnitario = item?.valorUnitario || item?.servico?.valor || 0;
+    const servicoId =
+        item?.servicoId ||
+        item?.servico?.servicoid ||
+        "";
 
+    const codigo =
+        item?.codigo &&
+            item.codigo !== "-"
+            ? item.codigo
+            : item?.servico?.codigo || "";
+
+    const descricao =
+        item?.descricao &&
+            item.descricao !== "-"
+            ? item.descricao
+            : item?.servico?.descricao || "";
+
+    const unidade =
+        item?.unidade &&
+            item.unidade !== "UN"
+            ? item.unidade
+            : item?.servico?.unidade || "UN";
+
+    const valorUnitario =
+        item?.valorUnitario &&
+            Number(item.valorUnitario) > 0
+            ? item.valorUnitario
+            : item?.servico?.valor || 0;
+
+    const quantidade = item?.quantidade || 1;
     const desconto = item?.desconto || 0;
     const acrescimo = item?.acrescimo || 0;
     const subtotal = item?.subtotal || 0;
@@ -524,26 +551,38 @@ function adicionarItemEditar(item = null) {
 
                 <div class="col-md-3 mb-3">
                     <label>Código</label>
-                    <input type="text" class="form-control premium-input-light item-codigo"
-                        value="${textoSeguro(item?.codigo || "")}">
+                    <input
+                        type="text"
+                        class="form-control premium-input-light item-codigo"
+                        value="${textoSeguro(codigo)}"
+                    >
                 </div>
 
                 <div class="col-md-2 mb-3">
                     <label>Unidade</label>
-                    <input type="text" class="form-control premium-input-light item-unidade"
-                        value="${textoSeguro(item?.unidade || "UN")}">
+                    <input
+                        type="text"
+                        class="form-control premium-input-light item-unidade"
+                        value="${textoSeguro(unidade)}"
+                    >
                 </div>
 
                 <div class="col-md-2 mb-3">
                     <label>Ordem</label>
-                    <input type="number" class="form-control premium-input-light item-ordem"
-                        value="${item?.ordem || index}">
+                    <input
+                        type="number"
+                        class="form-control premium-input-light item-ordem"
+                        value="${item?.ordem || index}"
+                    >
                 </div>
 
                 <div class="col-md-12 mb-3">
                     <label>Descrição</label>
-                    <input type="text" class="form-control premium-input-light item-descricao"
-                        value="${textoSeguro(item?.descricao || "")}">
+                    <input
+                        type="text"
+                        class="form-control premium-input-light item-descricao"
+                        value="${textoSeguro(descricao)}"
+                    >
                 </div>
 
                 <div class="col-md-12 mb-3">
@@ -553,32 +592,56 @@ function adicionarItemEditar(item = null) {
 
                 <div class="col-md-2 mb-3">
                     <label>Quantidade</label>
-                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-quantidade"
-                        value="${quantidade}">
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="form-control premium-input-light item-quantidade"
+                        value="${quantidade}"
+                    >
                 </div>
 
                 <div class="col-md-2 mb-3">
                     <label>Valor unitário</label>
-                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-valor"
-                        value="${valorUnitario}">
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="form-control premium-input-light item-valor"
+                        value="${valorUnitario}"
+                    >
                 </div>
 
                 <div class="col-md-2 mb-3">
                     <label>Desconto</label>
-                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-desconto"
-                        value="${desconto}">
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="form-control premium-input-light item-desconto"
+                        value="${desconto}"
+                    >
                 </div>
 
                 <div class="col-md-2 mb-3">
                     <label>Acréscimo</label>
-                    <input type="number" step="0.01" min="0" class="form-control premium-input-light item-acrescimo"
-                        value="${acrescimo}">
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="form-control premium-input-light item-acrescimo"
+                        value="${acrescimo}"
+                    >
                 </div>
 
                 <div class="col-md-4 mb-3">
                     <label>Subtotal</label>
-                    <input type="number" step="0.01" class="form-control premium-input-light item-subtotal"
-                        value="${subtotal}">
+                    <input
+                        type="number"
+                        step="0.01"
+                        class="form-control premium-input-light item-subtotal"
+                        value="${subtotal}"
+                    >
                 </div>
 
                 <div class="col-md-12 mb-3">
@@ -591,13 +654,20 @@ function adicionarItemEditar(item = null) {
         </div>
     `;
 
-    listaItensEditar.insertAdjacentHTML("beforeend", html);
+    listaItensEditar.insertAdjacentHTML(
+        "beforeend",
+        html
+    );
 
-    const novoItem = listaItensEditar.lastElementChild;
-    const select = novoItem.querySelector(".servico-select");
+    const novoItem =
+        listaItensEditar.lastElementChild;
+
+    const select =
+        novoItem.querySelector(
+            ".servico-select"
+        );
 
     preencherItemComServico(select);
-
 
 }
 
