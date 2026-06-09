@@ -607,98 +607,114 @@ document.getElementById("btnExcluirCliente").addEventListener(
 |--------------------------------------------------------------------------
 */
 
+async function consultarCnpj() {
+
+    const campoCnpj = document.getElementById("cnpj");
+
+    if (!campoCnpj) return;
+
+    const cnpj = campoCnpj.value.replace(/\D/g, "");
+
+    if (cnpj.length !== 14) {
+        return;
+    }
+
+    try {
+
+        campoCnpj.disabled = true;
+
+        const response = await fetch(
+            `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`
+        );
+
+        if (!response.ok) {
+            throw new Error("CNPJ não encontrado");
+        }
+
+        const empresa = await response.json();
+
+        preencherCampo(
+            "razaoSocial",
+            empresa.razao_social
+        );
+
+        preencherCampo(
+            "nomeFantasia",
+            empresa.nome_fantasia
+        );
+
+        preencherCampo(
+            "cep",
+            empresa.cep
+        );
+
+        preencherCampo(
+            "endereco",
+            empresa.logradouro
+        );
+
+        preencherCampo(
+            "numero",
+            empresa.numero
+        );
+
+        preencherCampo(
+            "bairro",
+            empresa.bairro
+        );
+
+        preencherCampo(
+            "cidade",
+            empresa.municipio
+        );
+
+        preencherCampo(
+            "estado",
+            empresa.uf
+        );
+
+        preencherCampo(
+            "email1",
+            empresa.email
+        );
+
+        preencherCampo(
+            "telefone1",
+            empresa.ddd_telefone_1
+        );
+
+    } catch (error) {
+
+        console.log(error);
+
+        alert(
+            "Não foi possível consultar o CNPJ."
+        );
+
+    } finally {
+
+        campoCnpj.disabled = false;
+
+    }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| EVENTO CNPJ
+|--------------------------------------------------------------------------
+*/
+
 const campoCnpj = document.getElementById("cnpj");
 
 if (campoCnpj) {
 
-    campoCnpj.addEventListener("blur", async () => {
-
-        const cnpj = campoCnpj.value.replace(/\D/g, "");
-
-        if (cnpj.length !== 14) {
-            return;
-        }
-
-        try {
-
-            campoCnpj.disabled = true;
-
-            const response = await fetch(
-                `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`
-            );
-
-            if (!response.ok) {
-                throw new Error("CNPJ não encontrado");
-            }
-
-            const empresa = await response.json();
-
-            preencherCampo(
-                "razaoSocial",
-                empresa.razao_social
-            );
-
-            preencherCampo(
-                "nomeFantasia",
-                empresa.nome_fantasia
-            );
-
-            preencherCampo(
-                "cep",
-                empresa.cep
-            );
-
-            preencherCampo(
-                "endereco",
-                empresa.logradouro
-            );
-
-            preencherCampo(
-                "numero",
-                empresa.numero
-            );
-
-            preencherCampo(
-                "bairro",
-                empresa.bairro
-            );
-
-            preencherCampo(
-                "cidade",
-                empresa.municipio
-            );
-
-            preencherCampo(
-                "estado",
-                empresa.uf
-            );
-
-            preencherCampo(
-                "email",
-                empresa.email
-            );
-
-            preencherCampo(
-                "telefone",
-                empresa.ddd_telefone_1
-            );
-
-        } catch (error) {
-
-            console.log(error);
-
-            alert(
-                "Não foi possível localizar os dados do CNPJ."
-            );
-
-        } finally {
-
-            campoCnpj.disabled = false;
-
-        }
-
-    });
+    campoCnpj.addEventListener(
+        "blur",
+        consultarCnpj
+    );
 
 }
+
 
 carregarClientes();
