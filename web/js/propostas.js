@@ -693,7 +693,6 @@ function preencherItemComServico(select) {
         Number(option.dataset.valor || 0);
 
     calcularSubtotalItem(item);
-
 }
 
 document.getElementById("btnAdicionarServico").addEventListener("click", () => {
@@ -1362,7 +1361,12 @@ formEditarProposta.addEventListener("submit", async (e) => {
         }
 
         const body = montarBodyEditarProposta();
+        if (!body.itens || body.itens.length === 0) {
+            alert("Adicione pelo menos um item na proposta antes de salvar.");
+            return;
+        }
 
+        console.log("BODY EDITAR PROPOSTA:", body);
         const response = await fetch(
             `${API_URL}/propostas/${id}`,
             {
