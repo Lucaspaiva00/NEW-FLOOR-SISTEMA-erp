@@ -496,7 +496,8 @@ function adicionarItemEditar(item = null) {
 
     const servicoId = item?.servicoId || item?.servico?.servicoid || "";
     const quantidade = item?.quantidade || 1;
-    const valorUnitario = item?.valorUnitario || 0;
+    const valorUnitario = item?.valorUnitario || item?.servico?.valor || 0;
+
     const desconto = item?.desconto || 0;
     const acrescimo = item?.acrescimo || 0;
     const subtotal = item?.subtotal || 0;
@@ -601,31 +602,26 @@ function adicionarItemEditar(item = null) {
 }
 
 function preencherItemComServico(select) {
+
     const item = select.closest(".item-servico");
-    const option = select.options[select.selectedIndex];
+
+    const option =
+        select.options[select.selectedIndex];
 
     if (!option) return;
 
-    const codigoInput = item.querySelector(".item-codigo");
-    const descricaoInput = item.querySelector(".item-descricao");
-    const unidadeInput = item.querySelector(".item-unidade");
-    const valorInput = item.querySelector(".item-valor");
+    item.querySelector(".item-codigo").value =
+        option.dataset.codigo || "";
 
-    if (!codigoInput.value) {
-        codigoInput.value = option.dataset.codigo || "";
-    }
+    item.querySelector(".item-descricao").value =
+        option.dataset.descricao || "";
 
-    if (!descricaoInput.value) {
-        descricaoInput.value = option.dataset.descricao || option.dataset.nome || "";
-    }
+    item.querySelector(".item-unidade").value =
+        option.dataset.unidade || "UN";
 
-    if (!unidadeInput.value) {
-        unidadeInput.value = option.dataset.unidade || "UN";
-    }
+    item.querySelector(".item-valor").value =
+        Number(option.dataset.valor || 0);
 
-    if (!valorInput.value || Number(valorInput.value) === 0) {
-        valorInput.value = Number(option.dataset.valor || 0);
-    }
 }
 
 document.getElementById("btnAdicionarServico").addEventListener("click", () => {
