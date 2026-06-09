@@ -357,62 +357,13 @@ export const create = async (
 
 };
 
-export const read = async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const propostas = await prisma.proposta.findMany({
-      include: {
-        cliente: true,
-        vendedor: true,
-        templateProposta: true,
-        itens: {
-          include: {
-            servico: true
-          }
-        },
-        agendas: true
-      },
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
-
-    res.status(200).json(propostas);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      error: "Erro ao buscar propostas"
-    });
-  }
-};
-
-export const readOne = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-
-    const proposta = await buscarPropostaCompleta(paramId(id));
-
-    if (!proposta) {
-      res.status(404).json({
-        error: "Proposta não encontrada"
-      });
-      return;
-    }
-
-    res.status(200).json(proposta);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      error: "Erro ao buscar proposta"
-    });
-  }
-};
-
 export const update = async (
   req: Request,
   res: Response
 ): Promise<void> => {
 
   try {
+
 
     const { id } = req.params;
     const body = req.body;
@@ -434,18 +385,27 @@ export const update = async (
 
     }
 
-    await prisma.itemProposta.deleteMany({
-      where: {
-        propostaId: Number(id)
-      }
-    });
+    const temItensNoBody =
+      Array.isArray(body.itens);
+
+    if (temItensNoBody) {
+
+      await prisma.itemProposta.deleteMany({
+        where: {
+          propostaId: Number(id)
+        }
+      });
+
+    }
 
     const subtotal =
-      (body.itens || []).reduce(
-        (total: number, item: any) =>
-          total + Number(item.subtotal || 0),
-        0
-      );
+      temItensNoBody
+        ? body.itens.reduce(
+          (total: number, item: any) =>
+            total + Number(item.subtotal || 0),
+          0
+        )
+        : Number(propostaAtual.subtotal || 0);
 
     const proposta =
       await prisma.proposta.update({
@@ -492,7 +452,10 @@ export const update = async (
             body.prioridade ??
             propostaAtual.prioridade,
 
-          subtotal,
+          subtotal:
+            temItensNoBody
+              ? subtotal
+              : propostaAtual.subtotal,
 
           frete:
             body.frete !== undefined
@@ -578,50 +541,54 @@ export const update = async (
               ? Number(body.templatePropostaTemplateid)
               : propostaAtual.templatePropostaTemplateid,
 
-          itens: {
+          ...(temItensNoBody
+            ? {
+              itens: {
 
-            create:
-              (body.itens || []).map(
-                (item: any) => ({
+                create:
+                  body.itens.map(
+                    (item: any) => ({
 
-                  codigo:
-                    item.codigo || null,
+                      codigo:
+                        item.codigo || null,
 
-                  descricao:
-                    item.descricao || "",
+                      descricao:
+                        item.descricao || "",
 
-                  detalhes:
-                    item.detalhes || null,
+                      detalhes:
+                        item.detalhes || null,
 
-                  unidade:
-                    item.unidade || null,
+                      unidade:
+                        item.unidade || null,
 
-                  quantidade:
-                    Number(item.quantidade || 0),
+                      quantidade:
+                        Number(item.quantidade || 0),
 
-                  valorUnitario:
-                    Number(item.valorUnitario || 0),
+                      valorUnitario:
+                        Number(item.valorUnitario || 0),
 
-                  subtotal:
-                    Number(item.subtotal || 0),
+                      subtotal:
+                        Number(item.subtotal || 0),
 
-                  ordem:
-                    item.ordem
-                      ? Number(item.ordem)
-                      : null,
+                      ordem:
+                        item.ordem
+                          ? Number(item.ordem)
+                          : null,
 
-                  observacoes:
-                    item.observacoes || null,
+                      observacoes:
+                        item.observacoes || null,
 
-                  servicoId:
-                    item.servicoId
-                      ? Number(item.servicoId)
-                      : null
+                      servicoId:
+                        item.servicoId
+                          ? Number(item.servicoId)
+                          : null
 
-                })
-              )
+                    })
+                  )
 
-          }
+              }
+            }
+            : {})
 
         },
 
@@ -639,7 +606,9 @@ export const update = async (
               servico: true
             }
 
-          }
+          },
+
+          agendas: true
 
         }
 
@@ -647,7 +616,9 @@ export const update = async (
 
     res.status(200).json(proposta);
 
+
   } catch (error) {
+
 
     console.log(error);
 
@@ -655,9 +626,62 @@ export const update = async (
       error: "Erro ao atualizar proposta"
     });
 
+
   }
 
 };
+
+
+export const read = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const propostas = await prisma.proposta.findMany({
+      include: {
+        cliente: true,
+        vendedor: true,
+        templateProposta: true,
+        itens: {
+          include: {
+            servico: true
+          }
+        },
+        agendas: true
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+
+    res.status(200).json(propostas);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      error: "Erro ao buscar propostas"
+    });
+  }
+};
+
+export const readOne = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const proposta = await buscarPropostaCompleta(paramId(id));
+
+    if (!proposta) {
+      res.status(404).json({
+        error: "Proposta não encontrada"
+      });
+      return;
+    }
+
+    res.status(200).json(proposta);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      error: "Erro ao buscar proposta"
+    });
+  }
+};
+
 
 export const remove = async (req: Request, res: Response): Promise<void> => {
   try {
