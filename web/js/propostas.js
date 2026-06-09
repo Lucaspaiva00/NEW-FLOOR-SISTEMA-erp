@@ -486,6 +486,10 @@ function adicionarItemProposta(item = null) {
     const novoItem = listaItensProposta.lastElementChild;
     const select = novoItem.querySelector(".servico-select");
 
+    if (!item) {
+        preencherItemComServico(select);
+    }
+
     preencherItemComServico(select);
 
 
