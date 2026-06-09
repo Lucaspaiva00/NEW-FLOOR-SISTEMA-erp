@@ -692,6 +692,8 @@ function preencherItemComServico(select) {
     item.querySelector(".item-valor").value =
         Number(option.dataset.valor || 0);
 
+    calcularSubtotalItem(item);
+
 }
 
 document.getElementById("btnAdicionarServico").addEventListener("click", () => {
@@ -783,8 +785,34 @@ document.addEventListener("change", (e) => {
 
 });
 
-document.addEventListener("input", () => {
+function calcularSubtotalItem(item) {
+    const quantidade = Number(item.querySelector(".item-quantidade")?.value || 0);
+    const valorUnitario = Number(item.querySelector(".item-valor")?.value || 0);
+    const desconto = Number(item.querySelector(".item-desconto")?.value || 0);
+    const acrescimo = Number(item.querySelector(".item-acrescimo")?.value || 0);
 
+    const subtotal = (quantidade * valorUnitario) - desconto + acrescimo;
+
+    const campoSubtotal = item.querySelector(".item-subtotal");
+
+    if (campoSubtotal) {
+        campoSubtotal.value = subtotal.toFixed(2);
+    }
+}
+
+document.addEventListener("input", (e) => {
+    if (
+        e.target.classList.contains("item-quantidade") ||
+        e.target.classList.contains("item-valor") ||
+        e.target.classList.contains("item-desconto") ||
+        e.target.classList.contains("item-acrescimo")
+    ) {
+        const item = e.target.closest(".item-servico");
+
+        if (item) {
+            calcularSubtotalItem(item);
+        }
+    }
 });
 
 
