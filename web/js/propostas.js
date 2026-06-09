@@ -448,7 +448,7 @@ function adicionarItemProposta(item = null) {
                 </div>
 
                 <div class="col-md-2 mb-3">
-                    <label>Valor unitário</label>
+                    <label>testeValor unitário</label>
                     <input type="number" step="0.01" min="0" class="form-control premium-input-light item-valor"
                         value="${valorUnitario}">
                 </div>
