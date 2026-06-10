@@ -93,7 +93,7 @@ async function gerarPdfInterno(id: string | string[] | number) {
   }
 
   const html =
-    gerarHtmlProposta({
+    await gerarHtmlProposta({
 
       proposta,
 

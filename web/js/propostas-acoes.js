@@ -1,331 +1,134 @@
-
 function getPropostaId() {
-
-    return document.getElementById("editarId")?.value;
-
+  return document.getElementById("editarId")?.value;
 }
 
 async function request(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
 
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            ...(options.headers || {})
-        }
-    });
+  const text = await response.text();
 
-    const text =
-        await response.text();
+  let data = null;
 
-    let data = null;
-
-    try {
-
-        data =
-            JSON.parse(text);
-
-    } catch {
-
-        if (!response.ok) {
-
-            throw new Error(
-                text ||
-                "Erro na requisição"
-            );
-
-        }
-
-        return text;
-
-    }
-
+  try {
+    data = JSON.parse(text);
+  } catch {
     if (!response.ok) {
-
-        throw new Error(
-            data?.error ||
-            "Erro na requisição"
-        );
-
+      throw new Error(text || "Erro na requisição");
     }
 
-    return data;
+    return text;
+  }
 
-}
+  if (!response.ok) {
+    throw new Error(data?.error || "Erro na requisição");
+  }
 
-/* ======================================
-   GERAR PDF
-====================================== */
-
-const btnGerarPdf =
-    document.getElementById(
-        "btnGerarPdf"
-    );
-
-if (btnGerarPdf) {
-
-    btnGerarPdf.addEventListener(
-        "click",
-        async () => {
-
-            try {
-
-                const id =
-                    getPropostaId();
-
-                if (!id) {
-
-                    alert(
-                        "Selecione uma proposta."
-                    );
-
-                    return;
-
-                }
-
-                btnGerarPdf.disabled = true;
-
-                const data =
-                    await request(
-                        `${API_URL}/propostas/${id}/pdf`,
-                        {
-                            method: "POST"
-                        }
-                    );
-
-                const campoPdf =
-                    document.getElementById(
-                        "editarPdfUrl"
-                    );
-
-                if (campoPdf) {
-
-                    campoPdf.value =
-                        data.pdfUrl || "";
-
-                }
-
-                alert(
-                    "PDF gerado com sucesso."
-                );
-
-                if (data.downloadUrl) {
-
-                    window.open(
-                        data.downloadUrl,
-                        "_blank"
-                    );
-
-                }
-
-            } catch (error) {
-
-                console.error(error);
-
-                alert(
-                    error.message
-                );
-
-            } finally {
-
-                btnGerarPdf.disabled = false;
-
-            }
-
-        }
-    );
-
+  return data;
 }
 
 /* ======================================
    VISUALIZAR PDF
 ====================================== */
 
-const btnVisualizarPdf =
-    document.getElementById(
-        "btnVisualizarPdf"
-    );
+const btnVisualizarPdf = document.getElementById("btnVisualizarPdf");
 
 if (btnVisualizarPdf) {
+  btnVisualizarPdf.addEventListener("click", async () => {
+    try {
+      const id = getPropostaId();
 
-    btnVisualizarPdf.addEventListener(
-        "click",
-        async () => {
+      if (!id) {
+        alert("Selecione uma proposta.");
 
-            try {
+        return;
+      }
 
-                const id =
-                    getPropostaId();
+      window.open(`${API_URL}/propostas/${id}/download`, "_blank");
+    } catch (error) {
+      console.error(error);
 
-                if (!id) {
-
-                    alert(
-                        "Selecione uma proposta."
-                    );
-
-                    return;
-
-                }
-
-                window.open(
-                    `${API_URL}/propostas/${id}/download`,
-                    "_blank"
-                );
-
-            } catch (error) {
-
-                console.error(error);
-
-                alert(
-                    error.message
-                );
-
-            }
-
-        }
-    );
-
+      alert(error.message);
+    }
+  });
 }
 
 /* ======================================
    WHATSAPP
 ====================================== */
 
-const btnWhatsapp =
-    document.getElementById(
-        "btnWhatsapp"
-    );
+const btnWhatsapp = document.getElementById("btnWhatsapp");
 
 if (btnWhatsapp) {
+  btnWhatsapp.addEventListener("click", async () => {
+    try {
+      const id = getPropostaId();
 
-    btnWhatsapp.addEventListener(
-        "click",
-        async () => {
+      if (!id) {
+        alert("Selecione uma proposta.");
 
-            try {
+        return;
+      }
 
-                const id =
-                    getPropostaId();
+      btnWhatsapp.disabled = true;
 
-                if (!id) {
+      const data = await request(`${API_URL}/propostas/${id}/whatsapp`, {
+        method: "GET",
+      });
 
-                    alert(
-                        "Selecione uma proposta."
-                    );
+      if (data.whatsappUrl) {
+        window.open(data.whatsappUrl, "_blank");
+      } else {
+        alert("Link do WhatsApp não retornado.");
+      }
+    } catch (error) {
+      console.error(error);
 
-                    return;
-
-                }
-
-                btnWhatsapp.disabled = true;
-
-                const data =
-                    await request(
-                        `${API_URL}/propostas/${id}/whatsapp`,
-                        {
-                            method: "GET"
-                        }
-                    );
-
-                if (
-                    data.whatsappUrl
-                ) {
-
-                    window.open(
-                        data.whatsappUrl,
-                        "_blank"
-                    );
-
-                } else {
-
-                    alert(
-                        "Link do WhatsApp não retornado."
-                    );
-
-                }
-
-            } catch (error) {
-
-                console.error(error);
-
-                alert(
-                    error.message
-                );
-
-            } finally {
-
-                btnWhatsapp.disabled = false;
-
-            }
-
-        }
-    );
-
+      alert(error.message);
+    } finally {
+      btnWhatsapp.disabled = false;
+    }
+  });
 }
 
 /* ======================================
    EMAIL
 ====================================== */
 
-const btnEmail =
-    document.getElementById(
-        "btnEmail"
-    );
+const btnEmail = document.getElementById("btnEmail");
 
 if (btnEmail) {
+  btnEmail.addEventListener("click", async () => {
+    try {
+      const id = getPropostaId();
 
-    btnEmail.addEventListener(
-        "click",
-        async () => {
+      if (!id) {
+        alert("Selecione uma proposta.");
 
-            try {
+        return;
+      }
 
-                const id =
-                    getPropostaId();
+      btnEmail.disabled = true;
 
-                if (!id) {
+      const data = await request(`${API_URL}/propostas/${id}/email`, {
+        method: "POST",
+      });
 
-                    alert(
-                        "Selecione uma proposta."
-                    );
+      alert(data.message || "E-mail enviado com sucesso.");
+    } catch (error) {
+      console.error(error);
 
-                    return;
-
-                }
-
-                btnEmail.disabled = true;
-
-                const data =
-                    await request(
-                        `${API_URL}/propostas/${id}/email`,
-                        {
-                            method: "POST"
-                        }
-                    );
-
-                alert(
-                    data.message ||
-                    "E-mail enviado com sucesso."
-                );
-
-            } catch (error) {
-
-                console.error(error);
-
-                alert(
-                    error.message
-                );
-
-            } finally {
-
-                btnEmail.disabled = false;
-
-            }
-
-        }
-    );
-
+      alert(error.message);
+    } finally {
+      btnEmail.disabled = false;
+    }
+  });
 }
 
 /* ======================================
@@ -333,52 +136,27 @@ if (btnEmail) {
 ====================================== */
 
 async function carregarTemplates() {
+  const select = document.getElementById("editarTemplateId");
 
-    const select =
-        document.getElementById(
-            "editarTemplateId"
-        );
+  if (!select) return;
 
-    if (!select) return;
+  try {
+    const templates = await request(`${API_URL}/templates`);
 
-    try {
+    select.innerHTML = '<option value="">Selecione...</option>';
 
-        const templates =
-            await request(
-                `${API_URL}/templates`
-            );
-
-        select.innerHTML =
-            '<option value="">Selecione...</option>';
-
-        templates.forEach(
-            template => {
-
-                select.innerHTML += `
+    templates.forEach((template) => {
+      select.innerHTML += `
                     <option value="${template.templateid}">
                         ${template.nome}
                     </option>
                 `;
-
-            }
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Erro templates:",
-            error
-        );
-
-    }
-
+    });
+  } catch (error) {
+    console.error("Erro templates:", error);
+  }
 }
 
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-
-        carregarTemplates();
-
-    }
-);
+document.addEventListener("DOMContentLoaded", () => {
+  carregarTemplates();
+});
