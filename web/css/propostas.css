@@ -1,3 +1,53 @@
+.kanban-list.is-loading {
+    pointer-events: none;
+}
+
+.kanban-list-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 28px 12px 20px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.kanban-list-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #0f172a;
+    border-radius: 50%;
+    animation: kanban-spin 0.8s linear infinite;
+}
+
+@keyframes kanban-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.kanban-skeleton-card {
+    height: 120px;
+    margin-bottom: 14px;
+    border-radius: 22px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: kanban-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes kanban-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
 .kanban {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -7,32 +57,34 @@
 }
 
 .kanban-column {
-    background: #f8fafc;
+    background: #ccc;
     border-radius: 24px;
     padding: 18px;
     min-height: 650px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #ccc;
+
 }
 
 .kanban-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 18px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #e2e8f0;
+    padding: 16px;
+    border-bottom: 1px solid #ccc;
+    background: #f1f1f1;
+    border-radius: 14px;
 }
 
 .kanban-header h3 {
     font-size: 16px;
     margin: 0;
     font-weight: 800;
-    color: #0f172a;
+    color: #111827;
 }
 
 .kanban-count {
-    background: #0f172a;
-    color: white;
+    background: #111827;
+    color: #f1f1f1;
     width: 32px;
     height: 32px;
     border-radius: 999px;
@@ -48,25 +100,26 @@
 }
 
 .proposal-card {
-    background: white;
+    background: #f1f1f1;
     border-radius: 22px;
     padding: 20px;
     margin-bottom: 16px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #ccc;
     cursor: pointer;
     transition: .25s;
     position: relative;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.5);
 }
 
 .proposal-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.4);
 }
 
 .proposal-number {
     font-size: 12px;
     font-weight: 800;
-    color: #64748b;
+    color: #111827;
     margin-bottom: 10px;
     display: block;
 }
@@ -74,18 +127,18 @@
 .proposal-title {
     font-size: 18px;
     font-weight: 900;
-    color: #0f172a;
+    color: #111827;
     margin-bottom: 6px;
 }
 
 .proposal-client {
-    color: #64748b;
+    color: #111827;
     font-size: 14px;
     margin-bottom: 16px;
 }
 
 .proposal-desc {
-    color: #475569;
+    color: #111827;
     font-size: 13px;
     line-height: 1.5;
     min-height: 42px;
@@ -139,51 +192,19 @@
 }
 
 .form-section {
-    background: #f8fafc;
-    border-radius: 24px;
+    background: #f1f5f9;
+    border-radius: 22px;
     padding: 24px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     border: 1px solid #e2e8f0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-.section-title {
-    font-size: 18px;
-    font-weight: 900;
+.form-section>.section-title {
+    font-size: 17px;
+    font-weight: 700;
     color: #0f172a;
     margin-bottom: 22px;
-}
-
-.premium-input-light {
-    height: 54px;
-    border-radius: 16px;
-    border: 1px solid #dbe2ea;
-    background: white;
-    padding: 0 16px;
-}
-
-.textarea-premium {
-    min-height: 120px;
-    padding-top: 14px;
-}
-
-.modal-content {
-    border: none;
-    border-radius: 28px;
-}
-
-.modal-header {
-    padding: 28px 28px 0;
-}
-
-.modal-body {
-    padding: 28px;
-}
-
-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #334155;
-    margin-bottom: 8px;
 }
 
 .item-servico {
@@ -250,11 +271,17 @@ label {
     display: flex;
     align-items: center;
     gap: 12px;
-    height: 54px;
-    background: white;
-    border: 1px solid #dbe2ea;
-    border-radius: 16px;
+    height: 52px;
+    background: #ffffff;
+    border: 1px solid #94a3b8;
+    border-radius: 14px;
     padding: 0 16px;
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .switch-row input {
@@ -284,6 +311,233 @@ label {
 
 @media(max-width: 900px) {
     .kanban {
+        grid-template-columns: 1fr;
+    }
+}
+
+.section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.section-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.section-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 4px;
+}
+
+.section-subtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+}
+
+.form-section .row {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.form-field .form-control,
+.form-field .premium-input-light,
+.form-field select {
+    width: 100%;
+}
+
+.field-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.btn-mock {
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: 1px dashed #94a3b8;
+    background: #fff;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: 0.2s ease;
+}
+
+.btn-mock:hover {
+    border-color: #0f172a;
+    color: #0f172a;
+    background: #f8fafc;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.modal-footer-premium {
+    padding: 28px 28px 12px;
+    border-top: none;
+    background: transparent;
+}
+
+.modal-footer-premium .btn-new {
+    height: 52px;
+    border-radius: 14px;
+}
+
+.form-steps-track {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.step-pill {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: 0.2s ease;
+    text-align: center;
+}
+
+.step-pill.active {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #fff;
+}
+
+.step-pill.done {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.form-step {
+    display: none;
+}
+
+.form-step.active {
+    display: block;
+}
+
+.form-step-panel {
+    background: #f1f5f9;
+    border-radius: 22px;
+    padding: 28px 0;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-step-secondary {
+    height: 52px;
+    min-width: 110px;
+    border-radius: 14px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #334155;
+    font-weight: 600;
+    padding: 0 18px;
+}
+
+.btn-step-secondary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.modal-premium,
+.modal-content {
+    border: none;
+    border-radius: 28px;
+}
+
+.modal-header {
+    padding: 28px 28px 0;
+}
+
+.modal-body {
+    padding: 36px;
+}
+
+.h-52px {
+    height: 52px;
+}
+
+.rounded-lg {
+    border-radius: 14px;
+}
+
+label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+    .form-steps-track {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.proposta-editar-footer {
+    margin-top: 8px;
+    padding-top: 24px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.proposta-acoes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.proposta-acoes-grid .btn {
+    width: 100%;
+    min-height: 48px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 12px;
+}
+
+.proposta-btn-salvar,
+.proposta-btn-excluir {
+    min-height: 52px;
+    border-radius: 14px;
+    font-weight: 700;
+}
+
+@media (min-width: 992px) {
+    .proposta-acoes-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 575px) {
+    .proposta-acoes-grid {
         grid-template-columns: 1fr;
     }
 }

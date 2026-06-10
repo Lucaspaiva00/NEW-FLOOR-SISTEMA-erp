@@ -1,4 +1,3 @@
-const API_URL = "https://new-floor-sistema-erp.onrender.com";
 const CLOUDINARY_UPLOAD_URL =
   "https://api.cloudinary.com/v1_1/dfdinbti3/image/upload";
 
@@ -14,47 +13,6 @@ const formEditarCliente = document.getElementById("formEditarCliente");
 const pesquisaCliente = document.getElementById("pesquisaCliente");
 
 let clientesCache = [];
-
-function pegarValor(id) {
-  const elemento = document.getElementById(id);
-
-  if (!elemento) return null;
-
-  const valor = elemento.value;
-
-  if (valor === undefined || valor === null) return null;
-
-  const valorTratado = String(valor).trim();
-
-  return valorTratado === "" ? null : valorTratado;
-}
-
-function pegarDecimal(id) {
-  const valor = pegarValor(id);
-
-  if (!valor) return null;
-
-  return valor.replace(",", ".");
-}
-
-function formatarDataParaInput(data) {
-  if (!data) return "";
-
-  return String(data).split("T")[0];
-}
-
-function textoSeguro(valor) {
-  if (valor === null || valor === undefined || valor === "") {
-    return "-";
-  }
-
-  return String(valor)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
 
 function montarBodyCliente(prefixo = "") {
   const campo = (nome) => {
@@ -124,9 +82,9 @@ function montarBodyCliente(prefixo = "") {
 
     statusCliente: pegarValor(campo("statusCliente")) || "Novo",
 
-    limiteCredito: pegarDecimal(campo("limiteCredito")),
+    limiteCredito: pegarNumero(campo("limiteCredito")),
 
-    descontoPadrao: pegarDecimal(campo("descontoPadrao")),
+    descontoPadrao: pegarNumero(campo("descontoPadrao")),
 
     logo: pegarValor(campo("logo")),
 
@@ -210,12 +168,128 @@ async function resolverLogo(prefixo = "") {
   return pegarValor(campo("logo"));
 }
 
-function preencherCampo(id, valor) {
-  const elemento = document.getElementById(id);
+function preencherCampoMascarado(id, valor, mascara) {
+  if (!valor) {
+    preencherCampo(id, "");
+    return;
+  }
 
-  if (!elemento) return;
+  preencherCampo(id, formatarComMascara(valor, mascara));
+}
 
-  elemento.value = valor ?? "";
+const TOTAL_STEPS_CLIENTE = 4;
+
+function validarStepCliente(step, prefixo = "") {
+  if (step !== 1) return true;
+
+  const campo = (nome) => {
+    if (!prefixo) return nome;
+
+    return `${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`;
+  };
+
+  const razaoSocial = pegarValor(campo("razaoSocial"));
+  const nomeFantasia = pegarValor(campo("nomeFantasia"));
+
+  if (!razaoSocial && !nomeFantasia) {
+    alert("Informe a razão social ou nome fantasia.");
+    return false;
+  }
+
+  return true;
+}
+
+function criarWizardCliente({
+  form,
+  modal,
+  nav,
+  btnProximo,
+  btnSalvar,
+  prefixo = "",
+}) {
+  let stepAtual = 1;
+
+  function atualizarBotoes() {
+    btnProximo?.classList.toggle("d-none", stepAtual === TOTAL_STEPS_CLIENTE);
+    btnSalvar?.classList.toggle("d-none", stepAtual !== TOTAL_STEPS_CLIENTE);
+  }
+
+  function irParaStep(step) {
+    stepAtual = Math.max(1, Math.min(TOTAL_STEPS_CLIENTE, step));
+
+    form.querySelectorAll(".form-step").forEach((elemento) => {
+      elemento.classList.toggle(
+        "active",
+        Number(elemento.dataset.step) === stepAtual,
+      );
+    });
+
+    nav?.querySelectorAll(".step-pill").forEach((pill) => {
+      const numero = Number(pill.dataset.step);
+
+      pill.classList.toggle("active", numero === stepAtual);
+      pill.classList.toggle("done", numero < stepAtual);
+    });
+
+    atualizarBotoes();
+  }
+
+  btnProximo?.addEventListener("click", () => {
+    if (!validarStepCliente(stepAtual, prefixo)) return;
+
+    irParaStep(stepAtual + 1);
+  });
+
+  nav?.querySelectorAll(".step-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      const destino = Number(pill.dataset.step);
+
+      if (destino <= stepAtual) {
+        irParaStep(destino);
+        return;
+      }
+
+      if (validarStepCliente(stepAtual, prefixo)) {
+        irParaStep(destino);
+      }
+    });
+  });
+
+  modal?.addEventListener("hidden.bs.modal", () => {
+    irParaStep(1);
+  });
+
+  irParaStep(1);
+
+  return { irParaStep };
+}
+
+function atualizarCamposPorTipo(prefixo = "") {
+  const campo = (nome) => {
+    if (!prefixo) return nome;
+
+    return `${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`;
+  };
+
+  const form = prefixo ? formEditarCliente : formCliente;
+  const tipo = pegarValor(campo("tipo")) || "PESSOA_JURIDICA";
+  const isPj = tipo === "PESSOA_JURIDICA";
+
+  form.querySelectorAll(".campo-pj").forEach((elemento) => {
+    elemento.classList.toggle("campo-oculto", !isPj);
+  });
+
+  form.querySelectorAll(".campo-pf").forEach((elemento) => {
+    elemento.classList.toggle("campo-oculto", isPj);
+  });
+
+  const labelRazao = document.getElementById(
+    prefixo ? "labelEditarRazaoSocial" : "labelRazaoSocial",
+  );
+
+  if (labelRazao) {
+    labelRazao.textContent = isPj ? "Razão social" : "Nome completo";
+  }
 }
 
 async function carregarClientes() {
@@ -362,7 +436,11 @@ function renderizarClientes(clientes) {
             <div class="cliente-item">
                 <span>CNPJ / CPF</span>
                 <strong>
-                    ${textoSeguro(cliente.cnpj || cliente.cpf)}
+                    ${textoSeguro(
+                      cliente.cnpj
+                        ? formatarComMascara(cliente.cnpj, "cnpj")
+                        : formatarComMascara(cliente.cpf, "cpf"),
+                    )}
                 </strong>
             </div>
 
@@ -449,6 +527,8 @@ formCliente.addEventListener("submit", async (e) => {
 
     preencherCampo("pais", "Brasil");
     atualizarPreviewLogo("logoPreview", null);
+    atualizarCamposPorTipo();
+    wizardCliente.irParaStep(1);
 
     carregarClientes();
   } catch (error) {
@@ -480,18 +560,17 @@ async function abrirModalCliente(id) {
 
     preencherCampo("editarRazaoSocial", cliente.razaoSocial);
 
-    preencherCampo("editarCnpj", cliente.cnpj);
-
-    preencherCampo("editarCpf", cliente.cpf);
+    preencherCampoMascarado("editarCnpj", cliente.cnpj, "cnpj");
+    preencherCampoMascarado("editarCpf", cliente.cpf, "cpf");
 
     preencherCampo("editarInscricaoEstadual", cliente.inscricaoEstadual);
 
     preencherCampo("editarResponsavel", cliente.responsavel);
 
-    preencherCampo("editarTelefone1", cliente.telefone1);
-    preencherCampo("editarTelefone2", cliente.telefone2);
-    preencherCampo("editarTelefone3", cliente.telefone3);
-    preencherCampo("editarTelefone4", cliente.telefone4);
+    preencherCampoMascarado("editarTelefone1", cliente.telefone1, "telefone");
+    preencherCampoMascarado("editarTelefone2", cliente.telefone2, "telefone");
+    preencherCampoMascarado("editarTelefone3", cliente.telefone3, "telefone");
+    preencherCampoMascarado("editarTelefone4", cliente.telefone4, "telefone");
 
     preencherCampo("editarEmail1", cliente.email1);
     preencherCampo("editarEmail2", cliente.email2);
@@ -500,7 +579,7 @@ async function abrirModalCliente(id) {
 
     preencherCampo("editarSite", cliente.site);
 
-    preencherCampo("editarCep", cliente.cep);
+    preencherCampoMascarado("editarCep", cliente.cep, "cep");
 
     preencherCampo("editarEndereco", cliente.endereco);
 
@@ -544,6 +623,9 @@ async function abrirModalCliente(id) {
     if (fileInputEditar) {
       fileInputEditar.value = "";
     }
+
+    atualizarCamposPorTipo("editar");
+    wizardEditarCliente.irParaStep(1);
 
     const modal = new bootstrap.Modal(
       document.getElementById("modalEditarCliente"),
@@ -662,9 +744,7 @@ document
 |--------------------------------------------------------------------------
 */
 
-async function consultarCnpj() {
-  const campoCnpj = document.getElementById("cnpj");
-
+async function consultarCnpj(campoCnpj, prefixo = "") {
   if (!campoCnpj) return;
 
   const cnpj = campoCnpj.value.replace(/\D/g, "");
@@ -672,6 +752,12 @@ async function consultarCnpj() {
   if (cnpj.length !== 14) {
     return;
   }
+
+  const campo = (nome) => {
+    if (!prefixo) return nome;
+
+    return `${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`;
+  };
 
   try {
     campoCnpj.disabled = true;
@@ -686,47 +772,167 @@ async function consultarCnpj() {
 
     const empresa = await response.json();
 
-    preencherCampo("razaoSocial", empresa.razao_social);
-
-    preencherCampo("nomeFantasia", empresa.nome_fantasia);
-
-    preencherCampo("cep", empresa.cep);
-
-    preencherCampo("endereco", empresa.logradouro);
-
-    preencherCampo("numero", empresa.numero);
-
-    preencherCampo("bairro", empresa.bairro);
-
-    preencherCampo("cidade", empresa.municipio);
-
-    preencherCampo("estado", empresa.uf);
-
-    preencherCampo("email1", empresa.email);
-
-    preencherCampo("telefone1", empresa.ddd_telefone_1);
+    preencherCampo(campo("razaoSocial"), empresa.razao_social);
+    preencherCampo(campo("nomeFantasia"), empresa.nome_fantasia);
+    preencherCampoMascarado(campo("cep"), empresa.cep, "cep");
+    preencherCampo(campo("endereco"), empresa.logradouro);
+    preencherCampo(campo("numero"), empresa.numero);
+    preencherCampo(campo("bairro"), empresa.bairro);
+    preencherCampo(campo("cidade"), empresa.municipio);
+    preencherCampo(campo("estado"), empresa.uf);
+    preencherCampo(campo("email1"), empresa.email);
+    preencherCampoMascarado(
+      campo("telefone1"),
+      empresa.ddd_telefone_1,
+      "telefone",
+    );
   } catch (error) {
     console.log(error);
-
     alert("Não foi possível consultar o CNPJ.");
   } finally {
     campoCnpj.disabled = false;
   }
 }
 
-/*
-|--------------------------------------------------------------------------
-| EVENTO CNPJ
-|--------------------------------------------------------------------------
-*/
+function preencherClienteMock() {
+  const sufixo = Date.now().toString().slice(-4);
 
-const campoCnpj = document.getElementById("cnpj");
+  preencherCampo("tipo", "PESSOA_JURIDICA");
+  atualizarCamposPorTipo();
 
-if (campoCnpj) {
-  campoCnpj.addEventListener("blur", consultarCnpj);
+  preencherCampo("razaoSocial", `Empresa Mock Ltda ${sufixo}`);
+  preencherCampo("nomeFantasia", `Mock Floor ${sufixo}`);
+  preencherCampoMascarado("cnpj", "11444777000161", "cnpj");
+  preencherCampo("inscricaoEstadual", "123456789");
+  preencherCampo("responsavel", "João Silva");
+
+  preencherCampoMascarado("telefone1", "11987654321", "telefone");
+  preencherCampoMascarado("telefone2", "1133334444", "telefone");
+  preencherCampoMascarado("telefone3", "11987654321", "telefone");
+
+  preencherCampo("email1", `contato.mock${sufixo}@email.com`);
+  preencherCampo("site", "https://www.mockfloor.com.br");
+  preencherCampo("origemLead", "Teste interno");
+
+  preencherCampoMascarado("cep", "01310100", "cep");
+  preencherCampo("endereco", "Av. Paulista");
+  preencherCampo("numero", "1000");
+  preencherCampo("complemento", "Sala 42");
+  preencherCampo("bairro", "Bela Vista");
+  preencherCampo("cidade", "São Paulo");
+  preencherCampo("estado", "SP");
+  preencherCampo("pais", "Brasil");
+
+  preencherCampo("statusCliente", "Novo");
+  preencherCampo("limiteCredito", "50000");
+  preencherCampo("descontoPadrao", "5");
+  preencherCampo("tags", "mock, teste");
+  preencherCampo(
+    "observacoes",
+    "Cliente gerado automaticamente para testes do sistema.",
+  );
 }
 
+function configurarConsultaCnpj(idCampo, prefixo = "") {
+  const campo = document.getElementById(idCampo);
+
+  if (!campo) return;
+
+  campo.addEventListener("blur", () => consultarCnpj(campo, prefixo));
+}
+
+async function consultarCep(campoCep, prefixo = "") {
+  if (!campoCep) return;
+
+  const cep = campoCep.value.replace(/\D/g, "");
+
+  if (cep.length !== 8) return;
+
+  const campo = (nome) => {
+    if (!prefixo) return nome;
+
+    return `${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`;
+  };
+
+  try {
+    campoCep.disabled = true;
+
+    const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+
+    if (!response.ok) {
+      throw new Error("CEP não encontrado");
+    }
+
+    const endereco = await response.json();
+
+    if (endereco.erro) {
+      throw new Error("CEP não encontrado");
+    }
+
+    preencherCampoMascarado(campo("cep"), endereco.cep, "cep");
+    preencherCampo(campo("endereco"), endereco.logradouro);
+    preencherCampo(campo("bairro"), endereco.bairro);
+    preencherCampo(campo("cidade"), endereco.localidade);
+    preencherCampo(campo("estado"), endereco.uf);
+    preencherCampo(campo("pais"), "Brasil");
+
+    if (endereco.complemento && !pegarValor(campo("complemento"))) {
+      preencherCampo(campo("complemento"), endereco.complemento);
+    }
+  } catch (error) {
+    console.log(error);
+    alert("Não foi possível consultar o CEP.");
+  } finally {
+    campoCep.disabled = false;
+  }
+}
+
+function configurarConsultaCep(idCampo, prefixo = "") {
+  const campo = document.getElementById(idCampo);
+
+  if (!campo) return;
+
+  campo.addEventListener("blur", () => consultarCep(campo, prefixo));
+}
+
+document.getElementById("btnMockCliente")?.addEventListener("click", () => {
+  preencherClienteMock();
+});
+
+document.getElementById("tipo")?.addEventListener("change", () => {
+  atualizarCamposPorTipo();
+});
+
+document.getElementById("editarTipo")?.addEventListener("change", () => {
+  atualizarCamposPorTipo("editar");
+});
+
+configurarMascaras(formCliente);
+configurarMascaras(formEditarCliente);
+configurarConsultaCnpj("cnpj");
+configurarConsultaCnpj("editarCnpj", "editar");
+configurarConsultaCep("cep");
+configurarConsultaCep("editarCep", "editar");
 configurarPreviewLogo("logoFile", "logoPreview");
 configurarPreviewLogo("editarLogoFile", "editarLogoPreview");
+atualizarCamposPorTipo();
+atualizarCamposPorTipo("editar");
+
+const wizardCliente = criarWizardCliente({
+  form: formCliente,
+  modal: document.getElementById("modalCliente"),
+  nav: document.getElementById("stepsNavCliente"),
+  btnProximo: document.getElementById("btnStepProximoCliente"),
+  btnSalvar: document.getElementById("btnSalvarCliente"),
+});
+
+const wizardEditarCliente = criarWizardCliente({
+  form: formEditarCliente,
+  modal: document.getElementById("modalEditarCliente"),
+  nav: document.getElementById("stepsNavEditarCliente"),
+  btnProximo: document.getElementById("btnStepProximoEditar"),
+  btnSalvar: document.getElementById("btnSalvarEditar"),
+  prefixo: "editar",
+});
 
 carregarClientes();

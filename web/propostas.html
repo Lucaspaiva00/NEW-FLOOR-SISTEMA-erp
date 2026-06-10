@@ -9,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/propostas.css">
+    <link rel="stylesheet" href="css/kanban.css">
     <link rel="stylesheet" href="css/menu-mobile.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
@@ -104,7 +105,7 @@
 
             </div>
 
-            <div class="kanban">
+            <div class="kanban" id="kanbanBoard">
 
                 <div class="kanban-column">
                     <div class="kanban-header">
@@ -152,272 +153,246 @@
 
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
 
-            <div class="modal-content">
+            <div class="modal-content modal-premium">
 
-                <div class="modal-header border-0">
-                    <h5 class="modal-title">Nova proposta</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header border-0 w-100">
+                    <div>
+                        <h5 class="modal-title">Nova proposta</h5>
+                        <small class="text-muted">Cadastre uma nova proposta comercial</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 ms-auto">
+                        <button type="button" class="btn-mock" id="btnMockProposta">
+                            Preencher mock
+                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
                 </div>
 
                 <div class="modal-body">
 
+                    <div class="form-steps-track" id="stepsNavNovaProposta">
+                        <button type="button" class="step-pill active" data-step="1">1. Dados</button>
+                        <button type="button" class="step-pill" data-step="2">2. Equipe</button>
+                        <button type="button" class="step-pill" data-step="3">3. Valores</button>
+                        <button type="button" class="step-pill" data-step="4">4. Finalização</button>
+                    </div>
+
                     <form id="formNovaProposta">
 
-                        <div class="form-section">
-
-                            <div class="section-title">Informações principais</div>
-
-                            <div class="row">
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Número</label>
-                                    <input type="text" id="numero" class="form-control premium-input-light"
-                                        placeholder="Gerado automaticamente" readonly>
-                                </div>
-
-                                <div class="col-md-5 mb-3">
-                                    <label>Título *</label>
-                                    <input type="text" id="titulo" class="form-control premium-input-light" required>
-                                </div>
-
-                                <div class="col-md-4 mb-3">
-                                    <label>Cliente *</label>
-                                    <select id="clienteId" class="form-control premium-input-light" required></select>
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label>Subtítulo</label>
-                                    <input type="text" id="subtitulo" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Status</label>
-                                    <select id="status" class="form-control premium-input-light">
-                                        <option value="RASCUNHO">ENCAMINHADA</option>
-                                        <option value="PENDENTE">PENDENTE</option>
-                                        <option value="APROVADA">APROVADA</option>
-                                        <option value="EXECUTANDO">EXECUTANDO</option>
-                                        <option value="FATURADA">FATURADA</option>
-                                        <option value="RECUSADA">RECUSADA</option>
-                                    </select>
-                                </div>
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Prioridade</label>
-                                    <input type="text" id="prioridade" class="form-control premium-input-light"
-                                        placeholder="Baixa, Média, Alta">
-                                </div>
-
-                                <div class="col-12 mb-3">
-                                    <label>Descrição</label>
-                                    <textarea id="descricao"
-                                        class="form-control premium-input-light textarea-premium"></textarea>
-                                </div>
-
-                                <div class="col-12 mb-3">
-                                    <label>Escopo</label>
-                                    <textarea id="escopo"
-                                        class="form-control premium-input-light textarea-premium"></textarea>
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div class="form-section">
-
-                            <div class="section-title">Responsáveis e origem</div>
-
-                            <div class="row">
-
-                                <div class="col-md-4 mb-3">
-                                    <label>Responsável</label>
-                                    <input type="text" id="responsavel" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-md-4 mb-3">
-                                    <label>Vendedor</label>
-
-                                    <select id="vendedor" class="form-control premium-input-light">
-
-                                        <option value="">
-                                            Selecione um vendedor
-                                        </option>
-
-                                    </select>
-                                </div>
-
-                                <div class="col-md-4 mb-3">
-                                    <label>Origem</label>
-                                    <input type="text" id="origem" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label>Etapa atual</label>
-                                    <input type="text" id="etapaAtual" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label>Assinatura cliente</label>
-                                    <input type="text" id="assinaturaCliente" class="form-control premium-input-light">
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div class="form-section">
-
-                            <div class="section-title">Prazos e datas</div>
-
-                            <div class="row">
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Validade dias</label>
-                                    <input type="number" id="validadeDias" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Data validade</label>
-                                    <input type="date" id="dataValidade" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Data aprovação</label>
-                                    <input type="date" id="dataAprovacao" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Data recusa</label>
-                                    <input type="date" id="dataRecusa" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-12 mb-3">
-                                    <label>Motivo recusa</label>
-                                    <textarea id="motivoRecusa"
-                                        class="form-control premium-input-light textarea-premium"></textarea>
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div class="form-section">
-
-                            <div class="section-title">Financeiro</div>
-
-                            <div class="row">
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Frete</label>
-                                    <input type="number" step="0.01" id="frete" class="form-control premium-input-light"
-                                        value="0">
-                                </div>
-
-                                <div class="col-md-4 mb-3">
-                                    <label>Forma pagamento</label>
-                                    <input type="text" id="formaPagamento" class="form-control premium-input-light">
-                                </div>
-
-                                <div class="col-md-4 mb-3">
-                                    <label>Condições pagamento</label>
-                                    <input type="text" id="condicoesPagamento" class="form-control premium-input-light">
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div class="form-section">
-
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <div class="section-title m-0">Itens da proposta</div>
-
-                                <button type="button" class="btn-add-item" id="btnAdicionarServico">
-                                    + Adicionar item
-                                </button>
-                            </div>
-
-                            <div id="listaItensProposta"></div>
-
-                        </div>
-
-                        <div class="form-section">
-
-                            <div class="section-title">Observações e links</div>
-
-                            <div class="row">
-
-                                <div class="col-12 mb-3">
-                                    <label>Observações</label>
-                                    <textarea id="observacoes"
-                                        class="form-control premium-input-light textarea-premium"></textarea>
-                                </div>
-
-                                <div class="col-12 mb-3">
-                                    <label>Observações internas</label>
-                                    <textarea id="observacoesInternas"
-                                        class="form-control premium-input-light textarea-premium"></textarea>
-                                </div>
-
-
-                            </div>
-
-                        </div>
-
-                        <div class="form-section">
-
-                            <div class="section-title">Controle do cliente</div>
-
-                            <div class="row">
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Aprovado cliente</label>
-                                    <div class="switch-row">
-                                        <input type="checkbox" id="aprovadoCliente">
-                                        <span>Sim</span>
+                        <div class="form-step active" data-step="1">
+                            <div class="form-step-panel">
+                                <div class="section-header">
+                                    <span class="section-icon">01</span>
+                                    <div>
+                                        <div class="section-title">Informações principais</div>
+                                        <p class="section-subtitle">Dados gerais da proposta</p>
                                     </div>
                                 </div>
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Enviado por e-mail</label>
-                                    <div class="switch-row">
-                                        <input type="checkbox" id="enviadoEmail">
-                                        <span>Sim</span>
+                                <div class="row g-3">
+                                    <div class="col-md-3 form-field">
+                                        <label for="numero">Número</label>
+                                        <input type="text" id="numero" class="form-control premium-input-light"
+                                            placeholder="Gerado automaticamente" readonly>
+                                    </div>
+                                    <div class="col-md-5 form-field">
+                                        <label for="titulo">Título *</label>
+                                        <input type="text" id="titulo" class="form-control premium-input-light" required>
+                                    </div>
+                                    <div class="col-md-4 form-field">
+                                        <label for="clienteId">Cliente *</label>
+                                        <select id="clienteId" class="form-control premium-input-light" required></select>
+                                    </div>
+                                    <div class="col-md-6 form-field">
+                                        <label for="subtitulo">Subtítulo</label>
+                                        <input type="text" id="subtitulo" class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="status">Status</label>
+                                        <select id="status" class="form-control premium-input-light">
+                                            <option value="RASCUNHO">ENCAMINHADA</option>
+                                            <option value="PENDENTE">PENDENTE</option>
+                                            <option value="APROVADA">APROVADA</option>
+                                            <option value="EXECUTANDO">EXECUTANDO</option>
+                                            <option value="FATURADA">FATURADA</option>
+                                            <option value="RECUSADA">RECUSADA</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="prioridade">Prioridade</label>
+                                        <input type="text" id="prioridade" class="form-control premium-input-light"
+                                            placeholder="Baixa, Média, Alta">
+                                    </div>
+                                    <div class="col-12 form-field">
+                                        <label for="descricao">Descrição</label>
+                                        <textarea id="descricao"
+                                            class="form-control premium-input-light textarea-premium"></textarea>
+                                    </div>
+                                    <div class="col-12 form-field">
+                                        <label for="escopo">Escopo</label>
+                                        <textarea id="escopo"
+                                            class="form-control premium-input-light textarea-premium"></textarea>
                                     </div>
                                 </div>
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Enviado WhatsApp</label>
-                                    <div class="switch-row">
-                                        <input type="checkbox" id="enviadoWhatsapp">
-                                        <span>Sim</span>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-3 mb-3">
-                                    <label>Visualizada</label>
-                                    <div class="switch-row">
-                                        <input type="checkbox" id="visualizada">
-                                        <span>Sim</span>
-                                    </div>
-                                </div>
-
                             </div>
-
                         </div>
 
-                        <div class="proposal-total">
-                            <span>Total da proposta</span>
-                            <h2 id="valorTotal">R$ 0,00</h2>
+                        <div class="form-step" data-step="2">
+                            <div class="form-step-panel">
+                                <div class="section-header">
+                                    <span class="section-icon">02</span>
+                                    <div>
+                                        <div class="section-title">Equipe e prazos</div>
+                                        <p class="section-subtitle">Responsáveis, origem e datas</p>
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-4 form-field">
+                                        <label for="responsavel">Responsável</label>
+                                        <input type="text" id="responsavel" class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-md-4 form-field">
+                                        <label for="vendedor">Vendedor</label>
+                                        <select id="vendedor" class="form-control premium-input-light">
+                                            <option value="">Selecione um vendedor</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 form-field">
+                                        <label for="origem">Origem</label>
+                                        <input type="text" id="origem" class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-md-6 form-field">
+                                        <label for="etapaAtual">Etapa atual</label>
+                                        <input type="text" id="etapaAtual" class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-md-6 form-field">
+                                        <label for="assinaturaCliente">Assinatura cliente</label>
+                                        <input type="text" id="assinaturaCliente"
+                                            class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="validadeDias">Validade dias</label>
+                                        <input type="number" id="validadeDias" class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="dataValidade">Data validade</label>
+                                        <input type="date" id="dataValidade" class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="dataAprovacao">Data aprovação</label>
+                                        <input type="date" id="dataAprovacao" class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="dataRecusa">Data recusa</label>
+                                        <input type="date" id="dataRecusa" class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-12 form-field">
+                                        <label for="motivoRecusa">Motivo recusa</label>
+                                        <textarea id="motivoRecusa"
+                                            class="form-control premium-input-light textarea-premium"></textarea>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <button class="btn-new w-100 mt-4">
-                            Salvar proposta
-                        </button>
+                        <div class="form-step" data-step="3">
+                            <div class="form-step-panel">
+                                <div class="section-header">
+                                    <span class="section-icon">03</span>
+                                    <div>
+                                        <div class="section-title">Valores e itens</div>
+                                        <p class="section-subtitle">Financeiro e serviços da proposta</p>
+                                    </div>
+                                </div>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-3 form-field">
+                                        <label for="frete">Frete</label>
+                                        <input type="number" step="0.01" id="frete"
+                                            class="form-control premium-input-light" value="0">
+                                    </div>
+                                    <div class="col-md-4 form-field">
+                                        <label for="formaPagamento">Forma pagamento</label>
+                                        <input type="text" id="formaPagamento" class="form-control premium-input-light">
+                                    </div>
+                                    <div class="col-md-5 form-field">
+                                        <label for="condicoesPagamento">Condições pagamento</label>
+                                        <input type="text" id="condicoesPagamento"
+                                            class="form-control premium-input-light">
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div class="section-title m-0">Itens da proposta</div>
+                                    <button type="button" class="btn-add-item" id="btnAdicionarServico">
+                                        + Adicionar item
+                                    </button>
+                                </div>
+                                <div id="listaItensProposta"></div>
+                                <div class="proposal-total mt-4">
+                                    <span>Total da proposta</span>
+                                    <h2 id="valorTotal">R$ 0,00</h2>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-step" data-step="4">
+                            <div class="form-step-panel">
+                                <div class="section-header">
+                                    <span class="section-icon">04</span>
+                                    <div>
+                                        <div class="section-title">Finalização</div>
+                                        <p class="section-subtitle">Observações e controle do cliente</p>
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-12 form-field">
+                                        <label for="observacoes">Observações</label>
+                                        <textarea id="observacoes"
+                                            class="form-control premium-input-light textarea-premium"></textarea>
+                                    </div>
+                                    <div class="col-12 form-field">
+                                        <label for="observacoesInternas">Observações internas</label>
+                                        <textarea id="observacoesInternas"
+                                            class="form-control premium-input-light textarea-premium"></textarea>
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="aprovadoCliente">Aprovado cliente</label>
+                                        <div class="switch-row">
+                                            <input type="checkbox" id="aprovadoCliente">
+                                            <span>Sim</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="enviadoEmail">Enviado por e-mail</label>
+                                        <div class="switch-row">
+                                            <input type="checkbox" id="enviadoEmail">
+                                            <span>Sim</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="enviadoWhatsapp">Enviado WhatsApp</label>
+                                        <div class="switch-row">
+                                            <input type="checkbox" id="enviadoWhatsapp">
+                                            <span>Sim</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 form-field">
+                                        <label for="visualizada">Visualizada</label>
+                                        <div class="switch-row">
+                                            <input type="checkbox" id="visualizada">
+                                            <span>Sim</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                     </form>
 
+                </div>
+
+                <div class="modal-footer modal-footer-premium border-0 d-flex gap-2">
+                    <button type="button" class="btn-new flex-fill" id="btnStepProximoNovaProposta">Próximo</button>
+                    <button type="submit" form="formNovaProposta" class="btn-new flex-fill d-none"
+                        id="btnSalvarNovaProposta">Salvar proposta</button>
                 </div>
 
             </div>
@@ -666,46 +641,41 @@
 
                         </div>
 
-                        <div class="d-flex gap-3">
-                            <button class="btn-new flex-fill">
-                                Salvar alterações
-                            </button>
-                            <div class="row mb-4">
-
-                                <div class="col-md-4">
-
-                                    <label>Template</label>
-
+                        <div class="proposta-editar-footer">
+                            <div class="row g-3">
+                                <div class="col-12 col-lg-4 form-field">
+                                    <label for="editarTemplateId">Template</label>
                                     <select id="editarTemplateId" class="form-control premium-input-light">
                                     </select>
-
                                 </div>
-
-                                <div class="col-md-8 d-flex align-items-end gap-2">
-
-                                    <button type="button" id="btnGerarPdf" class="btn btn-dark">
-                                        📄 Gerar PDF
-                                    </button>
-
-                                    <button type="button" id="btnVisualizarPdf" class="btn btn-primary">
-                                        👁 Visualizar
-                                    </button>
-
-                                    <button type="button" id="btnWhatsapp" class="btn btn-success">
-                                        💬 WhatsApp
-                                    </button>
-
-                                    <button type="button" id="btnEmail" class="btn btn-warning">
-                                        📧 E-mail
-                                    </button>
-
+                                <div class="col-12 col-lg-8">
+                                    <div class="proposta-acoes-grid">
+                                        <button type="button" id="btnGerarPdf" class="btn btn-dark">
+                                            📄 Gerar PDF
+                                        </button>
+                                        <button type="button" id="btnVisualizarPdf" class="btn btn-primary">
+                                            👁 Visualizar
+                                        </button>
+                                        <button type="button" id="btnWhatsapp" class="btn btn-success">
+                                            💬 WhatsApp
+                                        </button>
+                                        <button type="button" id="btnEmail" class="btn btn-warning">
+                                            📧 E-mail
+                                        </button>
+                                    </div>
                                 </div>
-
+                                <div class="col-12 col-sm-6">
+                                    <button type="submit" class="btn-new w-100 proposta-btn-salvar">
+                                        Salvar alterações
+                                    </button>
+                                </div>
+                                <div class="col-12 col-sm-6">
+                                    <button type="button" class="btn btn-danger w-100 proposta-btn-excluir"
+                                        id="btnExcluirProposta">
+                                        Excluir
+                                    </button>
+                                </div>
                             </div>
-
-                            <button type="button" class="btn btn-danger px-4" id="btnExcluirProposta">
-                                Excluir
-                            </button>
                         </div>
 
                     </form>
@@ -722,6 +692,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
     <script src="js/propostas.js"></script>
     <script src="js/propostas-acoes.js"></script>
     <script src="js/menu-mobile.js"></script>

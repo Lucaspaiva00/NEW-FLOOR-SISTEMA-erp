@@ -1,5 +1,3 @@
-const API_URL = "https://new-floor-sistema-erp.onrender.com";
-
 const token = JSON.parse(
     localStorage.getItem("usuarioLogado")
 )?.token;
@@ -14,77 +12,6 @@ const formEditarServico = document.getElementById("formEditarServico");
 const pesquisaServico = document.getElementById("pesquisaServico");
 
 let servicosCache = [];
-
-function pegarValor(id) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return null;
-
-    const valor = elemento.value;
-
-    if (valor === undefined || valor === null) return null;
-
-    const valorTratado = String(valor).trim();
-
-    return valorTratado === "" ? null : valorTratado;
-}
-
-function pegarDecimal(id) {
-    const valor = pegarValor(id);
-
-    if (!valor) return null;
-
-    return Number(valor.replace(",", "."));
-}
-
-function pegarCheckbox(id) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return false;
-
-    return elemento.checked;
-}
-
-function preencherCampo(id, valor) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return;
-
-    elemento.value = valor ?? "";
-}
-
-function preencherCheckbox(id, valor) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return;
-
-    elemento.checked = Boolean(valor);
-}
-
-function textoSeguro(valor) {
-    if (valor === null || valor === undefined || valor === "") {
-        return "-";
-    }
-
-    return String(valor)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
-function moeda(valor) {
-    const numero = Number(valor || 0);
-
-    return numero.toLocaleString(
-        "pt-BR",
-        {
-            style: "currency",
-            currency: "BRL"
-        }
-    );
-}
 
 function montarBodyServico(prefixo = "") {
     const campo = (nome) => {

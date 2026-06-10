@@ -1,5 +1,3 @@
-const API_URL = "https://new-floor-sistema-erp.onrender.com";
-
 const token = JSON.parse(
     localStorage.getItem("usuarioLogado")
 )?.token;
@@ -14,41 +12,6 @@ const formEditarVendedor = document.getElementById("formEditarVendedor");
 const pesquisaVendedor = document.getElementById("pesquisaVendedor");
 
 let vendedoresCache = [];
-
-function pegarValor(id) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return null;
-
-    const valor = elemento.value;
-
-    if (valor === undefined || valor === null) return null;
-
-    const valorTratado = String(valor).trim();
-
-    return valorTratado === "" ? null : valorTratado;
-}
-
-function preencherCampo(id, valor) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return;
-
-    elemento.value = valor ?? "";
-}
-
-function textoSeguro(valor) {
-    if (valor === null || valor === undefined || valor === "") {
-        return "-";
-    }
-
-    return String(valor)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
 
 function montarBodyVendedor(prefixo = "") {
 

@@ -1,5 +1,3 @@
-const API_URL = "https://new-floor-sistema-erp.onrender.com";
-
 const token = JSON.parse(
     localStorage.getItem("usuarioLogado")
 )?.token;
@@ -28,39 +26,6 @@ const propostaSelect =
 let agendaCache = [];
 let clientesCache = [];
 let propostasCache = [];
-
-/* ===================================================
-   HELPERS
-=================================================== */
-
-function textoSeguro(valor) {
-
-    if (!valor) return "-";
-
-    return String(valor);
-
-}
-
-function formatarData(data) {
-
-    if (!data) return "-";
-
-    return new Date(data)
-        .toLocaleString("pt-BR");
-
-}
-
-function pegarValor(id) {
-
-    return document.getElementById(id)?.value || null;
-
-}
-
-function pegarCheckbox(id) {
-
-    return document.getElementById(id)?.checked || false;
-
-}
 
 /* ===================================================
    CLIENTES
@@ -318,7 +283,7 @@ function renderizarAgenda(agendas) {
                         </span>
 
                         <strong>
-                            ${formatarData(agenda.dataInicio)}
+                            ${formatarDataHora(agenda.dataInicio)}
                         </strong>
 
                     </div>

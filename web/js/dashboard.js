@@ -1,5 +1,3 @@
-const API_URL = "https://new-floor-sistema-erp.onrender.com";
-
 const token = JSON.parse(
     localStorage.getItem("usuarioLogado")
 )?.token;
@@ -21,40 +19,6 @@ const headers = {
 let clientes = [];
 let propostas = [];
 let agenda = [];
-
-/* ===================================================
-   HELPERS
-=================================================== */
-
-function moeda(valor) {
-
-    return Number(valor || 0)
-        .toLocaleString(
-            "pt-BR",
-            {
-                style: "currency",
-                currency: "BRL"
-            }
-        );
-
-}
-
-function formatarData(data) {
-
-    if (!data) return "-";
-
-    return new Date(data)
-        .toLocaleDateString("pt-BR");
-
-}
-
-function textoSeguro(valor) {
-
-    if (!valor) return "-";
-
-    return String(valor);
-
-}
 
 /* ===================================================
    CARREGAR DADOS

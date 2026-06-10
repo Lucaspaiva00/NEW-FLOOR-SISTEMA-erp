@@ -142,18 +142,6 @@
     margin-bottom: 22px;
 }
 
-.premium-input-light {
-    height: 54px;
-    border-radius: 16px;
-    border: 1px solid #dbe2ea;
-    background: white;
-    padding: 0 16px;
-}
-
-.textarea-premium {
-    min-height: 120px;
-    padding-top: 14px;
-}
 
 .modal-content {
     border: none;
