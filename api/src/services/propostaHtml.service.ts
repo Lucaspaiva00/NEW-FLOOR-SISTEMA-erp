@@ -1,10 +1,174 @@
-import { Prisma } from "@prisma/client";
+import fs from "fs";
+import path from "path";
 
 interface DadosProposta {
     proposta: any;
     cliente: any;
     itens: any[];
     template: any;
+}
+
+function caminhoAssetPublico(
+    ...partes: string[]
+): string {
+
+    const candidatos = [
+        path.join(__dirname, "..", "..", "public", ...partes),
+        path.join(__dirname, "..", "public", ...partes),
+        path.join(process.cwd(), "public", ...partes)
+    ];
+
+    for (const candidato of candidatos) {
+
+        if (fs.existsSync(candidato)) {
+            return candidato;
+        }
+
+    }
+
+    return candidatos[0];
+
+}
+
+const LOGO_PADRAO = caminhoAssetPublico(
+    "assets",
+    "newfloor-logo.jpeg"
+);
+
+function nomeCliente(
+    cliente?: any
+): string {
+
+    if (!cliente) {
+        return "Cliente";
+    }
+
+    const nome =
+        cliente.nomeFantasia ||
+        cliente.razaoSocial ||
+        cliente.nome ||
+        cliente.responsavel;
+
+    if (
+        !nome ||
+        nome === "undefined"
+    ) {
+        return "Cliente";
+    }
+
+    return String(nome);
+
+}
+
+function logoParaDataUri(
+    caminho: string
+): string | null {
+
+    try {
+
+        if (!fs.existsSync(caminho)) {
+            return null;
+        }
+
+        const buffer =
+            fs.readFileSync(caminho);
+
+        const ext =
+            path.extname(caminho)
+                .slice(1)
+                .toLowerCase();
+
+        const mime =
+            ext === "jpg"
+                ? "jpeg"
+                : ext;
+
+        return `data:image/${mime};base64,${buffer.toString("base64")}`;
+
+    } catch {
+
+        return null;
+
+    }
+
+}
+
+async function imagemUrlParaDataUri(
+    url: string
+): Promise<string | null> {
+
+    try {
+
+        const response =
+            await fetch(url);
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const buffer =
+            Buffer.from(
+                await response.arrayBuffer()
+            );
+
+        const contentType =
+            response.headers.get("content-type") ||
+            "image/jpeg";
+
+        return `data:${contentType};base64,${buffer.toString("base64")}`;
+
+    } catch {
+
+        return null;
+
+    }
+
+}
+
+async function resolverImagemSrc(
+    logo?: string | null,
+    fallbackCaminho?: string
+): Promise<string | null> {
+
+    if (logo) {
+
+        if (logo.startsWith("data:")) {
+            return logo;
+        }
+
+        if (
+            logo.startsWith("http://") ||
+            logo.startsWith("https://")
+        ) {
+
+            const embutida =
+                await imagemUrlParaDataUri(logo);
+
+            if (embutida) {
+                return embutida;
+            }
+
+            return logo;
+
+        }
+
+        const caminhoCustom = path.isAbsolute(logo)
+            ? logo
+            : path.join(
+                process.cwd(),
+                logo.replace(/^\//, "")
+            );
+
+        return logoParaDataUri(caminhoCustom);
+
+    }
+
+    if (fallbackCaminho) {
+        return logoParaDataUri(fallbackCaminho);
+    }
+
+    return null;
+
 }
 
 function moeda(valor: any): string {
@@ -20,12 +184,12 @@ function dataBR(data?: Date | string | null): string {
     return new Date(data).toLocaleDateString("pt-BR");
 }
 
-export function gerarHtmlProposta({
+export async function gerarHtmlProposta({
     proposta,
     cliente,
     itens,
     template
-}: DadosProposta): string {
+}: DadosProposta): Promise<string> {
 
     const corPrimaria =
         template?.corPrimaria ||
@@ -34,6 +198,25 @@ export function gerarHtmlProposta({
     const corSecundaria =
         template?.corSecundaria ||
         "#f3f4f6";
+
+    const exibirLogo =
+        template?.exibirLogo !== false;
+
+    const [logoSrc, clienteLogoSrc] =
+        await Promise.all([
+
+            exibirLogo
+                ? resolverImagemSrc(
+                    template?.logo,
+                    LOGO_PADRAO
+                )
+                : Promise.resolve(null),
+
+            cliente?.logo
+                ? resolverImagemSrc(cliente.logo)
+                : Promise.resolve(null)
+
+        ]);
 
     const subtotalCalculado = itens.reduce(
         (acc, item) =>
@@ -207,13 +390,36 @@ max-width:180px;
 max-height:80px;
 }
 
-.empresa h1{
-font-size:28px;
-color:${corPrimaria};
-margin-bottom:8px;
+.cliente-card{
+display:flex;
+gap:20px;
+align-items:flex-start;
 }
 
-.empresa p{
+.logo-cliente{
+max-width:140px;
+max-height:90px;
+object-fit:contain;
+flex-shrink:0;
+}
+
+.cliente-dados{
+flex:1;
+}
+
+.empresa{
+display:flex;
+align-items:center;
+gap:16px;
+}
+
+.empresa-text h2{
+font-size:22px;
+color:${corPrimaria};
+margin-bottom:4px;
+}
+
+.empresa-text p{
 margin:2px 0;
 }
 
@@ -350,23 +556,30 @@ text-align:center;
 
 <div class="empresa">
 
-${template?.logo
+${logoSrc
             ? `
 <img
-src="${template.logo}"
+src="${logoSrc}"
 class="logo"
+alt="NEW FLOOR"
 />
 `
             : ""
         }
 
+<div class="empresa-text">
+
 <h2>
-NEW FLOOR PISOS E REVESTIMENTOS
+${template?.cabecalho ||
+        "NEW FLOOR PISOS E REVESTIMENTOS"}
 </h2>
 
 <p>
-Proposta Técnica Comercial
+${template?.textoApresentacao ||
+        "Proposta Técnica Comercial"}
 </p>
+
+</div>
 
 </div>
 
@@ -396,11 +609,24 @@ ${dataBR(proposta.dataValidade)}
 Dados do Cliente
 </div>
 
-<div class="card grid">
+<div class="card cliente-card">
+
+${clienteLogoSrc
+            ? `
+<img
+src="${clienteLogoSrc}"
+class="logo-cliente"
+alt="Logo do cliente"
+/>
+`
+            : ""
+        }
+
+<div class="cliente-dados grid">
 
 <div class="campo">
 <strong>Cliente</strong>
-${cliente.nome || "-"}
+${nomeCliente(cliente)}
 </div>
 
 <div class="campo">
@@ -410,12 +636,16 @@ ${cliente.responsavel || "-"}
 
 <div class="campo">
 <strong>Email</strong>
-${cliente.email || "-"}
+${cliente.email1 ||
+        cliente.email ||
+        "-"}
 </div>
 
 <div class="campo">
 <strong>Telefone</strong>
-${cliente.telefone || "-"}
+${cliente.telefone1 ||
+        cliente.telefone ||
+        "-"}
 </div>
 
 <div class="campo">
@@ -605,7 +835,7 @@ NEW FLOOR
 </div>
 
 <div class="assinatura">
-${cliente.nome}
+${nomeCliente(cliente)}
 </div>
 
 </div>
