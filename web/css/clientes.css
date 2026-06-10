@@ -1,3 +1,27 @@
+ .logo-preview {
+     width: 100%;
+     min-height: 80px;
+     border: 1px dashed #cbd5e1;
+     border-radius: 14px;
+     background: white;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     color: #64748b;
+     font-size: 13px;
+     padding: 10px;
+     text-align: center;
+     overflow: hidden;
+     margin-top: 8px;
+ }
+
+ .logo-preview img {
+     max-width: 100%;
+     max-height: 120px;
+     object-fit: contain;
+     border-radius: 10px;
+ }
+
  .clientes-grid {
      display: grid;
      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));

@@ -49,33 +49,33 @@ model Cliente {
   telefone2         String?
   telefone3         String?
   telefone4         String?
-
-  email1         String?
-  email2         String?
-  email3         String?
-  email4         String?
-  site           String?
-  cep            String?
-  endereco       String?
-  numero         String?
-  complemento    String?
-  bairro         String?
-  cidade         String?
-  estado         String?
-  pais           String?    @default("Brasil")
-  latitude       String?
-  longitude      String?
-  observacoes    String?    @db.Text
-  origemLead     String?
-  tags           String?
-  statusCliente  String?
-  limiteCredito  Decimal?   @db.Decimal(10, 2)
-  descontoPadrao Decimal?   @db.Decimal(10, 2)
-  dataNascimento DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  propostas      Proposta[]
-  agendas        Agenda[]
+  logo              String?
+  email1            String?
+  email2            String?
+  email3            String?
+  email4            String?
+  site              String?
+  cep               String?
+  endereco          String?
+  numero            String?
+  complemento       String?
+  bairro            String?
+  cidade            String?
+  estado            String?
+  pais              String?     @default("Brasil")
+  latitude          String?
+  longitude         String?
+  observacoes       String?     @db.Text
+  origemLead        String?
+  tags              String?
+  statusCliente     String?
+  limiteCredito     Decimal?    @db.Decimal(10, 2)
+  descontoPadrao    Decimal?    @db.Decimal(10, 2)
+  dataNascimento    DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  propostas         Proposta[]
+  agendas           Agenda[]
 }
 
 model Servico {
