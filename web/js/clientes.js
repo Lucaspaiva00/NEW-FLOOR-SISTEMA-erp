@@ -14,6 +14,139 @@ const pesquisaCliente = document.getElementById("pesquisaCliente");
 
 let clientesCache = [];
 
+const MAX_CONTATOS = 4;
+
+function idCampoContato(tipo, index, prefixo = "") {
+  const nome = `${tipo}${index}`;
+
+  if (!prefixo) return nome;
+
+  return `${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`;
+}
+
+function pegarGrupoContato(prefixo, tipo) {
+  const seletor = `[data-contato-grupo][data-prefix="${prefixo}"] [data-tipo="${tipo}"]`;
+
+  return document.querySelector(seletor);
+}
+
+function contatosVisiveis(lista) {
+  return [...lista.querySelectorAll(".contato-item")].filter(
+    (item) => !item.classList.contains("campo-oculto"),
+  );
+}
+
+function atualizarBotaoAdicionarContato(grupo, tipo) {
+  const lista = grupo.querySelector(`[data-tipo="${tipo}"]`);
+  const botao = grupo.querySelector(
+    `.btn-contato-adicionar[data-tipo="${tipo}"]`,
+  );
+
+  if (!lista || !botao) return;
+
+  const visiveis = contatosVisiveis(lista).length;
+  botao.disabled = visiveis >= MAX_CONTATOS;
+}
+
+function revelarProximoContato(prefixo, tipo) {
+  const lista = pegarGrupoContato(prefixo, tipo);
+
+  if (!lista) return;
+
+  const proximo = lista.querySelector(".contato-extra.campo-oculto");
+
+  if (!proximo) return;
+
+  proximo.classList.remove("campo-oculto");
+  proximo.querySelector("input")?.focus();
+
+  const grupo = lista.closest("[data-contato-grupo]");
+  if (grupo) atualizarBotaoAdicionarContato(grupo, tipo);
+}
+
+function removerContato(item, prefixo, tipo) {
+  const input = item.querySelector("input");
+
+  if (input) input.value = "";
+
+  item.classList.add("campo-oculto");
+
+  const grupo = item.closest("[data-contato-grupo]");
+  if (grupo) atualizarBotaoAdicionarContato(grupo, tipo);
+}
+
+function sincronizarVisibilidadeContatos(prefixo = "") {
+  ["telefone", "email"].forEach((tipo) => {
+    const lista = pegarGrupoContato(prefixo, tipo);
+
+    if (!lista) return;
+
+    for (let i = 2; i <= MAX_CONTATOS; i++) {
+      const item = lista.querySelector(`[data-index="${i}"]`);
+      const valor = pegarValor(idCampoContato(tipo, i, prefixo));
+
+      if (item) {
+        item.classList.toggle("campo-oculto", !valor);
+      }
+    }
+
+    const grupo = lista.closest("[data-contato-grupo]");
+    if (grupo) atualizarBotaoAdicionarContato(grupo, tipo);
+  });
+}
+
+function resetarContatos(prefixo = "") {
+  ["telefone", "email"].forEach((tipo) => {
+    const lista = pegarGrupoContato(prefixo, tipo);
+
+    if (!lista) return;
+
+    lista.querySelectorAll(".contato-extra").forEach((item) => {
+      item.classList.add("campo-oculto");
+    });
+
+    const grupo = lista.closest("[data-contato-grupo]");
+    if (grupo) atualizarBotaoAdicionarContato(grupo, tipo);
+  });
+}
+
+function configurarContatosDinamicos() {
+  document.querySelectorAll("[data-contato-grupo]").forEach((grupo) => {
+    const prefixo = grupo.dataset.prefix || "";
+
+    grupo.querySelectorAll(".btn-contato-adicionar").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        revelarProximoContato(prefixo, botao.dataset.tipo);
+      });
+    });
+
+    grupo.querySelectorAll(".contato-item.contato-extra").forEach((item) => {
+      const lista = item.closest("[data-tipo]");
+      const tipo = lista?.dataset.tipo;
+
+      item.querySelector(".btn-contato-remover")?.addEventListener("click", () => {
+        removerContato(item, prefixo, tipo);
+      });
+    });
+
+    ["telefone", "email"].forEach((tipo) => {
+      atualizarBotaoAdicionarContato(grupo, tipo);
+    });
+  });
+}
+
+function formatarContatosExtras(valores) {
+  const preenchidos = valores.filter(Boolean);
+
+  if (!preenchidos.length) return textoSeguro("");
+
+  if (preenchidos.length === 1) {
+    return textoSeguro(preenchidos[0]);
+  }
+
+  return `${textoSeguro(preenchidos[0])} <span class="contato-mais">+${preenchidos.length - 1}</span>`;
+}
+
 function montarBodyCliente(prefixo = "") {
   const campo = (nome) => {
     if (!prefixo) return nome;
@@ -334,6 +467,32 @@ function atualizarKpis(clientes) {
   ).length;
 }
 
+function setLoading(botao, carregando, textoPadrao) {
+  if (!botao) return;
+
+  botao.disabled = carregando;
+  botao.textContent = carregando ? "Salvando..." : textoPadrao;
+}
+
+function renderizarAvatarCliente(cliente) {
+  const nome = cliente.nomeFantasia || cliente.razaoSocial || "C";
+  const inicial = nome.charAt(0).toUpperCase();
+
+  if (cliente.logo) {
+    return `
+      <div class="cliente-avatar cliente-avatar--logo">
+        <img src="${textoSeguro(cliente.logo)}" alt="${textoSeguro(nome)}">
+      </div>
+    `;
+  }
+
+  return `
+    <div class="cliente-avatar">
+      ${textoSeguro(inicial)}
+    </div>
+  `;
+}
+
 function renderizarStatus(status) {
   if (status === "Ativo") {
     return `
@@ -373,22 +532,12 @@ function renderizarClientes(clientes) {
   }
 
   clientes.forEach((cliente) => {
-    const primeiraLetra = (cliente.nomeFantasia || cliente.razaoSocial || "C")
-      .charAt(0)
-      .toUpperCase();
-
     listaClientes.innerHTML += `
     <div class="cliente-card">
 
         <div class="cliente-header">
 
-            <div class="cliente-avatar">
-                ${textoSeguro(
-                  (cliente.nomeFantasia || cliente.razaoSocial || "C")
-                    .charAt(0)
-                    .toUpperCase(),
-                )}
-            </div>
+            ${renderizarAvatarCliente(cliente)}
 
             <div class="cliente-header-info">
                 <h3>
@@ -414,18 +563,23 @@ function renderizarClientes(clientes) {
             </div>
 
             <div class="cliente-item">
-                <span>Telefone</span>
-                <strong>${textoSeguro(cliente.telefone1)}</strong>
+                <span>Telefones</span>
+                <strong>${formatarContatosExtras([
+                  cliente.telefone1,
+                  cliente.telefone2,
+                  cliente.telefone3,
+                  cliente.telefone4,
+                ])}</strong>
             </div>
 
             <div class="cliente-item">
-                <span>Telefone 2</span>
-                <strong>${textoSeguro(cliente.telefone2)}</strong>
-            </div>
-
-            <div class="cliente-item">
-                <span>Email</span>
-                <strong>${textoSeguro(cliente.email1)}</strong>
+                <span>E-mails</span>
+                <strong>${formatarContatosExtras([
+                  cliente.email1,
+                  cliente.email2,
+                  cliente.email3,
+                  cliente.email4,
+                ])}</strong>
             </div>
 
             <div class="cliente-item">
@@ -472,7 +626,13 @@ if (pesquisaCliente) {
         cliente.nomeFantasia?.toLowerCase().includes(termo) ||
         cliente.razaoSocial?.toLowerCase().includes(termo) ||
         cliente.email1?.toLowerCase().includes(termo) ||
+        cliente.email2?.toLowerCase().includes(termo) ||
+        cliente.email3?.toLowerCase().includes(termo) ||
+        cliente.email4?.toLowerCase().includes(termo) ||
         cliente.telefone1?.toLowerCase().includes(termo) ||
+        cliente.telefone2?.toLowerCase().includes(termo) ||
+        cliente.telefone3?.toLowerCase().includes(termo) ||
+        cliente.telefone4?.toLowerCase().includes(termo) ||
         cliente.cnpj?.toLowerCase().includes(termo) ||
         cliente.cpf?.toLowerCase().includes(termo) ||
         cliente.cidade?.toLowerCase().includes(termo)
@@ -483,8 +643,13 @@ if (pesquisaCliente) {
   });
 }
 
+const btnSalvarCliente = document.getElementById("btnSalvarCliente");
+const btnSalvarEditar = document.getElementById("btnSalvarEditar");
+
 formCliente.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  setLoading(btnSalvarCliente, true, "Salvar cliente");
 
   try {
     const body = montarBodyCliente();
@@ -528,12 +693,15 @@ formCliente.addEventListener("submit", async (e) => {
     preencherCampo("pais", "Brasil");
     atualizarPreviewLogo("logoPreview", null);
     atualizarCamposPorTipo();
+    resetarContatos();
     wizardCliente.irParaStep(1);
 
     carregarClientes();
   } catch (error) {
     console.log(error);
     alert("Erro de conexão ao cadastrar cliente.");
+  } finally {
+    setLoading(btnSalvarCliente, false, "Salvar cliente");
   }
 });
 
@@ -625,6 +793,7 @@ async function abrirModalCliente(id) {
     }
 
     atualizarCamposPorTipo("editar");
+    sincronizarVisibilidadeContatos("editar");
     wizardEditarCliente.irParaStep(1);
 
     const modal = new bootstrap.Modal(
@@ -640,6 +809,8 @@ async function abrirModalCliente(id) {
 
 formEditarCliente.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  setLoading(btnSalvarEditar, true, "Salvar alterações");
 
   try {
     const id = pegarValor("editarId");
@@ -689,6 +860,8 @@ formEditarCliente.addEventListener("submit", async (e) => {
   } catch (error) {
     console.log(error);
     alert("Erro de conexão ao atualizar cliente.");
+  } finally {
+    setLoading(btnSalvarEditar, false, "Salvar alterações");
   }
 });
 
@@ -808,9 +981,12 @@ function preencherClienteMock() {
 
   preencherCampoMascarado("telefone1", "11987654321", "telefone");
   preencherCampoMascarado("telefone2", "1133334444", "telefone");
-  preencherCampoMascarado("telefone3", "11987654321", "telefone");
+  preencherCampoMascarado("telefone3", "11999887766", "telefone");
 
   preencherCampo("email1", `contato.mock${sufixo}@email.com`);
+  preencherCampo("email2", `financeiro.mock${sufixo}@email.com`);
+
+  sincronizarVisibilidadeContatos();
   preencherCampo("site", "https://www.mockfloor.com.br");
   preencherCampo("origemLead", "Teste interno");
 
@@ -915,8 +1091,13 @@ configurarConsultaCep("cep");
 configurarConsultaCep("editarCep", "editar");
 configurarPreviewLogo("logoFile", "logoPreview");
 configurarPreviewLogo("editarLogoFile", "editarLogoPreview");
+configurarContatosDinamicos();
 atualizarCamposPorTipo();
 atualizarCamposPorTipo("editar");
+
+document.getElementById("modalCliente")?.addEventListener("hidden.bs.modal", () => {
+  resetarContatos();
+});
 
 const wizardCliente = criarWizardCliente({
   form: formCliente,
