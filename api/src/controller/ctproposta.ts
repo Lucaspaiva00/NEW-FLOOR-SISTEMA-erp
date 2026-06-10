@@ -159,10 +159,9 @@ export const create = async (
         }
       });
 
-    const numeroAutomatico =
-      `PROP-${String(
-        (ultimaProposta?.propostaid || 0) + 1
-      ).padStart(5, "0")}`;
+    const numeroAutomatico = String(
+      (ultimaProposta?.propostaid || 650) + 1
+    );
 
     const subtotal =
       (body.itens || []).reduce(
