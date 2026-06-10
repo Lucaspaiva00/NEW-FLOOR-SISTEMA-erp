@@ -1,5 +1,3 @@
-const API_URL = "https://new-floor-sistema-erp.onrender.com";
-
 const token =
     JSON.parse(
         localStorage.getItem("usuarioLogado")

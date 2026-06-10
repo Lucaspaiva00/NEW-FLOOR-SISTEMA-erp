@@ -1,5 +1,3 @@
-const API_URL = "https://new-floor-sistema-erp.onrender.com";
-
 const btnLogin = document.getElementById("btnLogin");
 const btnCadastro = document.getElementById("btnCadastro");
 const formLogin = document.getElementById("formLogin");

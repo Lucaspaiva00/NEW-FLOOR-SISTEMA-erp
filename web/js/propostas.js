@@ -1,21 +1,21 @@
-const API_URL = "https://new-floor-sistema-erp.onrender.com";
+const token = JSON.parse(localStorage.getItem("usuarioLogado"))?.token;
 
-const token = JSON.parse(
-    localStorage.getItem("usuarioLogado")
-)?.token;
-
-const usuarioLogado = JSON.parse(
-    localStorage.getItem("usuarioLogado")
-);
+const usuarioLogado = JSON.parse(localStorage.getItem("usuarioLogado"));
 
 if (!token) {
-    window.location.href = "login.html";
+  window.location.href = "login.html";
 }
 
 const colunaPendente = document.getElementById("colunaPendente");
 const colunaAprovada = document.getElementById("colunaAprovada");
 const colunaExecutando = document.getElementById("colunaExecutando");
 const colunaFaturada = document.getElementById("colunaFaturada");
+const colunasKanban = [
+  colunaPendente,
+  colunaAprovada,
+  colunaExecutando,
+  colunaFaturada,
+];
 
 const clienteSelect = document.getElementById("clienteId");
 const editarClienteSelect = document.getElementById("editarClienteId");
@@ -33,193 +33,130 @@ let servicos = [];
 let sortableInstances = [];
 let estaArrastando = false;
 
-function pegarValor(id) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return null;
-
-    const valor = elemento.value;
-
-    if (valor === undefined || valor === null) return null;
-
-    const tratado = String(valor).trim();
-
-    return tratado === "" ? null : tratado;
-}
-
-function pegarNumero(id) {
-    const valor = pegarValor(id);
-
-    if (!valor) return null;
-
-    const numero = Number(String(valor).replace(",", "."));
-
-    return Number.isNaN(numero) ? null : numero;
-}
-
-function pegarInteiro(id) {
-    const valor = pegarValor(id);
-
-    if (!valor) return null;
-
-    const numero = Number(valor);
-
-    return Number.isNaN(numero) ? null : numero;
-}
-
-function pegarCheckbox(id) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return false;
-
-    return elemento.checked;
-}
-
-function preencherCampo(id, valor) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return;
-
-    elemento.value = valor ?? "";
-}
-
-function preencherCheckbox(id, valor) {
-    const elemento = document.getElementById(id);
-
-    if (!elemento) return;
-
-    elemento.checked = Boolean(valor);
-}
-
-function dataInput(data) {
-    if (!data) return "";
-
-    return String(data).split("T")[0];
-}
-
-function moeda(valor) {
-    return Number(valor || 0).toLocaleString(
-        "pt-BR",
-        {
-            style: "currency",
-            currency: "BRL"
-        }
-    );
-}
-
-function textoSeguro(valor) {
-    if (valor === null || valor === undefined || valor === "") {
-        return "-";
-    }
-
-    return String(valor)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
 async function carregarClientes() {
-    try {
-        const response = await fetch(
-            `${API_URL}/clientes`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }
-        );
+  try {
+    const response = await fetch(`${API_URL}/clientes`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-        clientes = await response.json();
+    clientes = await response.json();
 
-        clienteSelect.innerHTML = "";
-        editarClienteSelect.innerHTML = "";
+    clienteSelect.innerHTML = "";
+    editarClienteSelect.innerHTML = "";
 
-        clientes.forEach(cliente => {
-            const option = `
+    clientes.forEach((cliente) => {
+      const option = `
                 <option value="${cliente.clienteid}">
-                    ${textoSeguro(
-                cliente.nomeFantasia ||
-                cliente.razaoSocial
-            )}
+                    ${textoSeguro(cliente.nomeFantasia || cliente.razaoSocial)}
                 </option>
             `;
 
-            clienteSelect.innerHTML += option;
-            editarClienteSelect.innerHTML += option;
-        });
-
-    } catch (error) {
-        console.log(error);
-        alert("Erro ao carregar clientes.");
-    }
+      clienteSelect.innerHTML += option;
+      editarClienteSelect.innerHTML += option;
+    });
+  } catch (error) {
+    console.log(error);
+    alert("Erro ao carregar clientes.");
+  }
 }
 
 async function carregarServicos() {
-    try {
-        const response = await fetch(
-            `${API_URL}/servicos`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }
-        );
+  try {
+    const response = await fetch(`${API_URL}/servicos`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-        servicos = await response.json();
+    servicos = await response.json();
+  } catch (error) {
+    console.log(error);
+    alert("Erro ao carregar serviços.");
+  }
+}
 
-    } catch (error) {
-        console.log(error);
-        alert("Erro ao carregar serviços.");
-    }
+function montarLoadingColunaKanban() {
+  const numeroAleatorioDeCards = Math.floor(Math.random() * 3) + 1;
+  let cards = "";
+  for (let i = 0; i < numeroAleatorioDeCards; i++) {
+    cards += `
+            <div class="kanban-skeleton-card"></div>
+        `;
+  }
+  return `
+        <div class="kanban-list-loading" aria-live="polite">
+            <div class="kanban-list-spinner"></div>
+            <span>Carregando...</span>
+        </div>
+       ${cards}
+    `;
+}
+
+function mostrarLoadingKanban() {
+  colunasKanban.forEach((coluna) => {
+    coluna.innerHTML = montarLoadingColunaKanban();
+    coluna.classList.add("is-loading");
+  });
+}
+
+function ocultarLoadingKanban() {
+  colunasKanban.forEach((coluna) => {
+    coluna.classList.remove("is-loading");
+  });
 }
 
 async function carregarPropostas() {
-    try {
-        const response = await fetch(
-            `${API_URL}/propostas`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }
-        );
+  mostrarLoadingKanban();
 
-        propostas = await response.json();
-        propostasCache = propostas;
+  try {
+    const response = await fetch(`${API_URL}/propostas`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-        renderizarKanban(propostas);
-        atualizarKpis(propostas);
+    propostas = await response.json();
+    propostasCache = propostas;
 
-    } catch (error) {
-        console.log(error);
-        alert("Erro ao carregar propostas.");
-    }
+    renderizarKanban(obterListaFiltrada());
+    atualizarKpis(obterListaFiltrada());
+  } catch (error) {
+    console.log(error);
+    alert("Erro ao carregar propostas.");
+    renderizarKanban([]);
+    atualizarKpis([]);
+  } finally {
+    ocultarLoadingKanban();
+  }
 }
 
 function atualizarKpis(lista) {
-    const pendentes = lista.filter(p => p.status === "PENDENTE").length;
-    const aprovadas = lista.filter(p => p.status === "APROVADA").length;
-    const executando = lista.filter(p => p.status === "EXECUTANDO").length;
-    const faturadas = lista.filter(p => p.status === "FATURADA").length;
+  const pendentes = lista.filter(
+    (p) => p.status === "PENDENTE" || p.status === "RASCUNHO",
+  ).length;
+  const aprovadas = lista.filter((p) => p.status === "APROVADA").length;
+  const executando = lista.filter((p) => p.status === "EXECUTANDO").length;
+  const faturadas = lista.filter((p) => p.status === "FATURADA").length;
 
-    document.getElementById("kpiPendentes").innerText = pendentes;
-    document.getElementById("kpiAprovadas").innerText = aprovadas;
-    document.getElementById("kpiExecutando").innerText = executando;
-    document.getElementById("kpiFaturadas").innerText = faturadas;
+  document.getElementById("kpiPendentes").innerText = pendentes;
+  document.getElementById("kpiAprovadas").innerText = aprovadas;
+  document.getElementById("kpiExecutando").innerText = executando;
+  document.getElementById("kpiFaturadas").innerText = faturadas;
 
-    document.getElementById("countPendentes").innerText = pendentes;
-    document.getElementById("countAprovadas").innerText = aprovadas;
-    document.getElementById("countExecutando").innerText = executando;
-    document.getElementById("countFaturadas").innerText = faturadas;
+  document.getElementById("countPendentes").innerText = pendentes;
+  document.getElementById("countAprovadas").innerText = aprovadas;
+  document.getElementById("countExecutando").innerText = executando;
+  document.getElementById("countFaturadas").innerText = faturadas;
 }
 
 function criarCardProposta(proposta) {
-    return `
+  return `
         <div
             class="proposal-card"
             data-id="${proposta.propostaid}"
+            data-status="${proposta.status}"
             onclick="abrirModalProposta(${proposta.propostaid})"
         >
             <span class="proposal-number">
@@ -227,17 +164,25 @@ function criarCardProposta(proposta) {
             </span>
 
             <div class="proposal-tags">
-                ${proposta.prioridade ? `
+                ${
+                  proposta.prioridade
+                    ? `
                     <div class="proposal-tag tag-prioridade">
                         ${textoSeguro(proposta.prioridade)}
                     </div>
-                ` : ""}
+                `
+                    : ""
+                }
 
-                ${proposta.origem ? `
+                ${
+                  proposta.origem
+                    ? `
                     <div class="proposal-tag tag-origem">
                         ${textoSeguro(proposta.origem)}
                     </div>
-                ` : ""}
+                `
+                    : ""
+                }
 
                 
             </div>
@@ -248,14 +193,12 @@ function criarCardProposta(proposta) {
 
             <div class="proposal-client">
                 ${textoSeguro(
-        proposta.cliente?.nomeFantasia ||
-        proposta.cliente?.razaoSocial
-    )}
+                  proposta.cliente?.nomeFantasia ||
+                    proposta.cliente?.razaoSocial,
+                )}
             </div>
             <div class="proposal-client">
-    👤 ${textoSeguro(
-        proposta.vendedor?.nome
-    )}
+    👤 ${textoSeguro(proposta.vendedor?.nome)}
 </div>
 
             <div class="proposal-desc">
@@ -276,102 +219,145 @@ function criarCardProposta(proposta) {
 }
 
 function renderizarKanban(lista) {
-    colunaPendente.innerHTML = "";
-    colunaAprovada.innerHTML = "";
-    colunaExecutando.innerHTML = "";
-    colunaFaturada.innerHTML = "";
+  colunaPendente.innerHTML = "";
+  colunaAprovada.innerHTML = "";
+  colunaExecutando.innerHTML = "";
+  colunaFaturada.innerHTML = "";
 
-    lista.forEach(proposta => {
-        const card = criarCardProposta(proposta);
+  lista.forEach((proposta) => {
+    const card = criarCardProposta(proposta);
 
-        if (proposta.status === "PENDENTE" || proposta.status === "RASCUNHO") {
-            colunaPendente.innerHTML += card;
-        }
+    if (proposta.status === "PENDENTE" || proposta.status === "RASCUNHO") {
+      colunaPendente.innerHTML += card;
+    }
 
-        if (proposta.status === "APROVADA") {
-            colunaAprovada.innerHTML += card;
-        }
+    if (proposta.status === "APROVADA") {
+      colunaAprovada.innerHTML += card;
+    }
 
-        if (proposta.status === "EXECUTANDO") {
-            colunaExecutando.innerHTML += card;
-        }
+    if (proposta.status === "EXECUTANDO") {
+      colunaExecutando.innerHTML += card;
+    }
 
-        if (proposta.status === "FATURADA") {
-            colunaFaturada.innerHTML += card;
-        }
-    });
+    if (proposta.status === "FATURADA") {
+      colunaFaturada.innerHTML += card;
+    }
+  });
 
-    iniciarSortableKanban();
+  iniciarSortableKanban();
 }
 
 function iniciarSortableKanban() {
-    sortableInstances.forEach(instance => instance.destroy());
-    sortableInstances = [];
+  sortableInstances.forEach((instance) => instance.destroy());
+  sortableInstances = [];
 
-    const listas = document.querySelectorAll(".kanban-list");
+  const listas = document.querySelectorAll(".kanban-list");
 
-    listas.forEach(lista => {
-        const sortable = new Sortable(lista, {
-            group: "propostas-kanban",
-            animation: 180,
-            forceFallback: true,
-            fallbackOnBody: true,
-            swapThreshold: 0.65,
-            ghostClass: "kanban-ghost",
-            chosenClass: "kanban-chosen",
-            dragClass: "kanban-drag",
+  listas.forEach((lista) => {
+    const sortable = new Sortable(lista, {
+      group: "propostas-kanban",
+      animation: 180,
+      forceFallback: true,
+      fallbackOnBody: true,
+      swapThreshold: 0.65,
+      ghostClass: "kanban-ghost",
+      chosenClass: "kanban-chosen",
+      dragClass: "kanban-drag",
 
-            onStart: function () {
-                estaArrastando = true;
-                document.body.classList.add("kanban-is-dragging");
-            },
+      onStart: function () {
+        estaArrastando = true;
+        document.body.classList.add("kanban-is-dragging");
+      },
 
-            onEnd: async function (evt) {
-                document.body.classList.remove("kanban-is-dragging");
+      onEnd: async function (evt) {
+        document.body.classList.remove("kanban-is-dragging");
 
-                setTimeout(() => {
-                    estaArrastando = false;
-                }, 150);
+        setTimeout(() => {
+          estaArrastando = false;
+        }, 150);
 
-                const propostaId = evt.item.dataset.id;
-                const novoStatus = evt.to.dataset.status;
+        if (evt.from === evt.to) return;
 
-                if (!propostaId || !novoStatus) return;
+        const propostaId = evt.item.dataset.id;
+        const statusAnterior = evt.item.dataset.status;
+        const novoStatus = evt.to.dataset.status;
 
-                await atualizarStatusProposta(propostaId, novoStatus);
-                await carregarPropostas();
-            }
-        });
+        if (!propostaId || !novoStatus) return;
+        if (statusAnterior === novoStatus) return;
 
-        sortableInstances.push(sortable);
+        const ok = await atualizarStatusProposta(propostaId, novoStatus);
+
+        if (!ok) {
+          renderizarKanban(obterListaFiltrada());
+          alert("Erro ao atualizar status da proposta.");
+          return;
+        }
+
+        const proposta = propostasCache.find(
+          (p) => Number(p.propostaid) === Number(propostaId),
+        );
+
+        if (proposta) {
+          proposta.status = novoStatus;
+        }
+
+        propostas = propostasCache;
+        const lista = obterListaFiltrada();
+        renderizarKanban(lista);
+        atualizarKpis(lista);
+      },
     });
+
+    sortableInstances.push(sortable);
+  });
 }
 
 async function atualizarStatusProposta(id, status) {
-    await fetch(
-        `${API_URL}/propostas/${id}`,
-        {
-            method: "PUT",
+  const response = await fetch(`${API_URL}/propostas/${id}`, {
+    method: "PUT",
 
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-            },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
 
-            body: JSON.stringify({
-                status
-            })
-        }
+    body: JSON.stringify({
+      status,
+    }),
+  });
+
+  return response.ok;
+}
+
+function obterListaFiltrada() {
+  const termo = pesquisaProposta.value.toLowerCase().trim();
+
+  if (!termo) return propostasCache;
+
+  return propostasCache.filter((proposta) => {
+    return (
+      proposta.titulo?.toLowerCase().includes(termo) ||
+      proposta.numero?.toLowerCase().includes(termo) ||
+      (proposta.cliente?.nomeFantasia || proposta.cliente?.razaoSocial || "")
+        .toLowerCase()
+        .includes(termo) ||
+      proposta.descricao?.toLowerCase().includes(termo) ||
+      proposta.status?.toLowerCase().includes(termo) ||
+      (proposta.vendedor?.nome || "").toLowerCase().includes(termo) ||
+      proposta.origem?.toLowerCase().includes(termo)
     );
+  });
 }
 
 function montarOptionsServicos(servicoSelecionado = "") {
-    return servicos.map(servico => {
-        const selected = Number(servicoSelecionado) === Number(servico.servicoid)
-            ? "selected"
-            : "";
+  return servicos
+    .map((servico) => {
+      const selected =
+        Number(servicoSelecionado) === Number(servico.servicoid)
+          ? "selected"
+          : "";
 
-        return `
+      return `
             <option
                 value="${servico.servicoid}"
                 data-codigo="${textoSeguro(servico.codigo || "")}"
@@ -384,20 +370,21 @@ function montarOptionsServicos(servicoSelecionado = "") {
                 ${textoSeguro(servico.nome)} - ${moeda(servico.valor)}
             </option>
         `;
-    }).join("");
+    })
+    .join("");
 }
 
 function adicionarItemProposta(item = null) {
-    const index = document.querySelectorAll(".item-servico").length + 1;
+  const index = document.querySelectorAll(".item-servico").length + 1;
 
-    const servicoId = item?.servicoId || item?.servico?.servicoid || "";
-    const quantidade = item?.quantidade || 1;
-    const valorUnitario = item?.valorUnitario || 0;
-    const desconto = item?.desconto || 0;
-    const acrescimo = item?.acrescimo || 0;
-    const subtotal = item?.subtotal || 0;
+  const servicoId = item?.servicoId || item?.servico?.servicoid || "";
+  const quantidade = item?.quantidade || 1;
+  const valorUnitario = item?.valorUnitario || 0;
+  const desconto = item?.desconto || 0;
+  const acrescimo = item?.acrescimo || 0;
+  const subtotal = item?.subtotal || 0;
 
-    const html = `
+  const html = `
         <div class="item-servico">
 
             <div class="item-title">
@@ -486,59 +473,49 @@ function adicionarItemProposta(item = null) {
         </div>
     `;
 
-    listaItensProposta.insertAdjacentHTML("beforeend", html);
+  listaItensProposta.insertAdjacentHTML("beforeend", html);
 
-    const novoItem = listaItensProposta.lastElementChild;
-    const select = novoItem.querySelector(".servico-select");
+  const novoItem = listaItensProposta.lastElementChild;
+  const select = novoItem.querySelector(".servico-select");
 
-    if (!item) {
-        preencherItemComServico(select);
-    }
-
+  if (!item) {
     preencherItemComServico(select);
+  }
 
-
+  preencherItemComServico(select);
 }
 
 function adicionarItemEditar(item = null) {
+  const index = document.querySelectorAll(".item-servico").length + 1;
 
-    const index = document.querySelectorAll(".item-servico").length + 1;
+  const servicoId = item?.servicoId || item?.servico?.servicoid || "";
 
-    const servicoId =
-        item?.servicoId ||
-        item?.servico?.servicoid ||
-        "";
+  const codigo =
+    item?.codigo && item.codigo !== "-"
+      ? item.codigo
+      : item?.servico?.codigo || "";
 
-    const codigo =
-        item?.codigo &&
-            item.codigo !== "-"
-            ? item.codigo
-            : item?.servico?.codigo || "";
+  const descricao =
+    item?.descricao && item.descricao !== "-"
+      ? item.descricao
+      : item?.servico?.descricao || "";
 
-    const descricao =
-        item?.descricao &&
-            item.descricao !== "-"
-            ? item.descricao
-            : item?.servico?.descricao || "";
+  const unidade =
+    item?.unidade && item.unidade !== "UN"
+      ? item.unidade
+      : item?.servico?.unidade || "UN";
 
-    const unidade =
-        item?.unidade &&
-            item.unidade !== "UN"
-            ? item.unidade
-            : item?.servico?.unidade || "UN";
+  const valorUnitario =
+    item?.valorUnitario && Number(item.valorUnitario) > 0
+      ? item.valorUnitario
+      : item?.servico?.valor || 0;
 
-    const valorUnitario =
-        item?.valorUnitario &&
-            Number(item.valorUnitario) > 0
-            ? item.valorUnitario
-            : item?.servico?.valor || 0;
+  const quantidade = item?.quantidade || 1;
+  const desconto = item?.desconto || 0;
+  const acrescimo = item?.acrescimo || 0;
+  const subtotal = item?.subtotal || 0;
 
-    const quantidade = item?.quantidade || 1;
-    const desconto = item?.desconto || 0;
-    const acrescimo = item?.acrescimo || 0;
-    const subtotal = item?.subtotal || 0;
-
-    const html = `
+  const html = `
         <div class="item-servico">
 
             <div class="item-title">
@@ -663,926 +640,778 @@ function adicionarItemEditar(item = null) {
         </div>
     `;
 
-    listaItensEditar.insertAdjacentHTML(
-        "beforeend",
-        html
-    );
+  listaItensEditar.insertAdjacentHTML("beforeend", html);
 
-    const novoItem =
-        listaItensEditar.lastElementChild;
+  const novoItem = listaItensEditar.lastElementChild;
 
-    const select =
-        novoItem.querySelector(
-            ".servico-select"
-        );
+  const select = novoItem.querySelector(".servico-select");
 
-    preencherItemComServico(select);
-
+  preencherItemComServico(select);
 }
 
 function preencherItemComServico(select) {
+  const item = select.closest(".item-servico");
 
-    const item = select.closest(".item-servico");
+  const option = select.options[select.selectedIndex];
 
-    const option =
-        select.options[select.selectedIndex];
+  if (!option) return;
 
-    if (!option) return;
+  item.querySelector(".item-codigo").value = option.dataset.codigo || "";
 
-    item.querySelector(".item-codigo").value =
-        option.dataset.codigo || "";
+  item.querySelector(".item-descricao").value = option.dataset.descricao || "";
 
-    item.querySelector(".item-descricao").value =
-        option.dataset.descricao || "";
+  item.querySelector(".item-unidade").value = option.dataset.unidade || "UN";
 
-    item.querySelector(".item-unidade").value =
-        option.dataset.unidade || "UN";
+  item.querySelector(".item-valor").value = Number(option.dataset.valor || 0);
 
-    item.querySelector(".item-valor").value =
-        Number(option.dataset.valor || 0);
-
-    calcularSubtotalItem(item);
+  calcularSubtotalItem(item);
 }
 
 document.getElementById("btnAdicionarServico").addEventListener("click", () => {
-    if (servicos.length === 0) {
-        alert("Cadastre um serviço antes de criar uma proposta.");
-        return;
-    }
+  if (servicos.length === 0) {
+    alert("Cadastre um serviço antes de criar uma proposta.");
+    return;
+  }
 
-    adicionarItemProposta();
+  adicionarItemProposta();
 });
 
-document.getElementById(
-    "btnAdicionarServicoEditar"
-)
-    ?.addEventListener(
-        "click",
-        () => {
+document
+  .getElementById("btnAdicionarServicoEditar")
+  ?.addEventListener("click", () => {
+    if (servicos.length === 0) {
+      alert("Cadastre um serviço antes de criar uma proposta.");
 
-            if (
-                servicos.length === 0
-            ) {
-
-                alert(
-                    "Cadastre um serviço antes de criar uma proposta."
-                );
-
-                return;
-
-            }
-
-            adicionarItemEditar();
-
-        }
-    );
-
-document.addEventListener(
-    "click",
-    (e) => {
-
-        if (
-            e.target.classList.contains(
-                "btn-remove-item"
-            )
-        ) {
-
-            e.target
-                .closest(
-                    ".item-servico"
-                )
-                .remove();
-
-            document
-                .querySelectorAll(
-                    ".item-servico"
-                )
-                .forEach(
-                    (
-                        item,
-                        index
-                    ) => {
-
-                        const titulo =
-                            item.querySelector(
-                                ".item-title strong"
-                            );
-
-                        if (titulo) {
-
-                            titulo.textContent =
-                                `Item ${index + 1}`;
-
-                        }
-
-                    }
-                );
-
-
-
-        }
-
+      return;
     }
-);
+
+    adicionarItemEditar();
+  });
+
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("btn-remove-item")) {
+    e.target.closest(".item-servico").remove();
+
+    document.querySelectorAll(".item-servico").forEach((item, index) => {
+      const titulo = item.querySelector(".item-title strong");
+
+      if (titulo) {
+        titulo.textContent = `Item ${index + 1}`;
+      }
+    });
+  }
+});
 
 document.addEventListener("change", (e) => {
-    if (e.target.classList.contains("servico-select")) {
-        preencherItemComServico(e.target);
-    }
-
-
+  if (e.target.classList.contains("servico-select")) {
+    preencherItemComServico(e.target);
+  }
 });
 
 function calcularSubtotalItem(item) {
-    const quantidade = Number(item.querySelector(".item-quantidade")?.value || 0);
-    const valorUnitario = Number(item.querySelector(".item-valor")?.value || 0);
-    const desconto = Number(item.querySelector(".item-desconto")?.value || 0);
-    const acrescimo = Number(item.querySelector(".item-acrescimo")?.value || 0);
+  const quantidade = Number(item.querySelector(".item-quantidade")?.value || 0);
+  const valorUnitario = Number(item.querySelector(".item-valor")?.value || 0);
+  const desconto = Number(item.querySelector(".item-desconto")?.value || 0);
+  const acrescimo = Number(item.querySelector(".item-acrescimo")?.value || 0);
 
-    const subtotal = (quantidade * valorUnitario) - desconto + acrescimo;
+  const subtotal = quantidade * valorUnitario - desconto + acrescimo;
 
-    const campoSubtotal = item.querySelector(".item-subtotal");
+  const campoSubtotal = item.querySelector(".item-subtotal");
 
-    if (campoSubtotal) {
-        campoSubtotal.value = subtotal.toFixed(2);
-    }
+  if (campoSubtotal) {
+    campoSubtotal.value = subtotal.toFixed(2);
+  }
 }
 
 document.addEventListener("input", (e) => {
-    if (
-        e.target.classList.contains("item-quantidade") ||
-        e.target.classList.contains("item-valor") ||
-        e.target.classList.contains("item-desconto") ||
-        e.target.classList.contains("item-acrescimo")
-    ) {
-        const item = e.target.closest(".item-servico");
+  if (
+    e.target.classList.contains("item-quantidade") ||
+    e.target.classList.contains("item-valor") ||
+    e.target.classList.contains("item-desconto") ||
+    e.target.classList.contains("item-acrescimo")
+  ) {
+    const item = e.target.closest(".item-servico");
 
-        if (item) {
-            calcularSubtotalItem(item);
-        }
+    if (item) {
+      calcularSubtotalItem(item);
     }
+  }
 });
 
 let vendedoresCache = [];
 
 async function carregarVendedores() {
+  try {
+    const response = await fetch(`${API_URL}/vendedores`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    try {
+    vendedoresCache = await response.json();
 
-        const response = await fetch(
-            `${API_URL}/vendedores`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }
-        );
-
-        vendedoresCache = await response.json();
-
-        preencherSelectVendedores();
-
-    } catch (error) {
-
-        console.log(error);
-
-    }
+    preencherSelectVendedores();
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 function preencherSelectVendedores() {
+  const selectNovo = document.getElementById("vendedor");
 
-    const selectNovo =
-        document.getElementById("vendedor");
+  const selectEditar = document.getElementById("editarVendedor");
 
-    const selectEditar =
-        document.getElementById("editarVendedor");
-
-    if (selectNovo) {
-
-        selectNovo.innerHTML = `
+  if (selectNovo) {
+    selectNovo.innerHTML = `
             <option value="">
                 Selecione um vendedor
             </option>
         `;
 
-        vendedoresCache.forEach(vendedor => {
-
-            selectNovo.innerHTML += `
+    vendedoresCache.forEach((vendedor) => {
+      selectNovo.innerHTML += `
                 <option value="${vendedor.vendedorid}">
                     ${vendedor.nome}
                 </option>
             `;
-        });
-    }
+    });
+  }
 
-    if (selectEditar) {
-
-        selectEditar.innerHTML = `
+  if (selectEditar) {
+    selectEditar.innerHTML = `
             <option value="">
                 Selecione um vendedor
             </option>
         `;
 
-        vendedoresCache.forEach(vendedor => {
-
-            selectEditar.innerHTML += `
+    vendedoresCache.forEach((vendedor) => {
+      selectEditar.innerHTML += `
                 <option value="${vendedor.vendedorid}">
                     ${vendedor.nome}
                 </option>
             `;
-        });
-    }
+    });
+  }
 }
-
 
 function montarItens() {
-    const itens = [];
+  const itens = [];
 
-    const itensDOM = document.querySelectorAll(".item-servico");
+  const itensDOM = document.querySelectorAll(".item-servico");
 
-    itensDOM.forEach((item, index) => {
-        const select = item.querySelector(".servico-select");
+  itensDOM.forEach((item, index) => {
+    const select = item.querySelector(".servico-select");
 
-        itens.push({
-            codigo: item.querySelector(".item-codigo")?.value || `ITEM-${index + 1}`,
+    itens.push({
+      codigo: item.querySelector(".item-codigo")?.value || `ITEM-${index + 1}`,
 
-            descricao: item.querySelector(".item-descricao")?.value || "",
+      descricao: item.querySelector(".item-descricao")?.value || "",
 
-            detalhes: item.querySelector(".item-detalhes")?.value || null,
+      detalhes: item.querySelector(".item-detalhes")?.value || null,
 
-            unidade: item.querySelector(".item-unidade")?.value || "UN",
+      unidade: item.querySelector(".item-unidade")?.value || "UN",
 
-            quantidade: Number(item.querySelector(".item-quantidade")?.value || 0),
+      quantidade: Number(item.querySelector(".item-quantidade")?.value || 0),
 
-            valorUnitario: Number(item.querySelector(".item-valor")?.value || 0),
+      valorUnitario: Number(item.querySelector(".item-valor")?.value || 0),
 
-            desconto: Number(item.querySelector(".item-desconto")?.value || 0),
+      desconto: Number(item.querySelector(".item-desconto")?.value || 0),
 
-            acrescimo: Number(item.querySelector(".item-acrescimo")?.value || 0),
+      acrescimo: Number(item.querySelector(".item-acrescimo")?.value || 0),
 
-            subtotal: Number(item.querySelector(".item-subtotal")?.value || 0),
+      subtotal: Number(item.querySelector(".item-subtotal")?.value || 0),
 
-            ordem: Number(item.querySelector(".item-ordem")?.value || index + 1),
+      ordem: Number(item.querySelector(".item-ordem")?.value || index + 1),
 
-            observacoes: item.querySelector(".item-observacoes")?.value || null,
+      observacoes: item.querySelector(".item-observacoes")?.value || null,
 
-            servicoId: select?.value ? Number(select.value) : null
-        });
+      servicoId: select?.value ? Number(select.value) : null,
     });
+  });
 
-    return itens;
+  return itens;
 }
 function montarItensEditar() {
+  const itens = [];
 
-    const itens = [];
+  const itensDOM = listaItensEditar.querySelectorAll(".item-servico");
 
-    const itensDOM =
-        listaItensEditar.querySelectorAll(
-            ".item-servico"
-        );
+  itensDOM.forEach((item, index) => {
+    const select = item.querySelector(".servico-select");
 
-    itensDOM.forEach(
-        (item, index) => {
+    itens.push({
+      codigo: item.querySelector(".item-codigo")?.value || `ITEM-${index + 1}`,
 
-            const select =
-                item.querySelector(
-                    ".servico-select"
-                );
+      descricao: item.querySelector(".item-descricao")?.value || "",
 
-            itens.push({
+      detalhes: item.querySelector(".item-detalhes")?.value || null,
 
-                codigo:
-                    item.querySelector(
-                        ".item-codigo"
-                    )?.value || `ITEM-${index + 1}`,
+      unidade: item.querySelector(".item-unidade")?.value || "UN",
 
-                descricao:
-                    item.querySelector(
-                        ".item-descricao"
-                    )?.value || "",
+      quantidade: Number(item.querySelector(".item-quantidade")?.value || 0),
 
-                detalhes:
-                    item.querySelector(
-                        ".item-detalhes"
-                    )?.value || null,
+      valorUnitario: Number(item.querySelector(".item-valor")?.value || 0),
 
-                unidade:
-                    item.querySelector(
-                        ".item-unidade"
-                    )?.value || "UN",
+      desconto: Number(item.querySelector(".item-desconto")?.value || 0),
 
-                quantidade:
-                    Number(
-                        item.querySelector(
-                            ".item-quantidade"
-                        )?.value || 0
-                    ),
+      acrescimo: Number(item.querySelector(".item-acrescimo")?.value || 0),
 
-                valorUnitario:
-                    Number(
-                        item.querySelector(
-                            ".item-valor"
-                        )?.value || 0
-                    ),
+      subtotal: Number(item.querySelector(".item-subtotal")?.value || 0),
 
-                desconto:
-                    Number(
-                        item.querySelector(
-                            ".item-desconto"
-                        )?.value || 0
-                    ),
+      ordem: Number(item.querySelector(".item-ordem")?.value || index + 1),
 
-                acrescimo:
-                    Number(
-                        item.querySelector(
-                            ".item-acrescimo"
-                        )?.value || 0
-                    ),
+      observacoes: item.querySelector(".item-observacoes")?.value || null,
 
-                subtotal:
-                    Number(
-                        item.querySelector(
-                            ".item-subtotal"
-                        )?.value || 0
-                    ),
+      servicoId: select?.value ? Number(select.value) : null,
+    });
+  });
 
-                ordem:
-                    Number(
-                        item.querySelector(
-                            ".item-ordem"
-                        )?.value || index + 1
-                    ),
-
-                observacoes:
-                    item.querySelector(
-                        ".item-observacoes"
-                    )?.value || null,
-
-                servicoId:
-                    select?.value
-                        ? Number(select.value)
-                        : null
-
-            });
-
-        }
-    );
-
-    return itens;
-
+  return itens;
 }
 
+function atualizarTotalProposta() {
+  const frete = Number(pegarValor("frete") || 0);
+  let totalItens = 0;
+
+  document
+    .querySelectorAll("#listaItensProposta .item-servico")
+    .forEach((item) => {
+      totalItens += Number(item.querySelector(".item-subtotal")?.value || 0);
+    });
+
+  if (valorTotal) {
+    valorTotal.innerText = moeda(totalItens + frete);
+  }
+}
+
+function preencherPropostaMock() {
+  const sufixo = Date.now().toString().slice(-4);
+
+  preencherCampo("titulo", `Proposta Mock ${sufixo}`);
+  preencherCampo("subtitulo", "Serviços de piso industrial");
+  preencherCampo("descricao", "Proposta gerada automaticamente para testes.");
+  preencherCampo(
+    "escopo",
+    "Aplicação de revestimento epóxi em área industrial.",
+  );
+  preencherCampo("status", "PENDENTE");
+  preencherCampo("prioridade", "Média");
+
+  if (clienteSelect?.options.length > 0) {
+    clienteSelect.selectedIndex = 0;
+  }
+
+  const nomeResponsavel =
+    usuarioLogado?.usuario?.nome || usuarioLogado?.nome || "Responsável Mock";
+
+  preencherCampo("responsavel", nomeResponsavel);
+
+  const vendedorSelect = document.getElementById("vendedor");
+
+  if (vendedorSelect?.options.length > 1) {
+    vendedorSelect.selectedIndex = 1;
+  }
+
+  preencherCampo("origem", "Teste interno");
+  preencherCampo("etapaAtual", "Orçamento");
+  preencherCampo("assinaturaCliente", "");
+  preencherCampo("validadeDias", "30");
+
+  const validade = new Date();
+  validade.setDate(validade.getDate() + 30);
+  preencherCampo("dataValidade", validade.toISOString().split("T")[0]);
+
+  preencherCampo("frete", "150");
+  preencherCampo("formaPagamento", "Boleto");
+  preencherCampo("condicoesPagamento", "50% entrada + 50% na entrega");
+
+  listaItensProposta.innerHTML = "";
+
+  if (servicos.length > 0) {
+    adicionarItemProposta();
+  } else {
+    alert("Cadastre um serviço para incluir item mock.");
+  }
+
+  preencherCampo("observacoes", "Proposta mock para validação do sistema.");
+  preencherCampo("observacoesInternas", "Gerada via botão Preencher mock.");
+
+  preencherCheckbox("aprovadoCliente", false);
+  preencherCheckbox("enviadoEmail", false);
+  preencherCheckbox("enviadoWhatsapp", false);
+  preencherCheckbox("visualizada", false);
+
+  atualizarTotalProposta();
+}
 
 function montarBodyNovaProposta() {
-    const itens = montarItens();
+  const itens = montarItens();
 
-    return {
-        numero: null,
+  return {
+    numero: null,
 
-        titulo: pegarValor("titulo"),
+    titulo: pegarValor("titulo"),
 
-        subtitulo: pegarValor("subtitulo"),
+    subtitulo: pegarValor("subtitulo"),
 
-        descricao: pegarValor("descricao"),
+    descricao: pegarValor("descricao"),
 
-        escopo: pegarValor("escopo"),
+    escopo: pegarValor("escopo"),
 
-        observacoes: pegarValor("observacoes"),
+    observacoes: pegarValor("observacoes"),
 
-        observacoesInternas: pegarValor("observacoesInternas"),
+    observacoesInternas: pegarValor("observacoesInternas"),
 
-        status: pegarValor("status") || "RASCUNHO",
+    status: pegarValor("status") || "RASCUNHO",
 
-        prioridade: pegarValor("prioridade"),
+    prioridade: pegarValor("prioridade"),
 
-        frete: pegarNumero("frete"),
+    frete: pegarNumero("frete"),
 
-        formaPagamento: pegarValor("formaPagamento"),
+    formaPagamento: pegarValor("formaPagamento"),
 
-        condicoesPagamento: pegarValor("condicoesPagamento"),
+    condicoesPagamento: pegarValor("condicoesPagamento"),
 
-        validadeDias: pegarInteiro("validadeDias"),
+    validadeDias: pegarInteiro("validadeDias"),
 
-        dataValidade: pegarValor("dataValidade"),
+    dataValidade: pegarValor("dataValidade"),
 
-        dataAprovacao: pegarValor("dataAprovacao"),
+    dataAprovacao: pegarValor("dataAprovacao"),
 
-        dataRecusa: pegarValor("dataRecusa"),
+    dataRecusa: pegarValor("dataRecusa"),
 
-        motivoRecusa: pegarValor("motivoRecusa"),
+    motivoRecusa: pegarValor("motivoRecusa"),
 
-        responsavel: pegarValor("responsavel"),
+    responsavel: pegarValor("responsavel"),
 
-        origem: pegarValor("origem"),
+    origem: pegarValor("origem"),
 
-        assinaturaCliente: pegarValor("assinaturaCliente"),
+    assinaturaCliente: pegarValor("assinaturaCliente"),
 
-        aprovadoCliente: pegarCheckbox("aprovadoCliente"),
+    aprovadoCliente: pegarCheckbox("aprovadoCliente"),
 
-        enviadoEmail: pegarCheckbox("enviadoEmail"),
+    enviadoEmail: pegarCheckbox("enviadoEmail"),
 
-        enviadoWhatsapp: pegarCheckbox("enviadoWhatsapp"),
+    enviadoWhatsapp: pegarCheckbox("enviadoWhatsapp"),
 
-        visualizada: pegarCheckbox("visualizada"),
+    visualizada: pegarCheckbox("visualizada"),
 
-        clienteId: Number(pegarValor("clienteId")),
+    clienteId: Number(pegarValor("clienteId")),
 
-        vendedorId:
-            pegarValor("vendedor")
-                ? Number(pegarValor("vendedor"))
-                : null,
+    vendedorId: pegarValor("vendedor") ? Number(pegarValor("vendedor")) : null,
 
-        itens
-    };
+    itens,
+  };
 }
 
 formNovaProposta.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-        const body = montarBodyNovaProposta();
+  try {
+    const body = montarBodyNovaProposta();
 
-        if (!body.titulo) {
-            alert("Informe o título da proposta.");
-            return;
-        }
-
-        if (!body.clienteId) {
-            alert("Selecione um cliente.");
-            return;
-        }
-
-        if (!body.itens || body.itens.length === 0) {
-            alert("Adicione pelo menos um item na proposta.");
-            return;
-        }
-
-        const response = await fetch(
-            `${API_URL}/propostas`,
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-
-                body: JSON.stringify(body)
-            }
-        );
-
-        const resposta = await response.json();
-
-        if (!response.ok) {
-            console.log(resposta);
-            alert(resposta.error || "Erro ao criar proposta.");
-            return;
-        }
-
-        bootstrap.Modal.getInstance(
-            document.getElementById("modalNovaProposta")
-        ).hide();
-
-        formNovaProposta.reset();
-
-        listaItensProposta.innerHTML = "";
-        valorTotal.innerText = moeda(0);
-
-        await carregarPropostas();
-
-    } catch (error) {
-        console.log(error);
-        alert("Erro ao criar proposta.");
+    if (!body.titulo) {
+      alert("Informe o título da proposta.");
+      return;
     }
+
+    if (!body.clienteId) {
+      alert("Selecione um cliente.");
+      return;
+    }
+
+    if (!body.itens || body.itens.length === 0) {
+      alert("Adicione pelo menos um item na proposta.");
+      return;
+    }
+
+    const response = await fetch(`${API_URL}/propostas`, {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+
+      body: JSON.stringify(body),
+    });
+
+    const resposta = await response.json();
+
+    if (!response.ok) {
+      console.log(resposta);
+      alert(resposta.error || "Erro ao criar proposta.");
+      return;
+    }
+
+    bootstrap.Modal.getInstance(
+      document.getElementById("modalNovaProposta"),
+    ).hide();
+
+    formNovaProposta.reset();
+
+    listaItensProposta.innerHTML = "";
+    valorTotal.innerText = moeda(0);
+
+    await carregarPropostas();
+  } catch (error) {
+    console.log(error);
+    alert("Erro ao criar proposta.");
+  }
 });
 
 async function abrirModalProposta(id) {
+  if (estaArrastando) return;
 
-    if (estaArrastando) return;
+  try {
+    const response = await fetch(`${API_URL}/propostas/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    try {
+    if (!response.ok) {
+      alert("Erro ao buscar proposta.");
+      return;
+    }
 
-        const response = await fetch(
-            `${API_URL}/propostas/${id}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }
-        );
+    const proposta = await response.json();
 
-        if (!response.ok) {
-            alert("Erro ao buscar proposta.");
-            return;
-        }
+    preencherCampo("editarId", proposta.propostaid);
+    preencherCampo("editarNumero", proposta.numero);
+    preencherCampo("editarTitulo", proposta.titulo);
+    preencherCampo("editarClienteId", proposta.clienteId);
+    preencherCampo("editarVendedor", proposta.vendedorId);
+    preencherCampo("editarSubtitulo", proposta.subtitulo);
+    preencherCampo("editarStatus", proposta.status);
+    preencherCampo("editarPrioridade", proposta.prioridade);
+    preencherCampo("editarDescricao", proposta.descricao);
+    preencherCampo("editarEscopo", proposta.escopo);
+    preencherCampo("editarResponsavel", proposta.responsavel);
+    preencherCampo("editarOrigem", proposta.origem);
+    preencherCampo("editarAssinaturaCliente", proposta.assinaturaCliente);
 
-        const proposta = await response.json();
+    preencherCampo("editarDataValidade", dataInput(proposta.dataValidade));
 
-        preencherCampo("editarId", proposta.propostaid);
-        preencherCampo("editarNumero", proposta.numero);
-        preencherCampo("editarTitulo", proposta.titulo);
-        preencherCampo("editarClienteId", proposta.clienteId);
-        preencherCampo(
-            "editarVendedor",
-            proposta.vendedorId
-        );
-        preencherCampo("editarSubtitulo", proposta.subtitulo);
-        preencherCampo("editarStatus", proposta.status);
-        preencherCampo("editarPrioridade", proposta.prioridade);
-        preencherCampo("editarDescricao", proposta.descricao);
-        preencherCampo("editarEscopo", proposta.escopo);
-        preencherCampo("editarResponsavel", proposta.responsavel);
-        preencherCampo("editarOrigem", proposta.origem);
-        preencherCampo("editarAssinaturaCliente", proposta.assinaturaCliente);
+    preencherCampo("editarDataAprovacao", dataInput(proposta.dataAprovacao));
 
-        preencherCampo(
-            "editarDataValidade",
-            dataInput(proposta.dataValidade)
-        );
+    preencherCampo("editarDataRecusa", dataInput(proposta.dataRecusa));
 
-        preencherCampo(
-            "editarDataAprovacao",
-            dataInput(proposta.dataAprovacao)
-        );
+    preencherCampo("editarValidadeDias", proposta.validadeDias);
 
-        preencherCampo(
-            "editarDataRecusa",
-            dataInput(proposta.dataRecusa)
-        );
+    preencherCampo("editarFrete", proposta.frete);
 
-        preencherCampo("editarValidadeDias", proposta.validadeDias);
+    preencherCampo("editarFormaPagamento", proposta.formaPagamento);
 
-        preencherCampo("editarFrete", proposta.frete);
+    preencherCampo("editarCondicoesPagamento", proposta.condicoesPagamento);
 
+    preencherCampo("editarObservacoes", proposta.observacoes);
 
+    preencherCampo("editarObservacoesInternas", proposta.observacoesInternas);
 
-        preencherCampo(
-            "editarFormaPagamento",
-            proposta.formaPagamento
-        );
+    preencherCampo("editarMotivoRecusa", proposta.motivoRecusa);
 
-        preencherCampo(
-            "editarCondicoesPagamento",
-            proposta.condicoesPagamento
-        );
+    preencherCheckbox("editarAprovadoCliente", proposta.aprovadoCliente);
 
-        preencherCampo(
-            "editarObservacoes",
-            proposta.observacoes
-        );
+    preencherCheckbox("editarEnviadoEmail", proposta.enviadoEmail);
 
-        preencherCampo(
-            "editarObservacoesInternas",
-            proposta.observacoesInternas
-        );
+    preencherCheckbox("editarEnviadoWhatsapp", proposta.enviadoWhatsapp);
 
-        preencherCampo(
-            "editarMotivoRecusa",
-            proposta.motivoRecusa
-        );
+    preencherCheckbox("editarVisualizada", proposta.visualizada);
 
-        preencherCheckbox(
-            "editarAprovadoCliente",
-            proposta.aprovadoCliente
-        );
-
-        preencherCheckbox(
-            "editarEnviadoEmail",
-            proposta.enviadoEmail
-        );
-
-        preencherCheckbox(
-            "editarEnviadoWhatsapp",
-            proposta.enviadoWhatsapp
-        );
-
-        preencherCheckbox(
-            "editarVisualizada",
-            proposta.visualizada
-        );
-
-        /* =====================================
+    /* =====================================
            CARREGA ITENS DA PROPOSTA
         ===================================== */
 
-        listaItensEditar.innerHTML = "";
+    listaItensEditar.innerHTML = "";
 
-        if (
-            proposta.itens &&
-            proposta.itens.length
-        ) {
-
-            proposta.itens.forEach(item => {
-
-                adicionarItemEditar(item);
-
-            });
-
-        }
-
-        const modal =
-            new bootstrap.Modal(
-                document.getElementById(
-                    "modalProposta"
-                )
-            );
-
-        modal.show();
-
-    } catch (error) {
-
-        console.log(error);
-
-        alert(
-            "Erro ao abrir proposta."
-        );
-
+    if (proposta.itens && proposta.itens.length) {
+      proposta.itens.forEach((item) => {
+        adicionarItemEditar(item);
+      });
     }
 
+    const modal = new bootstrap.Modal(document.getElementById("modalProposta"));
+
+    modal.show();
+  } catch (error) {
+    console.log(error);
+
+    alert("Erro ao abrir proposta.");
+  }
 }
 
 function montarBodyEditarProposta() {
+  return {
+    numero: pegarValor("editarNumero"),
 
-    return {
+    titulo: pegarValor("editarTitulo"),
 
-        numero:
-            pegarValor("editarNumero"),
+    subtitulo: pegarValor("editarSubtitulo"),
 
-        titulo:
-            pegarValor("editarTitulo"),
+    descricao: pegarValor("editarDescricao"),
 
-        subtitulo:
-            pegarValor("editarSubtitulo"),
+    escopo: pegarValor("editarEscopo"),
 
-        descricao:
-            pegarValor("editarDescricao"),
+    observacoes: pegarValor("editarObservacoes"),
 
-        escopo:
-            pegarValor("editarEscopo"),
+    observacoesInternas: pegarValor("editarObservacoesInternas"),
 
-        observacoes:
-            pegarValor("editarObservacoes"),
+    status: pegarValor("editarStatus"),
 
-        observacoesInternas:
-            pegarValor(
-                "editarObservacoesInternas"
-            ),
+    prioridade: pegarValor("editarPrioridade"),
 
-        status:
-            pegarValor(
-                "editarStatus"
-            ),
+    subtotal: pegarNumero("editarSubtotal"),
 
-        prioridade:
-            pegarValor(
-                "editarPrioridade"
-            ),
+    frete: pegarNumero("editarFrete"),
 
-        subtotal:
-            pegarNumero(
-                "editarSubtotal"
-            ),
+    formaPagamento: pegarValor("editarFormaPagamento"),
 
-        frete:
-            pegarNumero(
-                "editarFrete"
-            ),
+    condicoesPagamento: pegarValor("editarCondicoesPagamento"),
 
-        formaPagamento:
-            pegarValor(
-                "editarFormaPagamento"
-            ),
+    validadeDias: pegarInteiro("editarValidadeDias"),
 
-        condicoesPagamento:
-            pegarValor(
-                "editarCondicoesPagamento"
-            ),
+    dataValidade: pegarValor("editarDataValidade"),
 
-        validadeDias:
-            pegarInteiro(
-                "editarValidadeDias"
-            ),
+    dataAprovacao: pegarValor("editarDataAprovacao"),
 
-        dataValidade:
-            pegarValor(
-                "editarDataValidade"
-            ),
+    dataRecusa: pegarValor("editarDataRecusa"),
 
-        dataAprovacao:
-            pegarValor(
-                "editarDataAprovacao"
-            ),
+    motivoRecusa: pegarValor("editarMotivoRecusa"),
 
-        dataRecusa:
-            pegarValor(
-                "editarDataRecusa"
-            ),
+    responsavel: pegarValor("editarResponsavel"),
 
-        motivoRecusa:
-            pegarValor(
-                "editarMotivoRecusa"
-            ),
+    origem: pegarValor("editarOrigem"),
 
-        responsavel:
-            pegarValor(
-                "editarResponsavel"
-            ),
+    assinaturaCliente: pegarValor("editarAssinaturaCliente"),
 
+    aprovadoCliente: pegarCheckbox("editarAprovadoCliente"),
 
+    enviadoEmail: pegarCheckbox("editarEnviadoEmail"),
 
-        origem:
-            pegarValor(
-                "editarOrigem"
-            ),
+    enviadoWhatsapp: pegarCheckbox("editarEnviadoWhatsapp"),
 
+    visualizada: pegarCheckbox("editarVisualizada"),
 
+    clienteId: Number(pegarValor("editarClienteId")),
 
-        assinaturaCliente:
-            pegarValor(
-                "editarAssinaturaCliente"
-            ),
+    vendedorId: pegarValor("editarVendedor")
+      ? Number(pegarValor("editarVendedor"))
+      : null,
 
-        aprovadoCliente:
-            pegarCheckbox(
-                "editarAprovadoCliente"
-            ),
-
-        enviadoEmail:
-            pegarCheckbox(
-                "editarEnviadoEmail"
-            ),
-
-        enviadoWhatsapp:
-            pegarCheckbox(
-                "editarEnviadoWhatsapp"
-            ),
-
-        visualizada:
-            pegarCheckbox(
-                "editarVisualizada"
-            ),
-
-
-
-        clienteId:
-            Number(
-                pegarValor(
-                    "editarClienteId"
-                )
-            ),
-
-        vendedorId:
-            pegarValor("editarVendedor")
-                ? Number(pegarValor("editarVendedor"))
-                : null,
-
-        itens:
-            montarItensEditar()
-
-    };
-
+    itens: montarItensEditar(),
+  };
 }
 
 formEditarProposta.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-        const id = pegarValor("editarId");
+  try {
+    const id = pegarValor("editarId");
 
-        if (!id) {
-            alert("Proposta inválida.");
-            return;
-        }
-
-        const body = montarBodyEditarProposta();
-        if (!body.itens || body.itens.length === 0) {
-            alert("Adicione pelo menos um item na proposta antes de salvar.");
-            return;
-        }
-
-        console.log("BODY EDITAR PROPOSTA:", body);
-        const response = await fetch(
-            `${API_URL}/propostas/${id}`,
-            {
-                method: "PUT",
-
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-
-                body: JSON.stringify(body)
-            }
-        );
-
-        const resposta = await response.json();
-
-        if (!response.ok) {
-            console.log(resposta);
-            alert(resposta.error || "Erro ao atualizar proposta.");
-            return;
-        }
-
-        bootstrap.Modal.getInstance(
-            document.getElementById("modalProposta")
-        ).hide();
-
-        await carregarPropostas();
-
-    } catch (error) {
-        console.log(error);
-        alert("Erro ao atualizar proposta.");
+    if (!id) {
+      alert("Proposta inválida.");
+      return;
     }
-});
 
-document.getElementById("btnExcluirProposta").addEventListener("click", async () => {
-    try {
-        const id = pegarValor("editarId");
-
-        if (!id) {
-            alert("Proposta inválida.");
-            return;
-        }
-
-        const confirmar = confirm("Deseja excluir esta proposta?");
-
-        if (!confirmar) return;
-
-        const response = await fetch(
-            `${API_URL}/propostas/${id}`,
-            {
-                method: "DELETE",
-
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            }
-        );
-
-        const resposta = await response.json();
-
-        if (!response.ok) {
-            console.log(resposta);
-            alert(resposta.error || "Erro ao excluir proposta.");
-            return;
-        }
-
-        bootstrap.Modal.getInstance(
-            document.getElementById("modalProposta")
-        ).hide();
-
-        await carregarPropostas();
-
-    } catch (error) {
-        console.log(error);
-        alert("Erro ao excluir proposta.");
+    const body = montarBodyEditarProposta();
+    if (!body.itens || body.itens.length === 0) {
+      alert("Adicione pelo menos um item na proposta antes de salvar.");
+      return;
     }
-});
 
-pesquisaProposta.addEventListener("input", () => {
-    const termo = pesquisaProposta.value.toLowerCase().trim();
+    console.log("BODY EDITAR PROPOSTA:", body);
+    const response = await fetch(`${API_URL}/propostas/${id}`, {
+      method: "PUT",
 
-    const filtradas = propostasCache.filter(proposta => {
-        return (
-            proposta.titulo?.toLowerCase().includes(termo) ||
-            proposta.numero?.toLowerCase().includes(termo) ||
-            (
-                proposta.cliente?.nomeFantasia ||
-                proposta.cliente?.razaoSocial ||
-                ""
-            ).toLowerCase().includes(termo) ||
-            proposta.descricao?.toLowerCase().includes(termo) ||
-            proposta.status?.toLowerCase().includes(termo) ||
-            (
-                proposta.vendedor?.nome || ""
-            ).toLowerCase().includes(termo) ||
-            proposta.origem?.toLowerCase().includes(termo)
-        );
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+
+      body: JSON.stringify(body),
     });
 
-    renderizarKanban(filtradas);
-    atualizarKpis(filtradas);
+    const resposta = await response.json();
+
+    if (!response.ok) {
+      console.log(resposta);
+      alert(resposta.error || "Erro ao atualizar proposta.");
+      return;
+    }
+
+    bootstrap.Modal.getInstance(
+      document.getElementById("modalProposta"),
+    ).hide();
+
+    await carregarPropostas();
+  } catch (error) {
+    console.log(error);
+    alert("Erro ao atualizar proposta.");
+  }
+});
+
+document
+  .getElementById("btnExcluirProposta")
+  .addEventListener("click", async () => {
+    try {
+      const id = pegarValor("editarId");
+
+      if (!id) {
+        alert("Proposta inválida.");
+        return;
+      }
+
+      const confirmar = confirm("Deseja excluir esta proposta?");
+
+      if (!confirmar) return;
+
+      const response = await fetch(`${API_URL}/propostas/${id}`, {
+        method: "DELETE",
+
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const resposta = await response.json();
+
+      if (!response.ok) {
+        console.log(resposta);
+        alert(resposta.error || "Erro ao excluir proposta.");
+        return;
+      }
+
+      bootstrap.Modal.getInstance(
+        document.getElementById("modalProposta"),
+      ).hide();
+
+      await carregarPropostas();
+    } catch (error) {
+      console.log(error);
+      alert("Erro ao excluir proposta.");
+    }
+  });
+
+pesquisaProposta.addEventListener("input", () => {
+  const filtradas = obterListaFiltrada();
+  renderizarKanban(filtradas);
+  atualizarKpis(filtradas);
+});
+
+const TOTAL_STEPS_NOVA_PROPOSTA = 4;
+
+function validarStepNovaProposta(step) {
+  if (step !== 1) return true;
+
+  if (!pegarValor("titulo")) {
+    alert("Informe o título da proposta.");
+    return false;
+  }
+
+  if (!pegarValor("clienteId")) {
+    alert("Selecione um cliente.");
+    return false;
+  }
+
+  return true;
+}
+
+function criarWizardProposta({
+  form,
+  modal,
+  nav,
+  btnProximo,
+  btnSalvar,
+  totalSteps,
+  validarStep,
+}) {
+  let stepAtual = 1;
+
+  function atualizarBotoes() {
+    btnProximo?.classList.toggle("d-none", stepAtual === totalSteps);
+    btnSalvar?.classList.toggle("d-none", stepAtual !== totalSteps);
+  }
+
+  function irParaStep(step) {
+    stepAtual = Math.max(1, Math.min(totalSteps, step));
+
+    form.querySelectorAll(".form-step").forEach((elemento) => {
+      elemento.classList.toggle(
+        "active",
+        Number(elemento.dataset.step) === stepAtual,
+      );
+    });
+
+    nav?.querySelectorAll(".step-pill").forEach((pill) => {
+      const numero = Number(pill.dataset.step);
+
+      pill.classList.toggle("active", numero === stepAtual);
+      pill.classList.toggle("done", numero < stepAtual);
+    });
+
+    atualizarBotoes();
+  }
+
+  btnProximo?.addEventListener("click", () => {
+    if (!validarStep(stepAtual)) return;
+
+    irParaStep(stepAtual + 1);
+  });
+
+  nav?.querySelectorAll(".step-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      const destino = Number(pill.dataset.step);
+
+      if (destino <= stepAtual) {
+        irParaStep(destino);
+        return;
+      }
+
+      if (validarStep(stepAtual)) {
+        irParaStep(destino);
+      }
+    });
+  });
+
+  modal?.addEventListener("hidden.bs.modal", () => {
+    irParaStep(1);
+  });
+
+  irParaStep(1);
+
+  return { irParaStep };
+}
+
+document.getElementById("btnMockProposta")?.addEventListener("click", () => {
+  preencherPropostaMock();
+});
+
+const wizardNovaProposta = criarWizardProposta({
+  form: formNovaProposta,
+  modal: document.getElementById("modalNovaProposta"),
+  nav: document.getElementById("stepsNavNovaProposta"),
+  btnProximo: document.getElementById("btnStepProximoNovaProposta"),
+  btnSalvar: document.getElementById("btnSalvarNovaProposta"),
+  totalSteps: TOTAL_STEPS_NOVA_PROPOSTA,
+  validarStep: validarStepNovaProposta,
 });
 
 async function iniciarTela() {
-    await carregarClientes();
-    await carregarServicos();
-    await carregarPropostas();
+  mostrarLoadingKanban();
+  await carregarClientes();
+  await carregarServicos();
+  await carregarPropostas();
 
-    const nomeResponsavel =
-        usuarioLogado?.usuario?.nome ||
-        usuarioLogado?.nome ||
-        "";
+  const nomeResponsavel =
+    usuarioLogado?.usuario?.nome || usuarioLogado?.nome || "";
 
-    const responsavel =
-        document.getElementById("responsavel");
+  const responsavel = document.getElementById("responsavel");
 
-    if (responsavel && nomeResponsavel) {
-        responsavel.value = nomeResponsavel;
-    }
+  if (responsavel && nomeResponsavel) {
+    responsavel.value = nomeResponsavel;
+  }
 }
-
 
 iniciarTela();
 carregarVendedores();
-carregarPropostas();

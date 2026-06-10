@@ -1,0 +1,103 @@
+function pegarValor(id) {
+  const elemento = document.getElementById(id);
+
+  if (!elemento) return null;
+
+  const valor = elemento.value;
+
+  if (valor === undefined || valor === null) return null;
+
+  const tratado = String(valor).trim();
+
+  return tratado === "" ? null : tratado;
+}
+
+function pegarNumero(id) {
+  const valor = pegarValor(id);
+
+  if (!valor) return null;
+
+  const numero = Number(String(valor).replace(",", "."));
+
+  return Number.isNaN(numero) ? null : numero;
+}
+
+function pegarInteiro(id) {
+  const valor = pegarValor(id);
+
+  if (!valor) return null;
+
+  const numero = Number(valor);
+
+  return Number.isNaN(numero) ? null : numero;
+}
+
+function pegarDecimal(id) {
+  return pegarNumero(id);
+}
+
+function pegarCheckbox(id) {
+  const elemento = document.getElementById(id);
+
+  if (!elemento) return false;
+
+  return elemento.checked;
+}
+
+function preencherCampo(id, valor) {
+  const elemento = document.getElementById(id);
+
+  if (!elemento) return;
+
+  elemento.value = valor ?? "";
+}
+
+function preencherCheckbox(id, valor) {
+  const elemento = document.getElementById(id);
+
+  if (!elemento) return;
+
+  elemento.checked = Boolean(valor);
+}
+
+function formatarDataParaInput(data) {
+  if (!data) return "";
+
+  return String(data).split("T")[0];
+}
+
+function dataInput(data) {
+  return formatarDataParaInput(data);
+}
+
+function moeda(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+function textoSeguro(valor) {
+  if (valor === null || valor === undefined || valor === "") {
+    return "-";
+  }
+
+  return String(valor)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatarData(data) {
+  if (!data) return "-";
+
+  return new Date(data).toLocaleDateString("pt-BR");
+}
+
+function formatarDataHora(data) {
+  if (!data) return "-";
+
+  return new Date(data).toLocaleString("pt-BR");
+}
