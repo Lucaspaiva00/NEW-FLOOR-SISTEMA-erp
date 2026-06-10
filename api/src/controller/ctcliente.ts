@@ -40,6 +40,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         statusCliente: body.statusCliente,
         limiteCredito: body.limiteCredito,
         descontoPadrao: body.descontoPadrao,
+        logo: body.logo,
         dataNascimento: body.dataNascimento
           ? new Date(body.dataNascimento)
           : null
@@ -153,6 +154,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
         statusCliente: body.statusCliente,
         limiteCredito: body.limiteCredito,
         descontoPadrao: body.descontoPadrao,
+        logo: body.logo,
         dataNascimento: body.dataNascimento
           ? new Date(body.dataNascimento)
           : null
