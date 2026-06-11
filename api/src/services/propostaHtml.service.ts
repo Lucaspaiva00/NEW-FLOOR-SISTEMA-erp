@@ -184,6 +184,40 @@ function dataBR(data?: Date | string | null): string {
     return new Date(data).toLocaleDateString("pt-BR");
 }
 
+function contatosPreenchidos(
+    ...valores: Array<string | null | undefined>
+): string[] {
+
+    const unicos = new Set<string>();
+
+    valores.forEach((valor) => {
+
+        const texto = String(valor || "").trim();
+
+        if (texto) {
+            unicos.add(texto);
+        }
+
+    });
+
+    return [...unicos];
+
+}
+
+function formatarContatosHtml(
+    ...valores: Array<string | null | undefined>
+): string {
+
+    const preenchidos = contatosPreenchidos(...valores);
+
+    if (!preenchidos.length) {
+        return "-";
+    }
+
+    return preenchidos.join("<br>");
+
+}
+
 export async function gerarHtmlProposta({
     proposta,
     cliente,
@@ -635,17 +669,25 @@ ${cliente.responsavel || "-"}
 </div>
 
 <div class="campo">
-<strong>Email</strong>
-${cliente.email1 ||
-        cliente.email ||
-        "-"}
+<strong>E-mails</strong>
+${formatarContatosHtml(
+        cliente.email1,
+        cliente.email2,
+        cliente.email3,
+        cliente.email4,
+        cliente.email
+    )}
 </div>
 
 <div class="campo">
-<strong>Telefone</strong>
-${cliente.telefone1 ||
-        cliente.telefone ||
-        "-"}
+<strong>Telefones</strong>
+${formatarContatosHtml(
+        cliente.telefone1,
+        cliente.telefone2,
+        cliente.telefone3,
+        cliente.telefone4,
+        cliente.telefone
+    )}
 </div>
 
 <div class="campo">
