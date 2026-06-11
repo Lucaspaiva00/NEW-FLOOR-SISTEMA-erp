@@ -24,8 +24,8 @@ function idCampoContato(tipo, index, prefixo = "") {
   return `${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`;
 }
 
-function pegarGrupoContato(prefixo, tipo) {
-  const seletor = `[data-contato-grupo][data-prefix="${prefixo}"] [data-tipo="${tipo}"]`;
+function pegarListaContato(prefixo, tipo) {
+  const seletor = `[data-contato-grupo][data-prefix="${prefixo}"] .contato-lista[data-tipo="${tipo}"]`;
 
   return document.querySelector(seletor);
 }
@@ -37,7 +37,7 @@ function contatosVisiveis(lista) {
 }
 
 function atualizarBotaoAdicionarContato(grupo, tipo) {
-  const lista = grupo.querySelector(`[data-tipo="${tipo}"]`);
+  const lista = grupo.querySelector(`.contato-lista[data-tipo="${tipo}"]`);
   const botao = grupo.querySelector(
     `.btn-contato-adicionar[data-tipo="${tipo}"]`,
   );
@@ -49,7 +49,7 @@ function atualizarBotaoAdicionarContato(grupo, tipo) {
 }
 
 function revelarProximoContato(prefixo, tipo) {
-  const lista = pegarGrupoContato(prefixo, tipo);
+  const lista = pegarListaContato(prefixo, tipo);
 
   if (!lista) return;
 
@@ -77,7 +77,7 @@ function removerContato(item, prefixo, tipo) {
 
 function sincronizarVisibilidadeContatos(prefixo = "") {
   ["telefone", "email"].forEach((tipo) => {
-    const lista = pegarGrupoContato(prefixo, tipo);
+    const lista = pegarListaContato(prefixo, tipo);
 
     if (!lista) return;
 
@@ -97,7 +97,7 @@ function sincronizarVisibilidadeContatos(prefixo = "") {
 
 function resetarContatos(prefixo = "") {
   ["telefone", "email"].forEach((tipo) => {
-    const lista = pegarGrupoContato(prefixo, tipo);
+    const lista = pegarListaContato(prefixo, tipo);
 
     if (!lista) return;
 
@@ -121,7 +121,7 @@ function configurarContatosDinamicos() {
     });
 
     grupo.querySelectorAll(".contato-item.contato-extra").forEach((item) => {
-      const lista = item.closest("[data-tipo]");
+      const lista = item.closest(".contato-lista");
       const tipo = lista?.dataset.tipo;
 
       item.querySelector(".btn-contato-remover")?.addEventListener("click", () => {
