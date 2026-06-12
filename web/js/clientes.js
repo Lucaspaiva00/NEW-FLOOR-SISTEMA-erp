@@ -203,10 +203,6 @@ function montarBodyCliente(prefixo = "") {
 
     pais: pegarValor(campo("pais")) || "Brasil",
 
-    latitude: pegarValor(campo("latitude")),
-
-    longitude: pegarValor(campo("longitude")),
-
     observacoes: pegarValor(campo("observacoes")),
 
     origemLead: pegarValor(campo("origemLead")),
@@ -762,10 +758,6 @@ async function abrirModalCliente(id) {
     preencherCampo("editarEstado", cliente.estado);
 
     preencherCampo("editarPais", cliente.pais || "Brasil");
-
-    preencherCampo("editarLatitude", cliente.latitude);
-
-    preencherCampo("editarLongitude", cliente.longitude);
 
     preencherCampo("editarOrigemLead", cliente.origemLead);
 

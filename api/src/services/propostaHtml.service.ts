@@ -2,284 +2,198 @@ import fs from "fs";
 import path from "path";
 
 interface DadosProposta {
-    proposta: any;
-    cliente: any;
-    itens: any[];
-    template: any;
+  proposta: any;
+  cliente: any;
+  itens: any[];
+  template: any;
 }
 
-function caminhoAssetPublico(
-    ...partes: string[]
-): string {
+function caminhoAssetPublico(...partes: string[]): string {
+  const candidatos = [
+    path.join(__dirname, "..", "..", "public", ...partes),
+    path.join(__dirname, "..", "public", ...partes),
+    path.join(process.cwd(), "public", ...partes),
+  ];
 
-    const candidatos = [
-        path.join(__dirname, "..", "..", "public", ...partes),
-        path.join(__dirname, "..", "public", ...partes),
-        path.join(process.cwd(), "public", ...partes)
-    ];
-
-    for (const candidato of candidatos) {
-
-        if (fs.existsSync(candidato)) {
-            return candidato;
-        }
-
+  for (const candidato of candidatos) {
+    if (fs.existsSync(candidato)) {
+      return candidato;
     }
+  }
 
-    return candidatos[0];
-
+  return candidatos[0];
 }
 
-const LOGO_PADRAO = caminhoAssetPublico(
-    "assets",
-    "newfloor-logo.jpeg"
-);
+const LOGO_PADRAO = caminhoAssetPublico("assets", "logo-newfloor.png");
 
-function nomeCliente(
-    cliente?: any
-): string {
+function nomeCliente(cliente?: any): string {
+  if (!cliente) {
+    return "Cliente";
+  }
 
-    if (!cliente) {
-        return "Cliente";
-    }
+  const nome =
+    cliente.nomeFantasia ||
+    cliente.razaoSocial ||
+    cliente.nome ||
+    cliente.responsavel;
 
-    const nome =
-        cliente.nomeFantasia ||
-        cliente.razaoSocial ||
-        cliente.nome ||
-        cliente.responsavel;
+  if (!nome || nome === "undefined") {
+    return "Cliente";
+  }
 
-    if (
-        !nome ||
-        nome === "undefined"
-    ) {
-        return "Cliente";
-    }
-
-    return String(nome);
-
+  return String(nome);
 }
 
-function logoParaDataUri(
-    caminho: string
-): string | null {
-
-    try {
-
-        if (!fs.existsSync(caminho)) {
-            return null;
-        }
-
-        const buffer =
-            fs.readFileSync(caminho);
-
-        const ext =
-            path.extname(caminho)
-                .slice(1)
-                .toLowerCase();
-
-        const mime =
-            ext === "jpg"
-                ? "jpeg"
-                : ext;
-
-        return `data:image/${mime};base64,${buffer.toString("base64")}`;
-
-    } catch {
-
-        return null;
-
+function logoParaDataUri(caminho: string): string | null {
+  try {
+    if (!fs.existsSync(caminho)) {
+      return null;
     }
 
+    const buffer = fs.readFileSync(caminho);
+
+    const ext = path.extname(caminho).slice(1).toLowerCase();
+
+    const mime = ext === "jpg" ? "jpeg" : ext;
+
+    return `data:image/${mime};base64,${buffer.toString("base64")}`;
+  } catch {
+    return null;
+  }
 }
 
-async function imagemUrlParaDataUri(
-    url: string
-): Promise<string | null> {
+async function imagemUrlParaDataUri(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
 
-    try {
-
-        const response =
-            await fetch(url);
-
-        if (!response.ok) {
-            return null;
-        }
-
-        const buffer =
-            Buffer.from(
-                await response.arrayBuffer()
-            );
-
-        const contentType =
-            response.headers.get("content-type") ||
-            "image/jpeg";
-
-        return `data:${contentType};base64,${buffer.toString("base64")}`;
-
-    } catch {
-
-        return null;
-
+    if (!response.ok) {
+      return null;
     }
 
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+
+    return `data:${contentType};base64,${buffer.toString("base64")}`;
+  } catch {
+    return null;
+  }
 }
 
 async function resolverImagemSrc(
-    logo?: string | null,
-    fallbackCaminho?: string
+  logo?: string | null,
+  fallbackCaminho?: string,
 ): Promise<string | null> {
-
-    if (logo) {
-
-        if (logo.startsWith("data:")) {
-            return logo;
-        }
-
-        if (
-            logo.startsWith("http://") ||
-            logo.startsWith("https://")
-        ) {
-
-            const embutida =
-                await imagemUrlParaDataUri(logo);
-
-            if (embutida) {
-                return embutida;
-            }
-
-            return logo;
-
-        }
-
-        const caminhoCustom = path.isAbsolute(logo)
-            ? logo
-            : path.join(
-                process.cwd(),
-                logo.replace(/^\//, "")
-            );
-
-        return logoParaDataUri(caminhoCustom);
-
+  if (logo) {
+    if (logo.startsWith("data:")) {
+      return logo;
     }
 
-    if (fallbackCaminho) {
-        return logoParaDataUri(fallbackCaminho);
+    if (logo.startsWith("http://") || logo.startsWith("https://")) {
+      const embutida = await imagemUrlParaDataUri(logo);
+
+      if (embutida) {
+        return embutida;
+      }
+
+      return logo;
     }
 
-    return null;
+    const caminhoCustom = path.isAbsolute(logo)
+      ? logo
+      : path.join(process.cwd(), logo.replace(/^\//, ""));
 
+    return logoParaDataUri(caminhoCustom);
+  }
+
+  if (fallbackCaminho) {
+    return logoParaDataUri(fallbackCaminho);
+  }
+
+  return null;
 }
 
 function moeda(valor: any): string {
-    return Number(valor || 0).toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL"
-    });
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
 
 function dataBR(data?: Date | string | null): string {
-    if (!data) return "-";
+  if (!data) return "-";
 
-    return new Date(data).toLocaleDateString("pt-BR");
+  return new Date(data).toLocaleDateString("pt-BR");
 }
 
 function contatosPreenchidos(
-    ...valores: Array<string | null | undefined>
+  ...valores: Array<string | null | undefined>
 ): string[] {
+  const unicos = new Set<string>();
 
-    const unicos = new Set<string>();
+  valores.forEach((valor) => {
+    const texto = String(valor || "").trim();
 
-    valores.forEach((valor) => {
+    if (texto) {
+      unicos.add(texto);
+    }
+  });
 
-        const texto = String(valor || "").trim();
-
-        if (texto) {
-            unicos.add(texto);
-        }
-
-    });
-
-    return [...unicos];
-
+  return [...unicos];
 }
 
 function formatarContatosHtml(
-    ...valores: Array<string | null | undefined>
+  ...valores: Array<string | null | undefined>
 ): string {
+  const preenchidos = contatosPreenchidos(...valores);
 
-    const preenchidos = contatosPreenchidos(...valores);
+  if (!preenchidos.length) {
+    return "-";
+  }
 
-    if (!preenchidos.length) {
-        return "-";
-    }
-
-    return preenchidos.join("<br>");
-
+  return preenchidos.join("<br>");
 }
 
 export async function gerarHtmlProposta({
-    proposta,
-    cliente,
-    itens,
-    template
+  proposta,
+  cliente,
+  itens,
+  template,
 }: DadosProposta): Promise<string> {
+  const corPrimaria = template?.corPrimaria || "#111827";
 
-    const corPrimaria =
-        template?.corPrimaria ||
-        "#111827";
+  const corSecundaria = template?.corSecundaria || "#f3f4f6";
 
-    const corSecundaria =
-        template?.corSecundaria ||
-        "#f3f4f6";
+  const exibirLogo = template?.exibirLogo !== false;
 
-    const exibirLogo =
-        template?.exibirLogo !== false;
+  const [logoSrc, clienteLogoSrc] = await Promise.all([
+    exibirLogo
+      ? resolverImagemSrc(template?.logo, LOGO_PADRAO)
+      : Promise.resolve(null),
 
-    const [logoSrc, clienteLogoSrc] =
-        await Promise.all([
+    cliente?.logo ? resolverImagemSrc(cliente.logo) : Promise.resolve(null),
+  ]);
 
-            exibirLogo
-                ? resolverImagemSrc(
-                    template?.logo,
-                    LOGO_PADRAO
-                )
-                : Promise.resolve(null),
+  const subtotalCalculado = itens.reduce(
+    (acc, item) => acc + Number(item.subtotal || 0),
+    0,
+  );
 
-            cliente?.logo
-                ? resolverImagemSrc(cliente.logo)
-                : Promise.resolve(null)
+  const totalCalculado =
+    subtotalCalculado -
+    Number(proposta.desconto || 0) +
+    Number(proposta.acrescimo || 0) +
+    Number(proposta.frete || 0) +
+    Number(proposta.impostos || 0);
 
-        ]);
-
-    const subtotalCalculado = itens.reduce(
-        (acc, item) =>
-            acc + Number(item.subtotal || 0),
-        0
-    );
-
-    const totalCalculado =
-        subtotalCalculado
-        - Number(proposta.desconto || 0)
-        + Number(proposta.acrescimo || 0)
-        + Number(proposta.frete || 0)
-        + Number(proposta.impostos || 0);
-
-    const tabelaItens =
-        itens
-            .map(
-                (
-                    item,
-                    index
-                ) => `
+  const tabelaItens = itens
+    .map(
+      (item, index) => `
 <tr>
 <td>${index + 1}</td>
 
 <td>
-    ${item.servico?.nome ||
-                    item.descricao ||
-                    "-"
-                    }
+    ${item.servico?.nome || item.descricao || "-"}
 </td>
 
 <td>
@@ -299,17 +213,13 @@ export async function gerarHtmlProposta({
 </td>
 
 </tr>
-`
-            )
-            .join("");
+`,
+    )
+    .join("");
 
-    const detalhesTecnicos =
-        itens
-            .map(
-                (
-                    item,
-                    index
-                ) => `
+  const detalhesTecnicos = itens
+    .map(
+      (item, index) => `
 
 <div class="item-tecnico">
 
@@ -318,10 +228,7 @@ ITEM ${index + 1}
 </h3>
 
 <h4>
-${item.servico?.nome ||
-                    item.descricao ||
-                    "Serviço"
-                    }
+${item.servico?.nome || item.descricao || "Serviço"}
 </h4>
 
 <p>
@@ -341,44 +248,46 @@ ${moeda(item.subtotal)}
 
 </p>
 
-${item.detalhes
-                        ? `
+${
+  item.detalhes
+    ? `
 <p>
 ${item.detalhes}
 </p>
 `
-                        : item.servico?.descricao
-                            ? `
+    : item.servico?.descricao
+      ? `
 <p>
 ${item.servico.descricao}
 </p>
 `
-                            : ""
-                    }
+      : ""
+}
 
-${item.observacoes
-                        ? `
+${
+  item.observacoes
+    ? `
 <p>
 <strong>Observações:</strong>
 ${item.observacoes}
 </p>
 `
-                        : item.servico?.observacoes
-                            ? `
+    : item.servico?.observacoes
+      ? `
 <p>
 <strong>Observações:</strong>
 ${item.servico.observacoes}
 </p>
 `
-                            : ""
-                    }
+      : ""
+}
 
 </div>
-`
-            )
-            .join("");
+`,
+    )
+    .join("");
 
-    return `
+  return `
 <!DOCTYPE html>
 
 <html lang="pt-BR">
@@ -422,6 +331,7 @@ margin-bottom:25px;
 .logo{
 max-width:180px;
 max-height:80px;
+object-fit:contain;
 }
 
 .cliente-card{
@@ -590,27 +500,30 @@ text-align:center;
 
 <div class="empresa">
 
-${logoSrc
-            ? `
+${
+  logoSrc
+    ? `
 <img
 src="${logoSrc}"
 class="logo"
 alt="NEW FLOOR"
 />
 `
-            : ""
-        }
+    : ""
+}
 
 <div class="empresa-text">
 
 <h2>
-${template?.cabecalho ||
-        "NEW FLOOR PISOS E REVESTIMENTOS"}
+${template?.cabecalho || "NEW FLOOR PISOS E REVESTIMENTOS"}
 </h2>
 
 <p>
-${template?.textoApresentacao ||
-        "Proposta Técnica Comercial"}
+${template?.textoApresentacao}
+</p>
+
+<p>
+Proposta Técnica Comercial
 </p>
 
 </div>
@@ -645,16 +558,17 @@ Dados do Cliente
 
 <div class="card cliente-card">
 
-${clienteLogoSrc
-            ? `
+${
+  clienteLogoSrc
+    ? `
 <img
 src="${clienteLogoSrc}"
 class="logo-cliente"
 alt="Logo do cliente"
 />
 `
-            : ""
-        }
+    : ""
+}
 
 <div class="cliente-dados grid">
 
@@ -671,23 +585,23 @@ ${cliente.responsavel || "-"}
 <div class="campo">
 <strong>E-mails</strong>
 ${formatarContatosHtml(
-        cliente.email1,
-        cliente.email2,
-        cliente.email3,
-        cliente.email4,
-        cliente.email
-    )}
+  cliente.email1,
+  cliente.email2,
+  cliente.email3,
+  cliente.email4,
+  cliente.email,
+)}
 </div>
 
 <div class="campo">
 <strong>Telefones</strong>
 ${formatarContatosHtml(
-        cliente.telefone1,
-        cliente.telefone2,
-        cliente.telefone3,
-        cliente.telefone4,
-        cliente.telefone
-    )}
+  cliente.telefone1,
+  cliente.telefone2,
+  cliente.telefone3,
+  cliente.telefone4,
+  cliente.telefone,
+)}
 </div>
 
 <div class="campo">
@@ -835,8 +749,9 @@ ${proposta.condicoesPagamento || "-"}
 
 </div>
 
-${template?.textoGarantia
-            ? `
+${
+  template?.textoGarantia
+    ? `
 <div class="section">
 
 <div class="section-title">
@@ -851,8 +766,8 @@ ${template.textoGarantia}
 
 </div>
 `
-            : ""
-        }
+    : ""
+}
 
 <div class="section">
 
@@ -862,9 +777,7 @@ Observações
 
 <div class="card">
 
-${proposta.observacoes ||
-        template?.textoObservacao ||
-        "-"}
+${proposta.observacoes || template?.textoObservacao || "-"}
 
 </div>
 
@@ -884,8 +797,7 @@ ${nomeCliente(cliente)}
 
 <div class="footer">
 
-${template?.rodape ||
-        "Documento gerado automaticamente pelo sistema."}
+${template?.rodape || "Documento gerado automaticamente pelo sistema."}
 
 </div>
 
@@ -895,5 +807,4 @@ ${template?.rodape ||
 
 </html>
 `;
-
 }

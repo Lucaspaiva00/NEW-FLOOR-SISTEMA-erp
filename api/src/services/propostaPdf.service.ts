@@ -7,6 +7,15 @@ export interface ResultadoPDF {
     url: string;
 }
 
+export function nomeDownloadPdfProposta(
+    numero: string,
+    razaoSocial?: string | null
+): string {
+    const razao = (razaoSocial || "").trim();
+    const nome = `Proposta técnica comercial new floor (${numero})${razao ? ` (${razao})` : ""}`;
+    return nome.replace(/[\\/:*?"<>|]/g, "").trim() + ".pdf";
+}
+
 export async function gerarPdfProposta(
     html: string,
     nomeArquivo: string

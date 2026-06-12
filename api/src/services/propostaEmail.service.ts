@@ -4,6 +4,7 @@ interface EmailProposta {
     destinatario: string;
     clienteNome: string;
     numeroProposta: string;
+    nomeArquivo: string;
     caminhoPdf: string;
 }
 
@@ -33,6 +34,7 @@ export async function enviarPropostaPorEmail({
     destinatario,
     clienteNome,
     numeroProposta,
+    nomeArquivo,
     caminhoPdf
 }: EmailProposta): Promise<void> {
 
@@ -91,7 +93,7 @@ export async function enviarPropostaPorEmail({
         attachments: [
             {
                 filename:
-                    `proposta-${numeroProposta}.pdf`,
+                    nomeArquivo,
 
                 path:
                     caminhoPdf

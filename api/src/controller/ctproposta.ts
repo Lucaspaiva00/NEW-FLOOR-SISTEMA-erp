@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import prisma from "../prisma";
 import { gerarHtmlProposta } from "../services/propostaHtml.service";
-import { gerarPdfProposta } from "../services/propostaPdf.service";
+import { gerarPdfProposta, nomeDownloadPdfProposta } from "../services/propostaPdf.service";
 import { enviarPropostaPorEmail } from "../services/propostaEmail.service";
 import { gerarLinkWhatsapp } from "../services/propostaWhatsapp.service";
 
@@ -801,14 +801,9 @@ export const downloadPdf =
         req.params;
 
       const proposta =
-        await prisma.proposta.findUnique({
-
-          where: {
-            propostaid:
-              Number(id)
-          }
-
-        });
+        await buscarPropostaCompleta(
+          paramId(id)
+        );
 
       if (!proposta) {
 
@@ -830,14 +825,9 @@ export const downloadPdf =
       }
 
       const propostaAtualizada =
-        await prisma.proposta.findUnique({
-
-          where: {
-            propostaid:
-              Number(id)
-          }
-
-        });
+        await buscarPropostaCompleta(
+          paramId(id)
+        );
 
       if (
         !propostaAtualizada?.pdfUrl
@@ -879,7 +869,11 @@ export const downloadPdf =
       }
 
       res.download(
-        caminhoArquivo
+        caminhoArquivo,
+        nomeDownloadPdfProposta(
+          propostaAtualizada.numero,
+          propostaAtualizada.cliente?.razaoSocial
+        )
       );
 
     } catch (error) {
@@ -956,6 +950,12 @@ export const enviarEmail =
 
         numeroProposta:
           proposta.numero,
+
+        nomeArquivo:
+          nomeDownloadPdfProposta(
+            proposta.numero,
+            proposta.cliente.razaoSocial
+          ),
 
         caminhoPdf:
           resultado.caminho

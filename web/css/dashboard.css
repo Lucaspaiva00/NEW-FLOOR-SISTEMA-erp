@@ -50,27 +50,13 @@ body {
     margin-bottom: 45px;
 }
 
-.logo-icon {
+.logo-img {
 
-    width: 48px;
+    width: 140px;
 
-    height: 48px;
+    height: auto;
 
-    border-radius: 14px;
-
-    background: #111827;
-
-    color: white;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    font-weight: 700;
-
-    font-size: 18px;
+    object-fit: contain;
 }
 
 .logo strong {
