@@ -19,6 +19,35 @@ function paramId(
 
 }
 
+async function gerarNumeroAutomaticoProposta(): Promise<string> {
+  const [ultimaProposta, propostas] = await Promise.all([
+    prisma.proposta.findFirst({
+      orderBy: { propostaid: "desc" },
+      select: { propostaid: true },
+    }),
+    prisma.proposta.findMany({
+      select: { numero: true },
+    }),
+  ]);
+
+  const sequenciaPorId =
+    (ultimaProposta?.propostaid || 650) + 1;
+
+  let maiorNumeroCadastrado = 650;
+
+  for (const proposta of propostas) {
+    const numero = Number(proposta.numero);
+
+    if (!Number.isNaN(numero) && numero > maiorNumeroCadastrado) {
+      maiorNumeroCadastrado = numero;
+    }
+  }
+
+  return String(
+    Math.max(sequenciaPorId, maiorNumeroCadastrado + 1)
+  );
+}
+
 async function buscarPropostaCompleta(id: string) {
   return prisma.proposta.findUnique({
     where: {
@@ -31,7 +60,11 @@ async function buscarPropostaCompleta(id: string) {
       itens: {
         include: {
           servico: true
-        }
+        },
+        orderBy: [
+          { ordem: "asc" },
+          { itempropostaid: "asc" }
+        ]
       },
       agendas: true
     }
@@ -152,16 +185,8 @@ export const create = async (
 
     const body = req.body;
 
-    const ultimaProposta =
-      await prisma.proposta.findFirst({
-        orderBy: {
-          propostaid: "desc"
-        }
-      });
-
-    const numeroAutomatico = String(
-      (ultimaProposta?.propostaid || 650) + 1
-    );
+    const numeroAutomatico =
+      await gerarNumeroAutomaticoProposta();
 
     const subtotal =
       (body.itens || []).reduce(
@@ -175,8 +200,7 @@ export const create = async (
 
         data: {
 
-          numero:
-            body.numero || numeroAutomatico,
+          numero: numeroAutomatico,
 
           titulo:
             body.titulo,
@@ -499,12 +523,14 @@ export const update = async (
 
           vendedorId:
             body.vendedorId !== undefined
-              ? Number(body.vendedorId)
+              ? body.vendedorId
+                ? Number(body.vendedorId)
+                : null
               : propostaAtual.vendedorId,
 
-          pdfUrl:
-            body.pdfUrl ??
-            propostaAtual.pdfUrl,
+          pdfUrl: temItensNoBody
+            ? null
+            : body.pdfUrl ?? propostaAtual.pdfUrl,
 
           origem:
             body.origem ??
@@ -537,7 +563,9 @@ export const update = async (
 
           templatePropostaTemplateid:
             body.templatePropostaTemplateid !== undefined
-              ? Number(body.templatePropostaTemplateid)
+              ? body.templatePropostaTemplateid
+                ? Number(body.templatePropostaTemplateid)
+                : null
               : propostaAtual.templatePropostaTemplateid,
 
           ...(temItensNoBody
@@ -816,13 +844,7 @@ export const downloadPdf =
 
       }
 
-      if (!proposta.pdfUrl) {
-
-        await gerarPdfInterno(
-          paramId(id)
-        );
-
-      }
+      await gerarPdfInterno(paramId(id));
 
       const propostaAtualizada =
         await buscarPropostaCompleta(

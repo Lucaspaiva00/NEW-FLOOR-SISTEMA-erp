@@ -16,6 +16,20 @@ export function nomeDownloadPdfProposta(
     return nome.replace(/[\\/:*?"<>|]/g, "").trim() + ".pdf";
 }
 
+function puppeteerLaunchArgs(): string[] {
+    const args = [
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--no-first-run",
+    ];
+
+    if (process.platform === "linux") {
+        args.push("--no-sandbox", "--disable-setuid-sandbox");
+    }
+
+    return args;
+}
+
 export async function gerarPdfProposta(
     html: string,
     nomeArquivo: string
@@ -49,15 +63,7 @@ export async function gerarPdfProposta(
 
         browser = await puppeteer.launch({
             headless: true,
-            args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--no-first-run",
-                "--single-process",
-                "--no-zygote"
-            ]
+            args: puppeteerLaunchArgs(),
         });
 
         const page = await browser.newPage();
@@ -67,11 +73,23 @@ export async function gerarPdfProposta(
             height: 2000
         });
 
-        await page.setContent(
-            html,
-            {
-                waitUntil: "load"
-            }
+        await page.setContent(html, {
+            waitUntil: "load",
+            timeout: 30000,
+        });
+
+        await page.evaluate(() =>
+            Promise.all(
+                Array.from(document.images)
+                    .filter((img) => !img.complete)
+                    .map(
+                        (img) =>
+                            new Promise<void>((resolve) => {
+                                img.onload = () => resolve();
+                                img.onerror = () => resolve();
+                            })
+                    )
+            )
         );
 
         await page.pdf({

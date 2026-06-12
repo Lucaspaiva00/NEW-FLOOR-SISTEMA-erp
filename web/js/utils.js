@@ -101,3 +101,35 @@ function formatarDataHora(data) {
 
   return new Date(data).toLocaleString("pt-BR");
 }
+
+function setLoading(botao, carregando, textoPadrao) {
+  if (!botao) return;
+
+  botao.disabled = carregando;
+  botao.textContent = carregando ? "Salvando..." : textoPadrao;
+}
+
+function toast(mensagem, icone) {
+  if (typeof Swal !== "undefined") {
+    Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon: icone,
+      title: mensagem,
+      showConfirmButton: false,
+      timer: icone === "error" ? 4000 : 3000,
+      timerProgressBar: true,
+    });
+    return;
+  }
+
+  alert(mensagem);
+}
+
+function toastSucesso(mensagem) {
+  toast(mensagem, "success");
+}
+
+function toastErro(mensagem) {
+  toast(mensagem, "error");
+}

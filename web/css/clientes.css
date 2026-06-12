@@ -358,6 +358,14 @@
      margin: 0;
  }
 
+ .contato-item .contato-nome {
+     flex: 0 0 180px;
+ }
+
+ .contato-item .contato-valor {
+     flex: 1;
+ }
+
  .btn-contato-adicionar {
      height: 36px;
      padding: 0 14px;

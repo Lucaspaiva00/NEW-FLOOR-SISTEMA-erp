@@ -126,32 +126,51 @@ function dataBR(data?: Date | string | null): string {
   return new Date(data).toLocaleDateString("pt-BR");
 }
 
-function contatosPreenchidos(
-  ...valores: Array<string | null | undefined>
-): string[] {
-  const unicos = new Set<string>();
-
-  valores.forEach((valor) => {
-    const texto = String(valor || "").trim();
-
-    if (texto) {
-      unicos.add(texto);
-    }
-  });
-
-  return [...unicos];
+function escHtml(texto: string): string {
+  return texto
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
-function formatarContatosHtml(
-  ...valores: Array<string | null | undefined>
-): string {
-  const preenchidos = contatosPreenchidos(...valores);
+function contatosCliente(
+  cliente: any,
+  tipo: "email" | "telefone",
+): Array<{ nome?: string | null; valor?: string | null }> {
+  const slots = [1, 2, 3, 4].map((n) => ({
+    nome: cliente?.[`nome${tipo === "email" ? "Email" : "Telefone"}${n}`],
+    valor: cliente?.[`${tipo}${n}`],
+  }));
 
-  if (!preenchidos.length) {
+  return slots;
+}
+
+function formatarContatosComNomeHtml(
+  contatos: Array<{ nome?: string | null; valor?: string | null }>,
+): string {
+  const itens = contatos
+    .map(({ nome, valor }) => {
+      const textoValor = String(valor || "").trim();
+      const textoNome = String(nome || "").trim();
+
+      if (!textoValor) {
+        return null;
+      }
+
+      if (textoNome) {
+        return `<div class="contato-item"><span class="contato-nome">${escHtml(textoNome)}</span><span class="contato-valor">${escHtml(textoValor)}</span></div>`;
+      }
+
+      return `<div class="contato-item"><span class="contato-valor">${escHtml(textoValor)}</span></div>`;
+    })
+    .filter(Boolean) as string[];
+
+  if (!itens.length) {
     return "-";
   }
 
-  return preenchidos.join("<br>");
+  return itens.join("");
 }
 
 export async function gerarHtmlProposta({
@@ -410,6 +429,26 @@ font-size:11px;
 color:#666;
 }
 
+.contato-item{
+margin-bottom:8px;
+}
+
+.contato-item:last-child{
+margin-bottom:0;
+}
+
+.contato-nome{
+display:block;
+font-weight:bold;
+color:#111;
+margin-bottom:2px;
+}
+
+.contato-valor{
+display:block;
+color:#444;
+}
+
 table{
 width:100%;
 border-collapse:collapse;
@@ -584,24 +623,14 @@ ${cliente.responsavel || "-"}
 
 <div class="campo">
 <strong>E-mails</strong>
-${formatarContatosHtml(
-  cliente.email1,
-  cliente.email2,
-  cliente.email3,
-  cliente.email4,
-  cliente.email,
-)}
+<br/>
+${formatarContatosComNomeHtml(contatosCliente(cliente, "email"))}
 </div>
 
 <div class="campo">
 <strong>Telefones</strong>
-${formatarContatosHtml(
-  cliente.telefone1,
-  cliente.telefone2,
-  cliente.telefone3,
-  cliente.telefone4,
-  cliente.telefone,
-)}
+<br/>
+${formatarContatosComNomeHtml(contatosCliente(cliente, "telefone"))}
 </div>
 
 <div class="campo">
@@ -612,6 +641,8 @@ ${cliente.cidade || "-"}
 <div class="campo">
 <strong>Estado</strong>
 ${cliente.estado || "-"}
+</div>
+
 </div>
 
 </div>

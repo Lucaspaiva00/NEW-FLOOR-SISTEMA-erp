@@ -65,9 +65,9 @@ function revelarProximoContato(prefixo, tipo) {
 }
 
 function removerContato(item, prefixo, tipo) {
-  const input = item.querySelector("input");
-
-  if (input) input.value = "";
+  item.querySelectorAll("input").forEach((input) => {
+    input.value = "";
+  });
 
   item.classList.add("campo-oculto");
 
@@ -177,6 +177,14 @@ function montarBodyCliente(prefixo = "") {
 
     telefone4: pegarValor(campo("telefone4")),
 
+    nomeTelefone1: pegarValor(campo("nomeTelefone1")),
+
+    nomeTelefone2: pegarValor(campo("nomeTelefone2")),
+
+    nomeTelefone3: pegarValor(campo("nomeTelefone3")),
+
+    nomeTelefone4: pegarValor(campo("nomeTelefone4")),
+
     email1: pegarValor(campo("email1")),
 
     email2: pegarValor(campo("email2")),
@@ -184,6 +192,14 @@ function montarBodyCliente(prefixo = "") {
     email3: pegarValor(campo("email3")),
 
     email4: pegarValor(campo("email4")),
+
+    nomeEmail1: pegarValor(campo("nomeEmail1")),
+
+    nomeEmail2: pegarValor(campo("nomeEmail2")),
+
+    nomeEmail3: pegarValor(campo("nomeEmail3")),
+
+    nomeEmail4: pegarValor(campo("nomeEmail4")),
 
     site: pegarValor(campo("site")),
 
@@ -736,10 +752,20 @@ async function abrirModalCliente(id) {
     preencherCampoMascarado("editarTelefone3", cliente.telefone3, "telefone");
     preencherCampoMascarado("editarTelefone4", cliente.telefone4, "telefone");
 
+    preencherCampo("editarNomeTelefone1", cliente.nomeTelefone1);
+    preencherCampo("editarNomeTelefone2", cliente.nomeTelefone2);
+    preencherCampo("editarNomeTelefone3", cliente.nomeTelefone3);
+    preencherCampo("editarNomeTelefone4", cliente.nomeTelefone4);
+
     preencherCampo("editarEmail1", cliente.email1);
     preencherCampo("editarEmail2", cliente.email2);
     preencherCampo("editarEmail3", cliente.email3);
     preencherCampo("editarEmail4", cliente.email4);
+
+    preencherCampo("editarNomeEmail1", cliente.nomeEmail1);
+    preencherCampo("editarNomeEmail2", cliente.nomeEmail2);
+    preencherCampo("editarNomeEmail3", cliente.nomeEmail3);
+    preencherCampo("editarNomeEmail4", cliente.nomeEmail4);
 
     preencherCampo("editarSite", cliente.site);
 

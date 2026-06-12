@@ -25,6 +25,9 @@ const pesquisaProposta = document.getElementById("pesquisaProposta");
 const formNovaProposta = document.getElementById("formNovaProposta");
 const formEditarProposta = document.getElementById("formEditarProposta");
 const listaItensEditar = document.getElementById("listaItensEditar");
+const btnSalvarNovaProposta = document.getElementById("btnSalvarNovaProposta");
+const btnSalvarEditarProposta = document.getElementById("btnSalvarEditarProposta");
+const btnProximoNovaProposta = document.getElementById("btnStepProximoNovaProposta");
 
 let propostas = [];
 let propostasCache = [];
@@ -32,6 +35,48 @@ let clientes = [];
 let servicos = [];
 let sortableInstances = [];
 let estaArrastando = false;
+let carregandoModalProposta = false;
+
+function setCardLoading(id, carregando) {
+  document
+    .querySelectorAll(`.proposal-card[data-id="${id}"]`)
+    .forEach((card) => {
+      card.classList.toggle("is-loading", carregando);
+    });
+}
+
+const botoesAcaoEditarProposta = [
+  document.getElementById("btnExcluirProposta"),
+  document.getElementById("btnVisualizarPdf"),
+  document.getElementById("btnWhatsapp"),
+  document.getElementById("btnEmail"),
+  document.getElementById("btnAdicionarServicoEditar"),
+].filter(Boolean);
+
+function setBotoesModalEditarProposta(carregando) {
+  setLoading(btnSalvarEditarProposta, carregando, "Salvar alterações");
+  botoesAcaoEditarProposta.forEach((btn) => {
+    btn.disabled = carregando;
+  });
+}
+
+const botoesAcaoNovaProposta = [
+  btnProximoNovaProposta,
+  document.getElementById("btnMockProposta"),
+  document.getElementById("btnAdicionarServico"),
+].filter(Boolean);
+
+function setBotoesNovaProposta(carregando) {
+  setLoading(btnSalvarNovaProposta, carregando, "Salvar proposta");
+  botoesAcaoNovaProposta.forEach((btn) => {
+    btn.disabled = carregando;
+  });
+  document
+    .querySelectorAll("#stepsNavNovaProposta .step-pill")
+    .forEach((pill) => {
+      pill.disabled = carregando;
+    });
+}
 
 async function carregarClientes() {
   try {
@@ -349,6 +394,15 @@ function obterListaFiltrada() {
   });
 }
 
+function calcularValorUnitarioServico(servico) {
+  const custo = Number(servico?.custo || 0);
+  const margem = Number(servico?.margemLucro || 0);
+
+  if (!custo) return 0;
+
+  return Number((custo * (1 + margem / 100)).toFixed(2));
+}
+
 function montarOptionsServicos(servicoSelecionado = "") {
   return servicos
     .map((servico) => {
@@ -364,10 +418,9 @@ function montarOptionsServicos(servicoSelecionado = "") {
                 data-nome="${textoSeguro(servico.nome || "")}"
                 data-descricao="${textoSeguro(servico.descricao || servico.nome || "")}"
                 data-unidade="${textoSeguro(servico.unidade || "UN")}"
-                data-valor="${servico.valor || 0}"
                 ${selected}
             >
-                ${textoSeguro(servico.nome)} - ${moeda(servico.valor)}
+                ${textoSeguro(servico.nome)}
             </option>
         `;
     })
@@ -379,10 +432,10 @@ function adicionarItemProposta(item = null) {
 
   const servicoId = item?.servicoId || item?.servico?.servicoid || "";
   const quantidade = item?.quantidade || 1;
-  const valorUnitario = item?.valorUnitario || 0;
-  const desconto = item?.desconto || 0;
-  const acrescimo = item?.acrescimo || 0;
-  const subtotal = item?.subtotal || 0;
+  const valorUnitario = Number(item?.valorUnitario) || 0;
+  const desconto = Number(item?.desconto) || 0;
+  const acrescimo = Number(item?.acrescimo) || 0;
+  const subtotal = Number(item?.subtotal) || 0;
 
   const html = `
         <div class="item-servico">
@@ -481,8 +534,6 @@ function adicionarItemProposta(item = null) {
   if (!item) {
     preencherItemComServico(select);
   }
-
-  preencherItemComServico(select);
 }
 
 function adicionarItemEditar(item = null) {
@@ -505,15 +556,12 @@ function adicionarItemEditar(item = null) {
       ? item.unidade
       : item?.servico?.unidade || "UN";
 
-  const valorUnitario =
-    item?.valorUnitario && Number(item.valorUnitario) > 0
-      ? item.valorUnitario
-      : item?.servico?.valor || 0;
+  const valorUnitario = Number(item?.valorUnitario) || 0;
 
-  const quantidade = item?.quantidade || 1;
-  const desconto = item?.desconto || 0;
-  const acrescimo = item?.acrescimo || 0;
-  const subtotal = item?.subtotal || 0;
+  const quantidade = Number(item?.quantidade) || 1;
+  const desconto = Number(item?.desconto) || 0;
+  const acrescimo = Number(item?.acrescimo) || 0;
+  const subtotal = Number(item?.subtotal) || 0;
 
   const html = `
         <div class="item-servico">
@@ -646,7 +694,11 @@ function adicionarItemEditar(item = null) {
 
   const select = novoItem.querySelector(".servico-select");
 
-  preencherItemComServico(select);
+  if (!item) {
+    preencherItemComServico(select);
+  } else {
+    calcularSubtotalItem(novoItem);
+  }
 }
 
 function preencherItemComServico(select) {
@@ -662,7 +714,12 @@ function preencherItemComServico(select) {
 
   item.querySelector(".item-unidade").value = option.dataset.unidade || "UN";
 
-  item.querySelector(".item-valor").value = Number(option.dataset.valor || 0);
+  const servico = servicos.find(
+    (s) => Number(s.servicoid) === Number(select.value),
+  );
+
+  item.querySelector(".item-valor").value =
+    calcularValorUnitarioServico(servico);
 
   calcularSubtotalItem(item);
 }
@@ -797,7 +854,7 @@ function preencherSelectVendedores() {
 function montarItens() {
   const itens = [];
 
-  const itensDOM = document.querySelectorAll(".item-servico");
+  const itensDOM = document.querySelectorAll("#listaItensProposta .item-servico");
 
   itensDOM.forEach((item, index) => {
     const select = item.querySelector(".servico-select");
@@ -831,6 +888,20 @@ function montarItens() {
 
   return itens;
 }
+
+function validarValorItens(itens) {
+  const itemInvalido = itens.find(
+    (item) => !item.valorUnitario || Number(item.valorUnitario) <= 0,
+  );
+
+  if (itemInvalido) {
+    toastErro("Informe o valor unitário de todos os itens.");
+    return false;
+  }
+
+  return true;
+}
+
 function montarItensEditar() {
   const itens = [];
 
@@ -948,8 +1019,6 @@ function montarBodyNovaProposta() {
   const itens = montarItens();
 
   return {
-    numero: null,
-
     titulo: pegarValor("titulo"),
 
     subtitulo: pegarValor("subtitulo"),
@@ -1011,19 +1080,25 @@ formNovaProposta.addEventListener("submit", async (e) => {
     const body = montarBodyNovaProposta();
 
     if (!body.titulo) {
-      alert("Informe o título da proposta.");
+      toastErro("Informe o título da proposta.");
       return;
     }
 
     if (!body.clienteId) {
-      alert("Selecione um cliente.");
+      toastErro("Selecione um cliente.");
       return;
     }
 
     if (!body.itens || body.itens.length === 0) {
-      alert("Adicione pelo menos um item na proposta.");
+      toastErro("Adicione pelo menos um item na proposta.");
       return;
     }
+
+    if (!validarValorItens(body.itens)) {
+      return;
+    }
+
+    setBotoesNovaProposta(true);
 
     const response = await fetch(`${API_URL}/propostas`, {
       method: "POST",
@@ -1040,7 +1115,7 @@ formNovaProposta.addEventListener("submit", async (e) => {
 
     if (!response.ok) {
       console.log(resposta);
-      alert(resposta.error || "Erro ao criar proposta.");
+      toastErro(resposta.error || "Erro ao criar proposta.");
       return;
     }
 
@@ -1053,15 +1128,22 @@ formNovaProposta.addEventListener("submit", async (e) => {
     listaItensProposta.innerHTML = "";
     valorTotal.innerText = moeda(0);
 
+    toastSucesso("Proposta criada com sucesso");
+
     await carregarPropostas();
   } catch (error) {
     console.log(error);
-    alert("Erro ao criar proposta.");
+    toastErro("Erro ao criar proposta.");
+  } finally {
+    setBotoesNovaProposta(false);
   }
 });
 
 async function abrirModalProposta(id) {
-  if (estaArrastando) return;
+  if (estaArrastando || carregandoModalProposta) return;
+
+  carregandoModalProposta = true;
+  setCardLoading(id, true);
 
   try {
     const response = await fetch(`${API_URL}/propostas/${id}`, {
@@ -1071,7 +1153,7 @@ async function abrirModalProposta(id) {
     });
 
     if (!response.ok) {
-      alert("Erro ao buscar proposta.");
+      toastErro("Erro ao buscar proposta.");
       return;
     }
 
@@ -1137,7 +1219,10 @@ async function abrirModalProposta(id) {
   } catch (error) {
     console.log(error);
 
-    alert("Erro ao abrir proposta.");
+    toastErro("Erro ao abrir proposta.");
+  } finally {
+    setCardLoading(id, false);
+    carregandoModalProposta = false;
   }
 }
 
@@ -1220,7 +1305,12 @@ formEditarProposta.addEventListener("submit", async (e) => {
       return;
     }
 
-    console.log("BODY EDITAR PROPOSTA:", body);
+    if (!validarValorItens(body.itens)) {
+      return;
+    }
+
+    setBotoesModalEditarProposta(true);
+
     const response = await fetch(`${API_URL}/propostas/${id}`, {
       method: "PUT",
 
@@ -1244,10 +1334,14 @@ formEditarProposta.addEventListener("submit", async (e) => {
       document.getElementById("modalProposta"),
     ).hide();
 
+    toastSucesso("Proposta atualizada com sucesso");
+
     await carregarPropostas();
   } catch (error) {
     console.log(error);
     alert("Erro ao atualizar proposta.");
+  } finally {
+    setBotoesModalEditarProposta(false);
   }
 });
 
@@ -1305,12 +1399,12 @@ function validarStepNovaProposta(step) {
   if (step !== 1) return true;
 
   if (!pegarValor("titulo")) {
-    alert("Informe o título da proposta.");
+    toastErro("Informe o título da proposta.");
     return false;
   }
 
   if (!pegarValor("clienteId")) {
-    alert("Selecione um cliente.");
+    toastErro("Selecione um cliente.");
     return false;
   }
 

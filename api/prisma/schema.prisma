@@ -38,10 +38,18 @@ model Cliente {
   email2            String?
   email3            String?
   email4            String?
+  nomeEmail1        String?
+  nomeEmail2        String?
+  nomeEmail3        String?
+  nomeEmail4        String?
   telefone1         String?
   telefone2         String?
   telefone3         String?
   telefone4         String?
+  nomeTelefone1     String?
+  nomeTelefone2     String?
+  nomeTelefone3     String?
+  nomeTelefone4     String?
   logo              String?
   agendas           Agenda[]
   propostas         Proposta[]
@@ -54,7 +62,6 @@ model Servico {
   categoria        String?
   descricao        String?
   descricaoInterna String?
-  valor            Decimal        @db.Decimal(10, 2)
   custo            Decimal?       @db.Decimal(10, 2)
   margemLucro      Decimal?       @db.Decimal(10, 2)
   unidade          String?

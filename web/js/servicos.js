@@ -31,8 +31,6 @@ function montarBodyServico(prefixo = "") {
 
         descricaoInterna: pegarValor(campo("descricaoInterna")),
 
-        valor: pegarDecimal(campo("valor")),
-
         custo: pegarDecimal(campo("custo")),
 
         margemLucro: pegarDecimal(campo("margemLucro")),
@@ -91,13 +89,6 @@ function atualizarKpis(servicos) {
     const destaques = servicos.filter(
         servico => servico.destaque === true
     ).length;
-
-    const somaValores = servicos.reduce(
-        (total, servico) => total + Number(servico.valor || 0),
-        0
-    );
-
-    const valorMedio = total > 0 ? somaValores / total : 0;
 
     document.getElementById("kpiTotal").innerText = total;
     document.getElementById("kpiAtivos").innerText = ativos;
@@ -213,11 +204,6 @@ formServico.addEventListener(
                 return;
             }
 
-            if (body.valor === null || Number.isNaN(body.valor)) {
-                alert("Informe o valor do serviço.");
-                return;
-            }
-
             const response = await fetch(
                 `${API_URL}/servicos`,
                 {
@@ -292,8 +278,6 @@ async function abrirModalServico(id) {
 
         preencherCampo("editarDescricaoInterna", servico.descricaoInterna);
 
-        preencherCampo("editarValor", servico.valor);
-
         preencherCampo("editarCusto", servico.custo);
 
         preencherCampo("editarMargemLucro", servico.margemLucro);
@@ -339,11 +323,6 @@ formEditarServico.addEventListener(
 
             if (!body.nome) {
                 alert("Informe o nome do serviço.");
-                return;
-            }
-
-            if (body.valor === null || Number.isNaN(body.valor)) {
-                alert("Informe o valor do serviço.");
                 return;
             }
 
