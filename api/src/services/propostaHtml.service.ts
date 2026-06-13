@@ -558,7 +558,9 @@ ${template?.cabecalho || "NEW FLOOR PISOS E REVESTIMENTOS"}
 </h2>
 
 <p>
-${template?.textoApresentacao}
+${template?.textoApresentacao
+  ? `<p>${template.textoApresentacao}</p>`
+  : ""}
 </p>
 
 <p>
