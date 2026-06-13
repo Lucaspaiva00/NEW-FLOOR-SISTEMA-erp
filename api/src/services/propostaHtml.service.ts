@@ -134,6 +134,104 @@ function escHtml(texto: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function descricaoComercialVazia(descricao?: string | null): boolean {
+  if (!descricao) {
+    return true;
+  }
+
+  const texto = descricao.trim();
+
+  if (!texto) {
+    return true;
+  }
+
+  const semTags = texto
+    .replace(/<span class="ql-ui"[^>]*><\/span>/gi, "")
+    .replace(/<p><br><\/p>/gi, "")
+    .replace(/<p>\s*<\/p>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .trim();
+
+  return !semTags;
+}
+
+function normalizarHtmlEditor(html: string): string {
+  return html
+    .replace(/<span class="ql-ui"[^>]*><\/span>/gi, "")
+    .replace(/<span class="ql-cursor[^"]*"[^>]*><\/span>/gi, "")
+    .replace(/\scontenteditable="false"/gi, "")
+    .replace(/\scontenteditable="true"/gi, "");
+}
+
+function formatarDescricaoComercial(descricao?: string | null): string {
+  if (!descricao) {
+    return "";
+  }
+
+  const texto = normalizarHtmlEditor(descricao.trim());
+
+  if (!texto || descricaoComercialVazia(texto)) {
+    return "";
+  }
+
+  if (/<[a-z][\s\S]*>/i.test(texto)) {
+    return texto;
+  }
+
+  return escHtml(texto).replace(/\n/g, "<br>");
+}
+
+function resolverDescricaoComercialItem(item: any): string {
+  const detalhes = item.detalhes?.trim();
+
+  if (detalhes && !descricaoComercialVazia(detalhes)) {
+    return detalhes;
+  }
+
+  const descricaoItem = item.descricao?.trim() || "";
+  const descricaoServico = item.servico?.descricao?.trim() || "";
+  const itemTemHtml = /<[a-z][\s\S]*>/i.test(descricaoItem);
+  const servicoTemHtml = /<[a-z][\s\S]*>/i.test(descricaoServico);
+
+  if (itemTemHtml && !descricaoComercialVazia(descricaoItem)) {
+    return descricaoItem;
+  }
+
+  if (servicoTemHtml && !descricaoComercialVazia(descricaoServico)) {
+    return descricaoServico;
+  }
+
+  if (!descricaoComercialVazia(descricaoItem)) {
+    return descricaoItem;
+  }
+
+  return descricaoServico;
+}
+
+function tituloItemProposta(item: any): string {
+  if (item.servico?.nome) {
+    return escHtml(String(item.servico.nome));
+  }
+
+  const descricao = String(item.descricao || "").trim();
+
+  if (!descricao) {
+    return "Serviço";
+  }
+
+  if (/<[a-z][\s\S]*>/i.test(descricao)) {
+    const texto = descricao
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return escHtml(texto || "Serviço");
+  }
+
+  return escHtml(descricao);
+}
+
 function contatosCliente(
   cliente: any,
   tipo: "email" | "telefone",
@@ -237,8 +335,13 @@ export async function gerarHtmlProposta({
     .join("");
 
   const detalhesTecnicos = itens
-    .map(
-      (item, index) => `
+    .map((item, index) => {
+      const descricaoComercial = resolverDescricaoComercialItem(item);
+      const descricaoComercialHtml = descricaoComercial
+        ? `<div class="descricao-comercial">${formatarDescricaoComercial(descricaoComercial)}</div>`
+        : "";
+
+      return `
 
 <div class="item-tecnico">
 
@@ -247,7 +350,7 @@ ITEM ${index + 1}
 </h3>
 
 <h4>
-${item.servico?.nome || item.descricao || "Serviço"}
+${tituloItemProposta(item)}
 </h4>
 
 <p>
@@ -267,21 +370,7 @@ ${moeda(item.subtotal)}
 
 </p>
 
-${
-  item.detalhes
-    ? `
-<p>
-${item.detalhes}
-</p>
-`
-    : item.servico?.descricao
-      ? `
-<p>
-${item.servico.descricao}
-</p>
-`
-      : ""
-}
+${descricaoComercialHtml}
 
 ${
   item.observacoes
@@ -302,8 +391,8 @@ ${item.servico.observacoes}
 }
 
 </div>
-`,
-    )
+`;
+    })
     .join("");
 
   return `
@@ -486,6 +575,116 @@ color:${corPrimaria};
     text-align: justify;
 }
 
+.descricao-comercial{
+    line-height:1.6;
+    margin-bottom:8px;
+    text-align:justify;
+    font-size:12px;
+}
+
+.descricao-comercial p{
+    margin:0 0 8px 0;
+}
+
+.descricao-comercial p:last-child{
+    margin-bottom:0;
+}
+
+.descricao-comercial ul,
+.descricao-comercial ol{
+    margin:8px 0 8px 1.5em;
+    padding:0;
+}
+
+.descricao-comercial ol{
+    list-style:none;
+}
+
+.descricao-comercial ul{
+    list-style:disc;
+    padding-left:1.5em;
+}
+
+.descricao-comercial ul li,
+.descricao-comercial ol li{
+    margin-bottom:4px;
+    padding-left:0.2em;
+    display:list-item;
+}
+
+.descricao-comercial ol li[data-list="bullet"]{
+    list-style-type:disc;
+}
+
+.descricao-comercial ol li[data-list="ordered"]{
+    list-style-type:decimal;
+}
+
+.descricao-comercial strong,
+.descricao-comercial b{
+    font-weight:bold;
+}
+
+.descricao-comercial em,
+.descricao-comercial i{
+    font-style:italic;
+}
+
+.descricao-comercial u{
+    text-decoration:underline;
+}
+
+.descricao-comercial h1,
+.descricao-comercial h2,
+.descricao-comercial h3{
+    margin:10px 0 6px;
+    color:${corPrimaria};
+    font-weight:bold;
+}
+
+.descricao-comercial h1{
+    font-size:18px;
+}
+
+.descricao-comercial h2{
+    font-size:16px;
+}
+
+.descricao-comercial h3{
+    font-size:14px;
+}
+
+.descricao-comercial .ql-align-center{
+    text-align:center;
+}
+
+.descricao-comercial .ql-align-right{
+    text-align:right;
+}
+
+.descricao-comercial .ql-align-justify{
+    text-align:justify;
+}
+
+.descricao-comercial .ql-indent-1{
+    padding-left:3em;
+}
+
+.descricao-comercial .ql-indent-2{
+    padding-left:6em;
+}
+
+.descricao-comercial .ql-indent-3{
+    padding-left:9em;
+}
+
+.descricao-comercial blockquote{
+    border-left:4px solid #ccc;
+    margin:8px 0;
+    padding-left:12px;
+    color:#555;
+}
+
 .totais{
 width:350px;
 margin-left:auto;
@@ -666,9 +865,9 @@ ${proposta.titulo}
 
 <br>
 
-<p>
-${proposta.descricao || ""}
-</p>
+<div class="descricao-comercial">
+${formatarDescricaoComercial(proposta.descricao)}
+</div>
 
 <br>
 

@@ -284,3 +284,31 @@
           justify-content: flex-start;
       }
   }
+
+  .editor-descricao {
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      min-height: 160px;
+  }
+
+  .editor-descricao .ql-toolbar {
+      border: 0;
+      border-bottom: 1px solid #e5e7eb;
+      border-radius: 12px 12px 0 0;
+      background: #f9fafb;
+  }
+
+  .editor-descricao .ql-container {
+      border: 0;
+      font-size: 14px;
+      min-height: 120px;
+  }
+
+  .editor-descricao .ql-editor {
+      min-height: 120px;
+  }
+
+  .mt-8 {
+      margin-top: 84px;
+  }

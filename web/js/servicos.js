@@ -181,7 +181,7 @@ if (pesquisaServico) {
                     servico.nome?.toLowerCase().includes(termo) ||
                     servico.codigo?.toLowerCase().includes(termo) ||
                     servico.categoria?.toLowerCase().includes(termo) ||
-                    servico.descricao?.toLowerCase().includes(termo) ||
+                    textoPlanoDescricao(servico.descricao).toLowerCase().includes(termo) ||
                     servico.unidade?.toLowerCase().includes(termo)
                 );
             });
@@ -197,6 +197,7 @@ formServico.addEventListener(
         e.preventDefault();
 
         try {
+            sincronizarEditoresDescricao();
             const body = montarBodyServico();
 
             if (!body.nome) {
@@ -236,7 +237,7 @@ formServico.addEventListener(
 
             formServico.reset();
 
-            preencherCheckbox("ativo", true);
+            limparDescricaoEditor("descricao");
             preencherCheckbox("destaque", false);
 
             carregarServicos();
@@ -274,7 +275,7 @@ async function abrirModalServico(id) {
 
         preencherCampo("editarCategoria", servico.categoria);
 
-        preencherCampo("editarDescricao", servico.descricao);
+        definirDescricaoEditor("editarDescricao", servico.descricao);
 
         preencherCampo("editarDescricaoInterna", servico.descricaoInterna);
 
@@ -319,6 +320,7 @@ formEditarServico.addEventListener(
                 return;
             }
 
+            sincronizarEditoresDescricao();
             const body = montarBodyServico("editar");
 
             if (!body.nome) {
@@ -415,5 +417,14 @@ document.getElementById("btnExcluirServico").addEventListener(
         }
     }
 );
+
+inicializarEditorDescricao("editorDescricao", "descricao");
+inicializarEditorDescricao("editorEditarDescricao", "editarDescricao");
+
+document.getElementById("modalServico")?.addEventListener("shown.bs.modal", () => {
+    limparDescricaoEditor("descricao");
+    preencherCheckbox("ativo", true);
+    preencherCheckbox("destaque", false);
+});
 
 carregarServicos();

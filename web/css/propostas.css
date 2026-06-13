@@ -633,6 +633,42 @@ label {
     }
 }
 
+.editor-descricao {
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    min-height: 140px;
+}
+
+.editor-descricao .ql-toolbar {
+    border: 0;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 12px 12px 0 0;
+    background: #f9fafb;
+}
+
+.editor-descricao .ql-container {
+    border: 0;
+    font-size: 14px;
+    min-height: 100px;
+}
+
+.editor-descricao .ql-editor {
+    min-height: 100px;
+}
+
+.item-servico .editor-descricao {
+    min-height: 120px;
+}
+
+.item-servico .editor-descricao .ql-editor {
+    min-height: 80px;
+}
+
+.mt-8 {
+    margin-top: 84px;
+}
+
 @media (max-width: 575px) {
     .proposta-acoes-grid {
         grid-template-columns: 1fr;

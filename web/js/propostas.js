@@ -26,8 +26,12 @@ const formNovaProposta = document.getElementById("formNovaProposta");
 const formEditarProposta = document.getElementById("formEditarProposta");
 const listaItensEditar = document.getElementById("listaItensEditar");
 const btnSalvarNovaProposta = document.getElementById("btnSalvarNovaProposta");
-const btnSalvarEditarProposta = document.getElementById("btnSalvarEditarProposta");
-const btnProximoNovaProposta = document.getElementById("btnStepProximoNovaProposta");
+const btnSalvarEditarProposta = document.getElementById(
+  "btnSalvarEditarProposta",
+);
+const btnProximoNovaProposta = document.getElementById(
+  "btnStepProximoNovaProposta",
+);
 
 let propostas = [];
 let propostasCache = [];
@@ -499,6 +503,10 @@ function adicionarItemProposta(item = null) {
   const index = document.querySelectorAll(".item-servico").length + 1;
 
   const servicoId = item?.servicoId || item?.servico?.servicoid || "";
+  const descricao =
+    item?.descricao && item.descricao !== "-"
+      ? item.descricao
+      : item?.servico?.descricao || "";
   const quantidade = item?.quantidade || 1;
   const valorUnitario = Number(item?.valorUnitario) || 0;
   const desconto = Number(item?.desconto) || 0;
@@ -545,11 +553,11 @@ function adicionarItemProposta(item = null) {
 
                 <div class="col-md-12 mb-3">
                     <label>Descrição</label>
-                    <input type="text" class="form-control premium-input-light item-descricao"
-                        value="${textoSeguro(item?.descricao || "")}">
+                    <div class="editor-descricao item-descricao-editor"></div>
+                    <textarea class="d-none item-descricao" aria-hidden="true"></textarea>
                 </div>
 
-                <div class="col-md-12 mb-3">
+                <div class="col-md-12 mb-3 mt-8">
                     <label>Detalhes</label>
                     <textarea class="form-control premium-input-light textarea-premium item-detalhes">${item?.detalhes || ""}</textarea>
                 </div>
@@ -598,6 +606,9 @@ function adicionarItemProposta(item = null) {
 
   const novoItem = listaItensProposta.lastElementChild;
   const select = novoItem.querySelector(".servico-select");
+
+  novoItem.querySelector(".item-descricao").value = descricao;
+  inicializarEditorItemDescricao(novoItem);
 
   if (!item) {
     preencherItemComServico(select);
@@ -680,14 +691,11 @@ function adicionarItemEditar(item = null) {
 
                 <div class="col-md-12 mb-3">
                     <label>Descrição</label>
-                    <input
-                        type="text"
-                        class="form-control premium-input-light item-descricao"
-                        value="${textoSeguro(descricao)}"
-                    >
+                    <div class="editor-descricao item-descricao-editor"></div>
+                    <textarea class="d-none item-descricao" aria-hidden="true"></textarea>
                 </div>
 
-                <div class="col-md-12 mb-3">
+                <div class="col-md-12 mb-3 mt-8">
                     <label>Detalhes</label>
                     <textarea class="form-control premium-input-light textarea-premium item-detalhes">${item?.detalhes || ""}</textarea>
                 </div>
@@ -762,6 +770,9 @@ function adicionarItemEditar(item = null) {
 
   const select = novoItem.querySelector(".servico-select");
 
+  novoItem.querySelector(".item-descricao").value = descricao;
+  inicializarEditorItemDescricao(novoItem);
+
   if (!item) {
     preencherItemComServico(select);
   } else {
@@ -778,13 +789,16 @@ function preencherItemComServico(select) {
 
   item.querySelector(".item-codigo").value = option.dataset.codigo || "";
 
-  item.querySelector(".item-descricao").value = option.dataset.descricao || "";
-
-  item.querySelector(".item-unidade").value = option.dataset.unidade || "UN";
-
   const servico = servicos.find(
     (s) => Number(s.servicoid) === Number(select.value),
   );
+
+  definirDescricaoEditorItem(
+    item,
+    servico?.descricao || option.dataset.nome || "",
+  );
+
+  item.querySelector(".item-unidade").value = option.dataset.unidade || "UN";
 
   item.querySelector(".item-valor").value =
     calcularValorUnitarioServico(servico);
@@ -920,9 +934,12 @@ function preencherSelectVendedores() {
 }
 
 function montarItens() {
+  sincronizarEditoresItemDescricao(listaItensProposta);
   const itens = [];
 
-  const itensDOM = document.querySelectorAll("#listaItensProposta .item-servico");
+  const itensDOM = document.querySelectorAll(
+    "#listaItensProposta .item-servico",
+  );
 
   itensDOM.forEach((item, index) => {
     const select = item.querySelector(".servico-select");
@@ -971,6 +988,7 @@ function validarValorItens(itens) {
 }
 
 function montarItensEditar() {
+  sincronizarEditoresItemDescricao(listaItensEditar);
   const itens = [];
 
   const itensDOM = listaItensEditar.querySelectorAll(".item-servico");
