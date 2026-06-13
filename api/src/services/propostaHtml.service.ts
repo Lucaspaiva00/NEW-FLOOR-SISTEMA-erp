@@ -481,8 +481,9 @@ color:${corPrimaria};
 }
 
 .item-tecnico p{
-line-height:1.5;
-margin-bottom:8px;
+    line-height:1.5;
+    margin-bottom:8px;
+    text-align: justify;
 }
 
 .totais{
