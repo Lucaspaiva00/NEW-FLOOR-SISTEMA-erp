@@ -1,7 +1,3 @@
-function getPropostaId() {
-  return document.getElementById("editarId")?.value;
-}
-
 async function request(url, options = {}) {
   const response = await fetch(url, {
     ...options,
@@ -33,107 +29,105 @@ async function request(url, options = {}) {
   return data;
 }
 
-/* ======================================
-   VISUALIZAR PDF
-====================================== */
+async function visualizarPdfProposta(id) {
+  if (!id) {
+    alert("Selecione uma proposta.");
+    return;
+  }
 
-const btnVisualizarPdf = document.getElementById("btnVisualizarPdf");
-
-if (btnVisualizarPdf) {
-  btnVisualizarPdf.addEventListener("click", async () => {
-    try {
-      const id = getPropostaId();
-
-      if (!id) {
-        alert("Selecione uma proposta.");
-
-        return;
-      }
-
-      window.open(`${API_URL}/propostas/${id}/download`, "_blank");
-    } catch (error) {
-      console.error(error);
-
-      alert(error.message);
-    }
-  });
+  window.open(`${API_URL}/propostas/${id}/download`, "_blank");
 }
 
-/* ======================================
-   WHATSAPP
-====================================== */
+async function enviarWhatsappProposta(id, btn) {
+  if (!id) {
+    alert("Selecione uma proposta.");
+    return;
+  }
 
-const btnWhatsapp = document.getElementById("btnWhatsapp");
+  if (btn) btn.disabled = true;
 
-if (btnWhatsapp) {
-  btnWhatsapp.addEventListener("click", async () => {
-    try {
-      const id = getPropostaId();
+  try {
+    const data = await request(`${API_URL}/propostas/${id}/whatsapp`, {
+      method: "GET",
+    });
 
-      if (!id) {
-        alert("Selecione uma proposta.");
-
-        return;
-      }
-
-      btnWhatsapp.disabled = true;
-
-      const data = await request(`${API_URL}/propostas/${id}/whatsapp`, {
-        method: "GET",
-      });
-
-      if (data.whatsappUrl) {
-        window.open(data.whatsappUrl, "_blank");
-      } else {
-        alert("Link do WhatsApp não retornado.");
-      }
-    } catch (error) {
-      console.error(error);
-
-      alert(error.message);
-    } finally {
-      btnWhatsapp.disabled = false;
+    if (data.whatsappUrl) {
+      window.open(data.whatsappUrl, "_blank");
+    } else {
+      alert("Link do WhatsApp não retornado.");
     }
-  });
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
-/* ======================================
-   EMAIL
-====================================== */
+async function enviarEmailProposta(id, btn) {
+  if (!id) {
+    alert("Selecione uma proposta.");
+    return;
+  }
 
-const btnEmail = document.getElementById("btnEmail");
+  if (btn) btn.disabled = true;
 
-if (btnEmail) {
-  btnEmail.addEventListener("click", async () => {
-    try {
-      const id = getPropostaId();
+  try {
+    const data = await request(`${API_URL}/propostas/${id}/email`, {
+      method: "POST",
+    });
 
-      if (!id) {
-        alert("Selecione uma proposta.");
-
-        return;
-      }
-
-      btnEmail.disabled = true;
-
-      const data = await request(`${API_URL}/propostas/${id}/email`, {
-        method: "POST",
-      });
-
-      alert(data.message || "E-mail enviado com sucesso.");
-    } catch (error) {
-      console.error(error);
-
-      alert(error.message);
-    } finally {
-      btnEmail.disabled = false;
-    }
-  });
+    alert(data.message || "E-mail enviado com sucesso.");
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
-/* ======================================
-   TEMPLATE
-====================================== */
+async function executarAcaoProposta(acao, id, btn) {
+  try {
+    if (acao === "editar") {
+      abrirModalProposta(id);
+    } else if (acao === "pdf") {
+      await visualizarPdfProposta(id);
+    } else if (acao === "whatsapp") {
+      await enviarWhatsappProposta(id, btn);
+    } else if (acao === "email") {
+      await enviarEmailProposta(id, btn);
+    }
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+}
+
+function initCardMenus() {
+  const kanbanBoard = document.getElementById("kanbanBoard");
+  if (!kanbanBoard) return;
+
+  kanbanBoard.addEventListener("click", (e) => {
+    const acaoBtn = e.target.closest("[data-proposta-acao]");
+    if (!acaoBtn) return;
+
+    e.stopPropagation();
+
+    const card = acaoBtn.closest(".proposal-card");
+    const id = card?.dataset.id;
+    const acao = acaoBtn.dataset.propostaAcao;
+
+    const dropdownToggle = acaoBtn
+      .closest(".dropdown")
+      ?.querySelector('[data-bs-toggle="dropdown"]');
+
+    if (dropdownToggle) {
+      bootstrap.Dropdown.getOrCreateInstance(dropdownToggle).hide();
+    }
+
+    executarAcaoProposta(acao, id, acaoBtn);
+  });
+}
 
 async function carregarTemplates() {
   const select = document.getElementById("editarTemplateId");
@@ -158,5 +152,6 @@ async function carregarTemplates() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  initCardMenus();
   carregarTemplates();
 });

@@ -47,9 +47,6 @@ function setCardLoading(id, carregando) {
 
 const botoesAcaoEditarProposta = [
   document.getElementById("btnExcluirProposta"),
-  document.getElementById("btnVisualizarPdf"),
-  document.getElementById("btnWhatsapp"),
-  document.getElementById("btnEmail"),
   document.getElementById("btnAdicionarServicoEditar"),
 ].filter(Boolean);
 
@@ -202,11 +199,80 @@ function criarCardProposta(proposta) {
             class="proposal-card"
             data-id="${proposta.propostaid}"
             data-status="${proposta.status}"
-            onclick="abrirModalProposta(${proposta.propostaid})"
         >
-            <span class="proposal-number">
-                ${textoSeguro(proposta.numero)}
-            </span>
+            <div class="proposal-card-header">
+                <span class="proposal-number">
+                    ${textoSeguro(proposta.numero)}
+                </span>
+                <div class="dropdown proposal-card-menu">
+                    <button
+                        type="button"
+                        class="proposal-card-menu-btn"
+                        data-bs-toggle="dropdown"
+                        data-bs-auto-close="true"
+                        aria-expanded="false"
+                        aria-label="Ações"
+                        onclick="event.stopPropagation()"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <circle cx="12" cy="5" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="12" cy="19" r="2"/>
+                        </svg>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end proposal-card-dropdown">
+                        <li>
+                            <button type="button" class="dropdown-item proposal-card-dropdown-item" data-proposta-acao="editar">
+                                <span class="proposal-card-dropdown-icon" aria-hidden="true">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 20h9"/>
+                                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                    </svg>
+                                </span>
+                                Editar
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item proposal-card-dropdown-item" data-proposta-acao="pdf">
+                                <span class="proposal-card-dropdown-icon" aria-hidden="true">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <line x1="16" y1="13" x2="8" y2="13"/>
+                                        <line x1="16" y1="17" x2="8" y2="17"/>
+                                        <polyline points="10 9 9 9 8 9"/>
+                                    </svg>
+                                </span>
+                                PDF
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item proposal-card-dropdown-item" data-proposta-acao="whatsapp">
+                                <span class="proposal-card-dropdown-icon" aria-hidden="true">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>
+                                        <path d="M8 12h.01"/>
+                                        <path d="M12 12h.01"/>
+                                        <path d="M16 12h.01"/>
+                                    </svg>
+                                </span>
+                                WhatsApp
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item proposal-card-dropdown-item" data-proposta-acao="email">
+                                <span class="proposal-card-dropdown-icon" aria-hidden="true">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect width="20" height="16" x="2" y="4" rx="2"/>
+                                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                                    </svg>
+                                </span>
+                                E-mail
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
 
             <div class="proposal-tags">
                 ${
@@ -305,6 +371,8 @@ function iniciarSortableKanban() {
       forceFallback: true,
       fallbackOnBody: true,
       swapThreshold: 0.65,
+      filter: ".dropdown, .dropdown *",
+      preventOnFilter: false,
       ghostClass: "kanban-ghost",
       chosenClass: "kanban-chosen",
       dragClass: "kanban-drag",

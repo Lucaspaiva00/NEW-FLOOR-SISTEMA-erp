@@ -105,7 +105,7 @@
     padding: 20px;
     margin-bottom: 16px;
     border: 1px solid #ccc;
-    cursor: pointer;
+    cursor: grab;
     transition: .25s;
     position: relative;
     box-shadow: 0 4px 12px rgba(15, 23, 42, 0.5);
@@ -144,12 +144,81 @@
     animation: kanban-spin 0.8s linear infinite;
 }
 
+.proposal-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
 .proposal-number {
     font-size: 12px;
     font-weight: 800;
     color: #111827;
-    margin-bottom: 10px;
     display: block;
+}
+
+.proposal-card-menu {
+    flex-shrink: 0;
+}
+
+.proposal-card-menu.show {
+    z-index: 60;
+}
+
+.proposal-card-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.proposal-card-menu-btn:hover,
+.proposal-card-menu-btn.show {
+    background: rgba(15, 23, 42, 0.08);
+    color: #0f172a;
+}
+
+.proposal-card-dropdown {
+    min-width: 150px;
+    padding: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+}
+
+.proposal-card-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.proposal-card-dropdown .dropdown-item:hover,
+.proposal-card-dropdown .dropdown-item:focus {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.proposal-card-dropdown .dropdown-item:disabled {
+    opacity: 0.6;
+}
+
+.proposal-card-dropdown-icon {
+    display: inline-flex;
+    color: #64748b;
 }
 
 .proposal-title {
