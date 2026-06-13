@@ -625,7 +625,7 @@ ${cliente.responsavel || "-"}
 </div>
 
 <div class="campo">
-<strong>E-mails</strong>
+<strong>E-mail</strong>
 <br/>
 ${formatarContatosComNomeHtml(contatosCliente(cliente, "email"))}
 </div>
