@@ -47,7 +47,7 @@ export async function enviarPropostaPorEmail({
             destinatario,
 
         subject:
-            `Proposta Comercial Nº ${numeroProposta}`,
+            `Proposta Técnica Comercial Nº ${numeroProposta}`,
 
         html: `
         <div style="
