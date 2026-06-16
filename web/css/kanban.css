@@ -1,6 +1,14 @@
 .kanban-list {
     min-height: 520px;
     padding-bottom: 20px;
+    overflow: visible;
+    max-width: 300px;
+}
+
+.kanban-column,
+.kanban,
+.main-content {
+    overflow: visible;
 }
 
 .proposal-card {
@@ -15,36 +23,68 @@
 
 .kanban-is-dragging .proposal-card {
     cursor: grabbing;
+    transition: none !important;
 }
 
 .kanban-chosen {
-    box-shadow: 0 16px 35px rgba(15, 23, 42, 0.18) !important;
+    opacity: 0.35 !important;
+    box-shadow: none !important;
+    transform: none !important;
 }
 
 .kanban-drag {
-    opacity: 1 !important;
-    transform: rotate(2deg) scale(1.02);
-    box-shadow: 0 24px 45px rgba(15, 23, 42, 0.25) !important;
-    z-index: 9999 !important;
+    opacity: 0.35 !important;
 }
 
 .kanban-ghost {
-    opacity: 0.35 !important;
-    background: #e5e7eb !important;
+    opacity: 1 !important;
+    background: #f8fafc !important;
     border: 2px dashed #94a3b8 !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    min-height: 72px;
 }
 
+.kanban-ghost>* {
+    visibility: hidden;
+}
+
+.kanban-fallback,
 .sortable-fallback {
     opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 10050 !important;
+    pointer-events: none !important;
+    cursor: grabbing !important;
+    position: fixed !important;
+    margin: 0 !important;
+    transition: none !important;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18) !important;
+    transform: rotate(1.5deg) scale(1.02) !important;
+    background: #fff !important;
+    border: 1px solid #d1d9e0 !important;
+    border-left: 3px solid #64748b !important;
+    border-radius: 10px !important;
+}
+
+.kanban-fallback.proposal-card--priority-alta,
+.sortable-fallback.proposal-card--priority-alta {
+    border-left-color: #ef4444 !important;
+}
+
+.kanban-fallback.proposal-card--priority-media,
+.sortable-fallback.proposal-card--priority-media {
+    border-left-color: #f59e0b !important;
+}
+
+body.kanban-is-dragging {
+    cursor: grabbing !important;
+}
+
+body.kanban-is-dragging * {
+    cursor: grabbing !important;
+}
+
+body.kanban-is-dragging .proposal-card-menu-btn {
     pointer-events: none;
-    box-shadow: 0 24px 45px rgba(15, 23, 42, 0.25) !important;
-    transform: rotate(2deg);
-}
-
-.kanban-column {
-    overflow: visible !important;
-}
-
-.kanban {
-    overflow: visible !important;
 }

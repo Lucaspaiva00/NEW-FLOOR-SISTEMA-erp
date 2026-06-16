@@ -12,7 +12,7 @@ export function nomeDownloadPdfProposta(
   razaoSocial?: string | null,
 ): string {
   const razao = (razaoSocial || "").trim();
-  const nome = `Proposta Técnica Comercial New Floor ${numero}${razao ? ` - ${razao}` : ""}`;
+  const nome = `Proposta Técnica Comercial New Floor - ${numero}${razao ? ` - ${razao}` : ""}`;
   return nome.replace(/[\\/:*?"<>|]/g, "").trim() + ".pdf";
 }
 

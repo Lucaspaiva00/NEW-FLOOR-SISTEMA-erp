@@ -9,11 +9,13 @@ if (!token) {
 const colunaPendente = document.getElementById("colunaPendente");
 const colunaAprovada = document.getElementById("colunaAprovada");
 const colunaExecutando = document.getElementById("colunaExecutando");
+const colunaEspeciais = document.getElementById("colunaEspeciais");
 const colunaFaturada = document.getElementById("colunaFaturada");
 const colunasKanban = [
   colunaPendente,
   colunaAprovada,
   colunaExecutando,
+  colunaEspeciais,
   colunaFaturada,
 ];
 
@@ -184,30 +186,45 @@ function atualizarKpis(lista) {
   ).length;
   const aprovadas = lista.filter((p) => p.status === "APROVADA").length;
   const executando = lista.filter((p) => p.status === "EXECUTANDO").length;
+  const especiais = lista.filter((p) => p.status === "ESPECIAIS").length;
   const faturadas = lista.filter((p) => p.status === "FATURADA").length;
 
   document.getElementById("kpiPendentes").innerText = pendentes;
   document.getElementById("kpiAprovadas").innerText = aprovadas;
   document.getElementById("kpiExecutando").innerText = executando;
+  document.getElementById("kpiEspeciais").innerText = especiais;
   document.getElementById("kpiFaturadas").innerText = faturadas;
 
   document.getElementById("countPendentes").innerText = pendentes;
   document.getElementById("countAprovadas").innerText = aprovadas;
   document.getElementById("countExecutando").innerText = executando;
+  document.getElementById("countEspeciais").innerText = especiais;
   document.getElementById("countFaturadas").innerText = faturadas;
 }
 
+function classePrioridadeCard(prioridade) {
+  const p = (prioridade || "").toLowerCase();
+  if (p.includes("alta")) return "proposal-card--priority-alta";
+  if (p.includes("média") || p.includes("media"))
+    return "proposal-card--priority-media";
+  return "";
+}
+
 function criarCardProposta(proposta) {
+  const cliente =
+    proposta.cliente?.nomeFantasia || proposta.cliente?.razaoSocial || "—";
+  const vendedor = proposta.vendedor?.nome;
+  const prioridadeClass = classePrioridadeCard(proposta.prioridade);
+  const subtitulo = proposta.subtitulo?.trim();
+
   return `
         <div
-            class="proposal-card"
+            class="proposal-card ${prioridadeClass}"
             data-id="${proposta.propostaid}"
             data-status="${proposta.status}"
         >
-            <div class="proposal-card-header">
-                <span class="proposal-number">
-                    ${textoSeguro(proposta.numero)}
-                </span>
+            <div class="proposal-card-top">
+                <span class="proposal-number">Proposta Nº ${textoSeguro(proposta.numero)}</span>
                 <div class="dropdown proposal-card-menu">
                     <button
                         type="button"
@@ -218,17 +235,17 @@ function criarCardProposta(proposta) {
                         aria-label="Ações"
                         onclick="event.stopPropagation()"
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <circle cx="12" cy="5" r="2"/>
-                            <circle cx="12" cy="12" r="2"/>
-                            <circle cx="12" cy="19" r="2"/>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <circle cx="12" cy="5" r="1.75"/>
+                            <circle cx="12" cy="12" r="1.75"/>
+                            <circle cx="12" cy="19" r="1.75"/>
                         </svg>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end proposal-card-dropdown">
                         <li>
                             <button type="button" class="dropdown-item proposal-card-dropdown-item" data-proposta-acao="editar">
                                 <span class="proposal-card-dropdown-icon" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M12 20h9"/>
                                         <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
                                     </svg>
@@ -239,12 +256,9 @@ function criarCardProposta(proposta) {
                         <li>
                             <button type="button" class="dropdown-item proposal-card-dropdown-item" data-proposta-acao="pdf">
                                 <span class="proposal-card-dropdown-icon" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                         <polyline points="14 2 14 8 20 8"/>
-                                        <line x1="16" y1="13" x2="8" y2="13"/>
-                                        <line x1="16" y1="17" x2="8" y2="17"/>
-                                        <polyline points="10 9 9 9 8 9"/>
                                     </svg>
                                 </span>
                                 PDF
@@ -253,11 +267,8 @@ function criarCardProposta(proposta) {
                         <li>
                             <button type="button" class="dropdown-item proposal-card-dropdown-item" data-proposta-acao="whatsapp">
                                 <span class="proposal-card-dropdown-icon" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>
-                                        <path d="M8 12h.01"/>
-                                        <path d="M12 12h.01"/>
-                                        <path d="M16 12h.01"/>
                                     </svg>
                                 </span>
                                 WhatsApp
@@ -266,7 +277,7 @@ function criarCardProposta(proposta) {
                         <li>
                             <button type="button" class="dropdown-item proposal-card-dropdown-item" data-proposta-acao="email">
                                 <span class="proposal-card-dropdown-icon" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <rect width="20" height="16" x="2" y="4" rx="2"/>
                                         <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
                                     </svg>
@@ -278,56 +289,65 @@ function criarCardProposta(proposta) {
                 </div>
             </div>
 
+            <h5 class="proposal-title">${textoSeguro(proposta.titulo)}</h5>
+
+            ${
+              subtitulo
+                ? `<p class="proposal-subtitle">${textoSeguro(subtitulo)}</p>`
+                : ""
+            }
+
+            <div class="proposal-meta">
+                <div class="proposal-meta-item" title="Cliente">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 21h18"/>
+                        <path d="M9 8h1"/>
+                        <path d="M9 12h1"/>
+                        <path d="M9 16h1"/>
+                        <path d="M14 8h1"/>
+                        <path d="M14 12h1"/>
+                        <path d="M14 16h1"/>
+                        <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+                    </svg>
+                    <span>${textoSeguro(cliente)}</span>
+                </div>
+                ${
+                  vendedor
+                    ? `
+                <div class="proposal-meta-item" title="Vendedor">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>${textoSeguro(vendedor)}</span>
+                </div>`
+                    : ""
+                }
+            </div>
+
+            ${
+              proposta.prioridade || proposta.origem
+                ? `
             <div class="proposal-tags">
                 ${
                   proposta.prioridade
-                    ? `
-                    <div class="proposal-tag tag-prioridade">
-                        ${textoSeguro(proposta.prioridade)}
-                    </div>
-                `
+                    ? `<span class="proposal-tag tag-prioridade">${textoSeguro(proposta.prioridade)}</span>`
                     : ""
                 }
-
                 ${
                   proposta.origem
-                    ? `
-                    <div class="proposal-tag tag-origem">
-                        ${textoSeguro(proposta.origem)}
-                    </div>
-                `
+                    ? `<span class="proposal-tag tag-origem">${textoSeguro(proposta.origem)}</span>`
                     : ""
                 }
+            </div>`
+                : ""
+            }
 
-                
-            </div>
-
-            <div class="proposal-title">
-                ${textoSeguro(proposta.titulo)}
-            </div>
-
-            <div class="proposal-client">
-                ${textoSeguro(
-                  proposta.cliente?.nomeFantasia ||
-                    proposta.cliente?.razaoSocial,
-                )}
-            </div>
-            <div class="proposal-client">
-    👤 ${textoSeguro(proposta.vendedor?.nome)}
-</div>
-
-            <div class="proposal-desc">
-                ${textoSeguro(proposta.descricao || proposta.subtitulo || "Sem descrição")}
-            </div>
-
-            <div class="proposal-footer">
-                <div class="proposal-value">
-                    ${moeda(proposta.subtotal)}
-                </div>
-
-                <div class="proposal-date">
+            <div class="proposal-card-bottom">
+                <span class="proposal-value">${moeda(proposta.subtotal)}</span>
+                <time class="proposal-date" datetime="${proposta.createdAt}">
                     ${new Date(proposta.createdAt).toLocaleDateString("pt-BR")}
-                </div>
+                </time>
             </div>
         </div>
     `;
@@ -337,6 +357,7 @@ function renderizarKanban(lista) {
   colunaPendente.innerHTML = "";
   colunaAprovada.innerHTML = "";
   colunaExecutando.innerHTML = "";
+  colunaEspeciais.innerHTML = "";
   colunaFaturada.innerHTML = "";
 
   lista.forEach((proposta) => {
@@ -352,6 +373,10 @@ function renderizarKanban(lista) {
 
     if (proposta.status === "EXECUTANDO") {
       colunaExecutando.innerHTML += card;
+    }
+
+    if (proposta.status === "ESPECIAIS") {
+      colunaEspeciais.innerHTML += card;
     }
 
     if (proposta.status === "FATURADA") {
@@ -371,19 +396,35 @@ function iniciarSortableKanban() {
   listas.forEach((lista) => {
     const sortable = new Sortable(lista, {
       group: "propostas-kanban",
-      animation: 180,
+      animation: 150,
+      easing: "cubic-bezier(0.2, 0, 0, 1)",
       forceFallback: true,
       fallbackOnBody: true,
+      fallbackClass: "kanban-fallback",
+      fallbackTolerance: 3,
+      scroll: true,
+      bubbleScroll: true,
       swapThreshold: 0.65,
+      emptyInsertThreshold: 8,
       filter: ".dropdown, .dropdown *",
-      preventOnFilter: false,
+      preventOnFilter: true,
       ghostClass: "kanban-ghost",
       chosenClass: "kanban-chosen",
       dragClass: "kanban-drag",
 
-      onStart: function () {
+      onStart: function (evt) {
         estaArrastando = true;
         document.body.classList.add("kanban-is-dragging");
+
+        const rect = evt.item.getBoundingClientRect();
+
+        requestAnimationFrame(() => {
+          const fallback = document.querySelector(".kanban-fallback");
+          if (!fallback) return;
+
+          fallback.style.width = `${rect.width}px`;
+          fallback.style.boxSizing = "border-box";
+        });
       },
 
       onEnd: async function (evt) {
@@ -420,7 +461,7 @@ function iniciarSortableKanban() {
 
         propostas = propostasCache;
         const lista = obterListaFiltrada();
-        renderizarKanban(lista);
+        // renderizarKanban(lista);
         atualizarKpis(lista);
       },
     });

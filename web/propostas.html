@@ -95,6 +95,11 @@
                 </div>
 
                 <div class="kpi-card">
+                    <span>Especiais</span>
+                    <h2 id="kpiEspeciais">0</h2>
+                </div>
+
+                <div class="kpi-card">
                     <span>Faturadas</span>
                     <h2 id="kpiFaturadas">0</h2>
                 </div>
@@ -128,6 +133,15 @@
                     </div>
 
                     <div class="kanban-list" id="colunaExecutando" data-status="EXECUTANDO"></div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-header">
+                        <h3>Especiais</h3>
+                        <div class="kanban-count" id="countEspeciais">0</div>
+                    </div>
+
+                    <div class="kanban-list" id="colunaEspeciais" data-status="ESPECIAIS"></div>
                 </div>
 
                 <div class="kanban-column">
@@ -211,6 +225,7 @@
                                             <option value="PENDENTE">PENDENTE</option>
                                             <option value="APROVADA">APROVADA</option>
                                             <option value="EXECUTANDO">EXECUTANDO</option>
+                                            <option value="ESPECIAIS">ESPECIAIS</option>
                                             <option value="FATURADA">FATURADA</option>
                                             <option value="RECUSADA">RECUSADA</option>
                                         </select>
@@ -449,6 +464,7 @@
                                         <option value="PENDENTE">PENDENTE</option>
                                         <option value="APROVADA">APROVADA</option>
                                         <option value="EXECUTANDO">EXECUTANDO</option>
+                                        <option value="ESPECIAIS">ESPECIAIS</option>
                                         <option value="FATURADA">FATURADA</option>
                                         <option value="RECUSADA">RECUSADA</option>
                                     </select>
@@ -685,6 +701,7 @@
     <script src="js/propostas.js"></script>
     <script src="js/propostas-acoes.js"></script>
     <script src="js/menu-mobile.js"></script>
+    <script src="js/sidebar.js"></script>
 </body>
 
 </html>
