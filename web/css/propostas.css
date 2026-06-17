@@ -723,6 +723,10 @@ label {
     margin-top: 84px;
 }
 
+.col-12:has(#editarObservacoesInternas) {
+    margin-top: 80px;
+}
+
 @media (max-width: 575px) {
     .proposta-acoes-grid {
         grid-template-columns: 1fr;
