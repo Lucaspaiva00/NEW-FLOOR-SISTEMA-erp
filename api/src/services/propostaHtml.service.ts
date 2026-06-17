@@ -1010,7 +1010,9 @@ Observações
 
 <div class="card">
 
-${proposta.observacoes || template?.textoObservacao || "-"}
+<div class="descricao-comercial">
+${formatarDescricaoComercial(proposta.observacoes || template?.textoObservacao) || "-"}
+</div>
 
 </div>
 

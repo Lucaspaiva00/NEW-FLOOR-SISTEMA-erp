@@ -1131,8 +1131,11 @@ function preencherPropostaMock() {
     alert("Cadastre um serviço para incluir item mock.");
   }
 
-  preencherCampo("observacoes", "Proposta mock para validação do sistema.");
   preencherCampo("observacoesInternas", "Gerada via botão Preencher mock.");
+  definirDescricaoEditor(
+    "observacoes",
+    "<p>Proposta mock para validação do sistema.</p>",
+  );
 
   preencherCheckbox("aprovadoCliente", false);
   preencherCheckbox("enviadoEmail", false);
@@ -1143,6 +1146,7 @@ function preencherPropostaMock() {
 }
 
 function montarBodyNovaProposta() {
+  sincronizarEditoresDescricao();
   const itens = montarItens();
 
   return {
@@ -1252,6 +1256,7 @@ formNovaProposta.addEventListener("submit", async (e) => {
 
     formNovaProposta.reset();
 
+    limparDescricaoEditor("observacoes");
     listaItensProposta.innerHTML = "";
     valorTotal.innerText = moeda(0);
 
@@ -1314,7 +1319,7 @@ async function abrirModalProposta(id) {
 
     preencherCampo("editarCondicoesPagamento", proposta.condicoesPagamento);
 
-    preencherCampo("editarObservacoes", proposta.observacoes);
+    definirDescricaoEditor("editarObservacoes", proposta.observacoes);
 
     preencherCampo("editarObservacoesInternas", proposta.observacoesInternas);
 
@@ -1354,6 +1359,8 @@ async function abrirModalProposta(id) {
 }
 
 function montarBodyEditarProposta() {
+  sincronizarEditoresDescricao();
+
   return {
     numero: pegarValor("editarNumero"),
 
@@ -1623,6 +1630,16 @@ async function iniciarTela() {
   await carregarClientes();
   await carregarServicos();
   await carregarPropostas();
+
+  inicializarEditorDescricao("editorObservacoes", "observacoes");
+  inicializarEditorDescricao("editorEditarObservacoes", "editarObservacoes");
+
+  document.getElementById("modalNovaProposta")?.addEventListener(
+    "shown.bs.modal",
+    () => {
+      limparDescricaoEditor("observacoes");
+    },
+  );
 
   const nomeResponsavel =
     usuarioLogado?.usuario?.nome || usuarioLogado?.nome || "";
