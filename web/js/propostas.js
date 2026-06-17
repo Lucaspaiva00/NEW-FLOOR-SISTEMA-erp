@@ -1631,8 +1631,16 @@ async function iniciarTela() {
   await carregarServicos();
   await carregarPropostas();
 
-  inicializarEditorDescricao("editorObservacoes", "observacoes");
-  inicializarEditorDescricao("editorEditarObservacoes", "editarObservacoes");
+  inicializarEditorDescricao(
+    "editorObservacoes",
+    "observacoes",
+    "Insira as observações internas",
+  );
+  inicializarEditorDescricao(
+    "editorEditarObservacoes",
+    "editarObservacoes",
+    "Insira as observações internas",
+  );
 
   document.getElementById("modalNovaProposta")?.addEventListener(
     "shown.bs.modal",

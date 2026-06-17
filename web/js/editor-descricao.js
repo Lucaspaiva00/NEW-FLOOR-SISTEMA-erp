@@ -8,7 +8,7 @@ const quillToolbar = [
 const editoresDescricao = {};
 const editoresItemDescricao = new WeakMap();
 
-function inicializarEditorDescricao(editorId, campoId) {
+function inicializarEditorDescricao(editorId, campoId, placeholder) {
     const container = document.getElementById(editorId);
     const campo = document.getElementById(campoId);
 
@@ -19,7 +19,8 @@ function inicializarEditorDescricao(editorId, campoId) {
     const quill = new Quill(container, {
         theme: "snow",
         modules: { toolbar: quillToolbar },
-        placeholder: "Descreva o serviço para a proposta comercial...",
+        placeholder:
+            placeholder || "Descreva o serviço para a proposta comercial...",
     });
 
     quill.on("text-change", () => {
