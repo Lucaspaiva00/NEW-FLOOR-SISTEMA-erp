@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        Redefinir Senha - New Floor ERP
+    </title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Inter", sans-serif;
+        }
+
+        body {
+
+            background: #f1f5f9;
+
+            min-height: 100vh;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            padding: 24px;
+        }
+
+        .card {
+
+            width: 100%;
+            max-width: 560px;
+
+            background: white;
+
+            border-radius: 28px;
+
+            padding: 40px;
+
+            border: 1px solid #e2e8f0;
+
+            box-shadow:
+                0 20px 45px rgba(15, 23, 42, 0.08);
+        }
+
+        .logo {
+
+            text-align: center;
+
+            margin-bottom: 30px;
+        }
+
+        .logo img {
+
+            width: 240px;
+        }
+
+        .titulo {
+
+            color: #0f172a;
+
+            font-size: 30px;
+
+            font-weight: 900;
+
+            margin-bottom: 10px;
+        }
+
+        .descricao {
+
+            color: #64748b;
+
+            line-height: 1.6;
+
+            margin-bottom: 30px;
+        }
+
+        label {
+
+            display: block;
+
+            margin-bottom: 8px;
+
+            font-size: 13px;
+
+            font-weight: 700;
+
+            color: #334155;
+        }
+
+        .input {
+
+            width: 100%;
+
+            height: 54px;
+
+            border-radius: 14px;
+
+            border: 1px solid #cbd5e1;
+
+            padding: 0 16px;
+
+            margin-bottom: 18px;
+
+            font-size: 14px;
+
+            transition: .2s;
+        }
+
+        .input:focus {
+
+            outline: none;
+
+            border-color: #0f172a;
+
+            box-shadow:
+                0 0 0 3px rgba(15, 23, 42, 0.08);
+        }
+
+        .btn {
+
+            width: 100%;
+
+            height: 54px;
+
+            border: none;
+
+            border-radius: 14px;
+
+            background: #0f172a;
+
+            color: white;
+
+            font-size: 15px;
+
+            font-weight: 700;
+
+            cursor: pointer;
+
+            transition: .2s;
+        }
+
+        .btn:hover {
+
+            background: #1e293b;
+        }
+
+        .voltar {
+
+            margin-top: 24px;
+
+            text-align: center;
+        }
+
+        .voltar a {
+
+            color: #0f172a;
+
+            text-decoration: none;
+
+            font-weight: 700;
+        }
+
+        .grupo-codigo {
+
+            display: flex;
+
+            gap: 10px;
+        }
+
+        .grupo-codigo .input {
+
+            text-align: center;
+
+            font-size: 18px;
+
+            font-weight: 700;
+        }
+
+        @media (max-width: 600px) {
+
+            .card {
+
+                padding: 28px;
+            }
+
+            .logo img {
+
+                width: 180px;
+            }
+
+            .titulo {
+
+                font-size: 24px;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="card">
+
+        <div class="logo">
+
+            <img src="assets/logo-newfloor.png" alt="New Floor">
+
+        </div>
+
+        <h1 class="titulo">
+
+            Redefinir Senha
+
+        </h1>
+
+        <p class="descricao">
+
+            Digite o código recebido por e-mail e informe sua nova senha.
+
+        </p>
+
+        <form id="formRedefinir">
+
+            <label>
+
+                E-mail
+
+            </label>
+
+            <input type="email" id="email" class="input" placeholder="Digite seu e-mail" required>
+
+            <label>
+
+                Código de Recuperação
+
+            </label>
+
+            <input type="text" id="codigo" class="input" placeholder="Ex: 123456" maxlength="6" required>
+
+            <label>
+
+                Nova Senha
+
+            </label>
+
+            <input type="password" id="senha" class="input" placeholder="Digite sua nova senha" required>
+
+            <label>
+
+                Confirmar Nova Senha
+
+            </label>
+
+            <input type="password" id="confirmarSenha" class="input" placeholder="Confirme sua nova senha" required>
+
+            <button type="submit" class="btn">
+
+                Alterar Senha
+
+            </button>
+
+        </form>
+
+        <div class="voltar">
+
+            <a href="login.html">
+
+                Voltar para Login
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <script src="js/redefinir-senha.js"></script>
+
+</body>
+
+</html>

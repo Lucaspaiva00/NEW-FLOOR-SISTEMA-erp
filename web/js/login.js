@@ -303,3 +303,32 @@ formLogin.addEventListener("submit", async (e) => {
         setLoading(btnEntrar, false, "Entrar");
     }
 });
+
+
+document
+    .querySelectorAll(".toggle-password")
+    .forEach(botao => {
+
+        botao.addEventListener("click", () => {
+
+            const campo =
+                document.getElementById(
+                    botao.dataset.target
+                );
+
+            const visivel =
+                campo.type === "text";
+
+            campo.type =
+                visivel
+                    ? "password"
+                    : "text";
+
+            botao.textContent =
+                visivel
+                    ? "👀"
+                    : "🙈";
+
+        });
+
+    });

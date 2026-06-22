@@ -20,6 +20,15 @@ routes.get("/", (_req, res) => {
 
 routes.post("/usuarios", usuario.create);
 routes.post("/usuarios/login", usuario.login);
+routes.post(
+  "/usuarios/esqueci-senha",
+  usuario.solicitarRecuperacao
+);
+
+routes.post(
+  "/usuarios/redefinir-senha",
+  usuario.redefinirSenha
+);
 
 routes.route("/clientes").get(cliente.read).post(cliente.create);
 
