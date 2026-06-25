@@ -44,6 +44,30 @@ function nomeCliente(cliente?: any): string {
   return String(nome);
 }
 
+function resolverTextoObservacao(proposta?: any, template?: any): string | null {
+  if (proposta?.observacoes) {
+    return proposta.observacoes;
+  }
+
+  if (!template) {
+    return null;
+  }
+
+  if (proposta?.tipoProposta === "SISTEMA") {
+    return (
+      template.textoObservacaoSistema ||
+      template.textoObservacao ||
+      null
+    );
+  }
+
+  return (
+    template.textoObservacaoServicos ||
+    template.textoObservacao ||
+    null
+  );
+}
+
 function logoParaDataUri(caminho: string): string | null {
   try {
     if (!fs.existsSync(caminho)) {
@@ -1011,7 +1035,7 @@ Observações
 <div class="card">
 
 <div class="descricao-comercial">
-${formatarDescricaoComercial(proposta.observacoes || template?.textoObservacao) || "-"}
+${formatarDescricaoComercial(resolverTextoObservacao(proposta, template)) || "-"}
 </div>
 
 </div>

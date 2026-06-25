@@ -39,6 +39,7 @@ let propostas = [];
 let propostasCache = [];
 let clientes = [];
 let servicos = [];
+let templateAtivo = null;
 let sortableInstances = [];
 let estaArrastando = false;
 let carregandoModalProposta = false;
@@ -123,6 +124,65 @@ async function carregarServicos() {
     console.log(error);
     alert("Erro ao carregar serviços.");
   }
+}
+
+async function carregarTemplateAtivo() {
+  try {
+    const response = await fetch(`${API_URL}/templates`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const templates = await response.json();
+    templateAtivo =
+      templates.find((template) => template.ativo) || templates[0] || null;
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+function textoObservacaoPorTipo(tipo) {
+  if (!templateAtivo) {
+    return "";
+  }
+
+  if (tipo === "SISTEMA") {
+    return (
+      templateAtivo.textoObservacaoSistema ||
+      templateAtivo.textoObservacao ||
+      ""
+    );
+  }
+
+  return (
+    templateAtivo.textoObservacaoServicos ||
+    templateAtivo.textoObservacao ||
+    ""
+  );
+}
+
+function textoParaHtmlObservacao(texto) {
+  if (!texto) {
+    return "";
+  }
+
+  if (texto.trim().startsWith("<")) {
+    return texto;
+  }
+
+  return `<p>${texto.replace(/\n/g, "<br>")}</p>`;
+}
+
+function aplicarObservacaoPorTipo(tipo, campoId = "observacoes") {
+  definirDescricaoEditor(
+    campoId,
+    textoParaHtmlObservacao(textoObservacaoPorTipo(tipo)),
+  );
 }
 
 function montarLoadingColunaKanban() {
@@ -1132,10 +1192,8 @@ function preencherPropostaMock() {
   }
 
   preencherCampo("observacoesInternas", "Gerada via botão Preencher mock.");
-  definirDescricaoEditor(
-    "observacoes",
-    "<p>Proposta mock para validação do sistema.</p>",
-  );
+  preencherCampo("tipoProposta", "SERVICOS");
+  aplicarObservacaoPorTipo("SERVICOS", "observacoes");
 
   preencherCheckbox("aprovadoCliente", false);
   preencherCheckbox("enviadoEmail", false);
@@ -1153,6 +1211,8 @@ function montarBodyNovaProposta() {
     titulo: pegarValor("titulo"),
 
     subtitulo: pegarValor("subtitulo"),
+
+    tipoProposta: pegarValor("tipoProposta") || "SERVICOS",
 
     descricao: pegarValor("descricao"),
 
@@ -1297,6 +1357,7 @@ async function abrirModalProposta(id) {
     preencherCampo("editarClienteId", proposta.clienteId);
     preencherCampo("editarVendedor", proposta.vendedorId);
     preencherCampo("editarSubtitulo", proposta.subtitulo);
+    preencherCampo("editarTipoProposta", proposta.tipoProposta || "SERVICOS");
     preencherCampo("editarStatus", proposta.status);
     preencherCampo("editarPrioridade", proposta.prioridade);
     preencherCampo("editarDescricao", proposta.descricao);
@@ -1367,6 +1428,8 @@ function montarBodyEditarProposta() {
     titulo: pegarValor("editarTitulo"),
 
     subtitulo: pegarValor("editarSubtitulo"),
+
+    tipoProposta: pegarValor("editarTipoProposta") || "SERVICOS",
 
     descricao: pegarValor("editarDescricao"),
 
@@ -1629,6 +1692,7 @@ async function iniciarTela() {
   mostrarLoadingKanban();
   await carregarClientes();
   await carregarServicos();
+  await carregarTemplateAtivo();
   await carregarPropostas();
 
   inicializarEditorDescricao(
@@ -1645,7 +1709,19 @@ async function iniciarTela() {
   document.getElementById("modalNovaProposta")?.addEventListener(
     "shown.bs.modal",
     () => {
-      limparDescricaoEditor("observacoes");
+      preencherCampo("tipoProposta", "SERVICOS");
+      aplicarObservacaoPorTipo("SERVICOS", "observacoes");
+    },
+  );
+
+  document.getElementById("tipoProposta")?.addEventListener("change", (e) => {
+    aplicarObservacaoPorTipo(e.target.value, "observacoes");
+  });
+
+  document.getElementById("editarTipoProposta")?.addEventListener(
+    "change",
+    (e) => {
+      aplicarObservacaoPorTipo(e.target.value, "editarObservacoes");
     },
   );
 

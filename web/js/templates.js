@@ -146,6 +146,12 @@ formTemplate.addEventListener(
             textoObservacao:
                 textoObservacao.value,
 
+            textoObservacaoServicos:
+                textoObservacaoServicos.value,
+
+            textoObservacaoSistema:
+                textoObservacaoSistema.value,
+
             exibirLogo:
                 exibirLogo.checked,
 

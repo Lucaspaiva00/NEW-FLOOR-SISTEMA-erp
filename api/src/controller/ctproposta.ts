@@ -208,6 +208,9 @@ export const create = async (
           subtitulo:
             body.subtitulo || null,
 
+          tipoProposta:
+            body.tipoProposta || "SERVICOS",
+
           descricao:
             body.descricao || null,
 
@@ -450,6 +453,10 @@ export const update = async (
           subtitulo:
             body.subtitulo ??
             propostaAtual.subtitulo,
+
+          tipoProposta:
+            body.tipoProposta ??
+            propostaAtual.tipoProposta,
 
           descricao:
             body.descricao ??

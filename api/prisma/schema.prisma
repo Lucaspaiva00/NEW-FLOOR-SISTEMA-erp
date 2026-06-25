@@ -81,6 +81,7 @@ model Proposta {
   numero                     String            @unique
   titulo                     String
   subtitulo                  String?
+  tipoProposta               TipoProposta      @default(SERVICOS)
   descricao                  String?
   escopo                     String?
   observacoes                String?
@@ -186,8 +187,10 @@ model TemplateProposta {
   rodape            String?
   textoApresentacao String?
   textoGarantia     String?
-  textoPagamento    String?
-  textoObservacao   String?
+  textoPagamento          String?
+  textoObservacao         String?
+  textoObservacaoServicos String?
+  textoObservacaoSistema  String?
   exibirLogo        Boolean    @default(true)
   exibirEndereco    Boolean    @default(true)
   exibirTelefone    Boolean    @default(true)
@@ -220,6 +223,11 @@ enum StatusProposta {
   FATURADA
   RECUSADA
   CANCELADA
+}
+
+enum TipoProposta {
+  SERVICOS
+  SISTEMA
 }
 
 enum TipoAgenda {
