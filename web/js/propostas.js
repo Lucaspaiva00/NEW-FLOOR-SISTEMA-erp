@@ -178,7 +178,25 @@ function textoParaHtmlObservacao(texto) {
   return `<p>${texto.replace(/\n/g, "<br>")}</p>`;
 }
 
+function tituloObservacaoPorTipo(tipo) {
+  return tipo === "SISTEMA" ? "Observações Sistema" : "Observações Serviços";
+}
+
+function atualizarLabelObservacoes(tipo, labelId) {
+  const label = document.getElementById(labelId);
+
+  if (label) {
+    label.textContent = tituloObservacaoPorTipo(tipo);
+  }
+}
+
 function aplicarObservacaoPorTipo(tipo, campoId = "observacoes") {
+  const labelId =
+    campoId === "editarObservacoes"
+      ? "labelEditarObservacoes"
+      : "labelObservacoes";
+
+  atualizarLabelObservacoes(tipo, labelId);
   definirDescricaoEditor(
     campoId,
     textoParaHtmlObservacao(textoObservacaoPorTipo(tipo)),
@@ -1358,6 +1376,10 @@ async function abrirModalProposta(id) {
     preencherCampo("editarVendedor", proposta.vendedorId);
     preencherCampo("editarSubtitulo", proposta.subtitulo);
     preencherCampo("editarTipoProposta", proposta.tipoProposta || "SERVICOS");
+    atualizarLabelObservacoes(
+      proposta.tipoProposta || "SERVICOS",
+      "labelEditarObservacoes",
+    );
     preencherCampo("editarStatus", proposta.status);
     preencherCampo("editarPrioridade", proposta.prioridade);
     preencherCampo("editarDescricao", proposta.descricao);

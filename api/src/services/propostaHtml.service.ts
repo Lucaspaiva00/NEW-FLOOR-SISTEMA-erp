@@ -44,6 +44,12 @@ function nomeCliente(cliente?: any): string {
   return String(nome);
 }
 
+function tituloObservacaoPorTipo(proposta?: any): string {
+  return proposta?.tipoProposta === "SISTEMA"
+    ? "Observações Sistema"
+    : "Observações Serviços";
+}
+
 function resolverTextoObservacao(proposta?: any, template?: any): string | null {
   if (proposta?.observacoes) {
     return proposta.observacoes;
@@ -1029,7 +1035,7 @@ ${template.textoGarantia}
 <div class="section">
 
 <div class="section-title">
-Observações
+${tituloObservacaoPorTipo(proposta)}
 </div>
 
 <div class="card">
