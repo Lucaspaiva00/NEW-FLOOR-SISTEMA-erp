@@ -85,6 +85,8 @@ model Proposta {
   descricao                  String?
   escopo                     String?
   observacoes                String?
+  observacoesServicos        String?
+  observacoesSistema         String?
   observacoesInternas        String?
   status                     StatusProposta    @default(RASCUNHO)
   prioridade                 String?

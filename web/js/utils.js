@@ -12,6 +12,22 @@ function pegarValor(id) {
   return tratado === "" ? null : tratado;
 }
 
+function pegarValorHtml(id) {
+  const elemento = document.getElementById(id);
+
+  if (!elemento) return null;
+
+  const valor = elemento.value;
+
+  if (valor === undefined || valor === null) return null;
+
+  const texto = typeof textoPlanoDescricao === "function"
+    ? textoPlanoDescricao(valor)
+    : String(valor).replace(/<[^>]*>/g, "").trim();
+
+  return texto === "" ? null : String(valor);
+}
+
 function pegarNumero(id) {
   const valor = pegarValor(id);
 

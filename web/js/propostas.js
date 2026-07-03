@@ -40,6 +40,14 @@ let propostasCache = [];
 let clientes = [];
 let servicos = [];
 let templateAtivo = null;
+const observacoesPorTipo = {
+  nova: { SERVICOS: null, SISTEMA: null },
+  editar: { SERVICOS: null, SISTEMA: null },
+};
+const tipoPropostaAnterior = {
+  nova: "SERVICOS",
+  editar: "SERVICOS",
+};
 let sortableInstances = [];
 let estaArrastando = false;
 let carregandoModalProposta = false;
@@ -190,16 +198,87 @@ function atualizarLabelObservacoes(tipo, labelId) {
   }
 }
 
-function aplicarObservacaoPorTipo(tipo, campoId = "observacoes") {
+function contextoObservacoes(campoId) {
+  return campoId === "editarObservacoes" ? "editar" : "nova";
+}
+
+function selectIdPorContexto(contexto) {
+  return contexto === "editar" ? "editarTipoProposta" : "tipoProposta";
+}
+
+function campoIdPorContexto(contexto) {
+  return contexto === "editar" ? "editarObservacoes" : "observacoes";
+}
+
+function resetarObservacoesPorTipo(contexto) {
+  observacoesPorTipo[contexto] = { SERVICOS: null, SISTEMA: null };
+  tipoPropostaAnterior[contexto] = "SERVICOS";
+}
+
+function carregarObservacoesPorTipoDaProposta(proposta) {
+  const legado = proposta.observacoes || null;
+  const tipo = proposta.tipoProposta || "SERVICOS";
+
+  return {
+    SERVICOS:
+      proposta.observacoesServicos ??
+      (tipo === "SERVICOS" ? legado : null),
+    SISTEMA:
+      proposta.observacoesSistema ?? (tipo === "SISTEMA" ? legado : null),
+  };
+}
+
+function salvarObservacaoAtual(contexto, tipo) {
+  sincronizarEditoresDescricao();
+  observacoesPorTipo[contexto][tipo] = pegarValorHtml(
+    campoIdPorContexto(contexto),
+  );
+}
+
+function resolverObservacaoParaTipo(contexto, tipo) {
+  const salva = observacoesPorTipo[contexto][tipo];
+
+  if (salva) {
+    return salva;
+  }
+
+  return textoObservacaoPorTipo(tipo);
+}
+
+function montarObservacoesBody(contexto) {
+  const tipoAtual = pegarValor(selectIdPorContexto(contexto)) || "SERVICOS";
+
+  salvarObservacaoAtual(contexto, tipoAtual);
+
+  const servicos = observacoesPorTipo[contexto].SERVICOS;
+  const sistema = observacoesPorTipo[contexto].SISTEMA;
+
+  return {
+    observacoesServicos: servicos,
+    observacoesSistema: sistema,
+    observacoes: tipoAtual === "SISTEMA" ? sistema : servicos,
+  };
+}
+
+async function trocarObservacaoPorTipo(novoTipo, campoId) {
+  const contexto = contextoObservacoes(campoId);
+  const tipoAnterior = tipoPropostaAnterior[contexto];
+
+  if (tipoAnterior !== novoTipo) {
+    salvarObservacaoAtual(contexto, tipoAnterior);
+  }
+
+  tipoPropostaAnterior[contexto] = novoTipo;
+
   const labelId =
     campoId === "editarObservacoes"
       ? "labelEditarObservacoes"
       : "labelObservacoes";
 
-  atualizarLabelObservacoes(tipo, labelId);
+  atualizarLabelObservacoes(novoTipo, labelId);
   definirDescricaoEditor(
     campoId,
-    textoParaHtmlObservacao(textoObservacaoPorTipo(tipo)),
+    textoParaHtmlObservacao(resolverObservacaoParaTipo(contexto, novoTipo)),
   );
 }
 
@@ -1160,7 +1239,7 @@ function atualizarTotalProposta() {
   }
 }
 
-function preencherPropostaMock() {
+async function preencherPropostaMock() {
   const sufixo = Date.now().toString().slice(-4);
 
   preencherCampo("titulo", `Proposta Mock ${sufixo}`);
@@ -1211,7 +1290,8 @@ function preencherPropostaMock() {
 
   preencherCampo("observacoesInternas", "Gerada via botão Preencher mock.");
   preencherCampo("tipoProposta", "SERVICOS");
-  aplicarObservacaoPorTipo("SERVICOS", "observacoes");
+  resetarObservacoesPorTipo("nova");
+  await trocarObservacaoPorTipo("SERVICOS", "observacoes");
 
   preencherCheckbox("aprovadoCliente", false);
   preencherCheckbox("enviadoEmail", false);
@@ -1224,6 +1304,7 @@ function preencherPropostaMock() {
 function montarBodyNovaProposta() {
   sincronizarEditoresDescricao();
   const itens = montarItens();
+  const observacoes = montarObservacoesBody("nova");
 
   return {
     titulo: pegarValor("titulo"),
@@ -1236,7 +1317,7 @@ function montarBodyNovaProposta() {
 
     escopo: pegarValor("escopo"),
 
-    observacoes: pegarValor("observacoes"),
+    ...observacoes,
 
     observacoesInternas: pegarValor("observacoesInternas"),
 
@@ -1335,6 +1416,7 @@ formNovaProposta.addEventListener("submit", async (e) => {
     formNovaProposta.reset();
 
     limparDescricaoEditor("observacoes");
+    resetarObservacoesPorTipo("nova");
     listaItensProposta.innerHTML = "";
     valorTotal.innerText = moeda(0);
 
@@ -1376,9 +1458,15 @@ async function abrirModalProposta(id) {
     preencherCampo("editarVendedor", proposta.vendedorId);
     preencherCampo("editarSubtitulo", proposta.subtitulo);
     preencherCampo("editarTipoProposta", proposta.tipoProposta || "SERVICOS");
-    atualizarLabelObservacoes(
-      proposta.tipoProposta || "SERVICOS",
-      "labelEditarObservacoes",
+    observacoesPorTipo.editar = carregarObservacoesPorTipoDaProposta(proposta);
+    const tipoProposta = proposta.tipoProposta || "SERVICOS";
+    tipoPropostaAnterior.editar = tipoProposta;
+    atualizarLabelObservacoes(tipoProposta, "labelEditarObservacoes");
+    definirDescricaoEditor(
+      "editarObservacoes",
+      textoParaHtmlObservacao(
+        resolverObservacaoParaTipo("editar", tipoProposta),
+      ),
     );
     preencherCampo("editarStatus", proposta.status);
     preencherCampo("editarPrioridade", proposta.prioridade);
@@ -1401,8 +1489,6 @@ async function abrirModalProposta(id) {
     preencherCampo("editarFormaPagamento", proposta.formaPagamento);
 
     preencherCampo("editarCondicoesPagamento", proposta.condicoesPagamento);
-
-    definirDescricaoEditor("editarObservacoes", proposta.observacoes);
 
     preencherCampo("editarObservacoesInternas", proposta.observacoesInternas);
 
@@ -1443,6 +1529,7 @@ async function abrirModalProposta(id) {
 
 function montarBodyEditarProposta() {
   sincronizarEditoresDescricao();
+  const observacoes = montarObservacoesBody("editar");
 
   return {
     numero: pegarValor("editarNumero"),
@@ -1457,7 +1544,7 @@ function montarBodyEditarProposta() {
 
     escopo: pegarValor("editarEscopo"),
 
-    observacoes: pegarValor("editarObservacoes"),
+    ...observacoes,
 
     observacoesInternas: pegarValor("editarObservacoesInternas"),
 
@@ -1730,20 +1817,24 @@ async function iniciarTela() {
 
   document.getElementById("modalNovaProposta")?.addEventListener(
     "shown.bs.modal",
-    () => {
+    async () => {
+      await carregarTemplateAtivo();
+      resetarObservacoesPorTipo("nova");
       preencherCampo("tipoProposta", "SERVICOS");
-      aplicarObservacaoPorTipo("SERVICOS", "observacoes");
+      await trocarObservacaoPorTipo("SERVICOS", "observacoes");
     },
   );
 
-  document.getElementById("tipoProposta")?.addEventListener("change", (e) => {
-    aplicarObservacaoPorTipo(e.target.value, "observacoes");
+  document.getElementById("tipoProposta")?.addEventListener("change", async (e) => {
+    await carregarTemplateAtivo();
+    await trocarObservacaoPorTipo(e.target.value, "observacoes");
   });
 
   document.getElementById("editarTipoProposta")?.addEventListener(
     "change",
-    (e) => {
-      aplicarObservacaoPorTipo(e.target.value, "editarObservacoes");
+    async (e) => {
+      await carregarTemplateAtivo();
+      await trocarObservacaoPorTipo(e.target.value, "editarObservacoes");
     },
   );
 

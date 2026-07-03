@@ -178,7 +178,7 @@ formTemplate.addEventListener(
         const id =
             templateid.value;
 
-        await fetch(
+        const response = await fetch(
 
             id
                 ? `${API_URL}/templates/${id}`
@@ -207,6 +207,13 @@ formTemplate.addEventListener(
             }
 
         );
+
+        const resposta = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            alert(resposta.error || "Erro ao salvar template.");
+            return;
+        }
 
         location.reload();
 

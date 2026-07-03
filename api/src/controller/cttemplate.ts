@@ -1,10 +1,36 @@
 import { Request, Response } from "express";
 import prisma from "../prisma";
 
+function montarDadosTemplate(body: Record<string, unknown>) {
+  return {
+    nome: body.nome as string,
+    descricao: (body.descricao as string) || null,
+    ativo: body.ativo ?? true,
+    logo: (body.logo as string) || null,
+    corPrimaria: (body.corPrimaria as string) || null,
+    corSecundaria: (body.corSecundaria as string) || null,
+    cabecalho: (body.cabecalho as string) || null,
+    rodape: (body.rodape as string) || null,
+    textoApresentacao: (body.textoApresentacao as string) || null,
+    textoGarantia: (body.textoGarantia as string) || null,
+    textoPagamento: (body.textoPagamento as string) || null,
+    textoObservacao: (body.textoObservacao as string) || null,
+    textoObservacaoServicos: (body.textoObservacaoServicos as string) || null,
+    textoObservacaoSistema: (body.textoObservacaoSistema as string) || null,
+    exibirLogo: body.exibirLogo ?? true,
+    exibirEndereco: body.exibirEndereco ?? true,
+    exibirTelefone: body.exibirTelefone ?? true,
+    exibirEmail: body.exibirEmail ?? true,
+    exibirAssinatura: body.exibirAssinatura ?? true,
+    htmlPersonalizado: (body.htmlPersonalizado as string) || null,
+    cssPersonalizado: (body.cssPersonalizado as string) || null,
+  };
+}
+
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     const template = await prisma.templateProposta.create({
-      data: req.body
+      data: montarDadosTemplate(req.body),
     });
 
     res.status(201).json(template);
@@ -53,7 +79,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
     const template = await prisma.templateProposta.update({
       where: { templateid: Number(id) },
-      data: req.body
+      data: montarDadosTemplate(req.body),
     });
 
     res.json(template);

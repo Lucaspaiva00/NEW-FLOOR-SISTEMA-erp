@@ -51,25 +51,21 @@ function tituloObservacaoPorTipo(proposta?: any): string {
 }
 
 function resolverTextoObservacao(proposta?: any, template?: any): string | null {
-  if (proposta?.observacoes) {
-    return proposta.observacoes;
-  }
-
-  if (!template) {
-    return null;
-  }
-
   if (proposta?.tipoProposta === "SISTEMA") {
     return (
-      template.textoObservacaoSistema ||
-      template.textoObservacao ||
+      proposta.observacoesSistema ||
+      proposta.observacoes ||
+      template?.textoObservacaoSistema ||
+      template?.textoObservacao ||
       null
     );
   }
 
   return (
-    template.textoObservacaoServicos ||
-    template.textoObservacao ||
+    proposta?.observacoesServicos ||
+    proposta?.observacoes ||
+    template?.textoObservacaoServicos ||
+    template?.textoObservacao ||
     null
   );
 }

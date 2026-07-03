@@ -29,6 +29,12 @@ function inicializarEditorDescricao(editorId, campoId, placeholder) {
 
     editoresDescricao[campoId] = quill;
 
+    const conteudo = campo.value || "";
+
+    if (conteudo && conteudo !== "<p><br></p>") {
+        quill.root.innerHTML = conteudo;
+    }
+
     return quill;
 }
 

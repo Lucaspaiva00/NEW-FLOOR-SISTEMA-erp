@@ -218,7 +218,13 @@ export const create = async (
             body.escopo || null,
 
           observacoes:
-            body.observacoes || null,
+            body.observacoes ?? null,
+
+          observacoesServicos:
+            body.observacoesServicos ?? null,
+
+          observacoesSistema:
+            body.observacoesSistema ?? null,
 
           observacoesInternas:
             body.observacoesInternas || null,
@@ -467,12 +473,24 @@ export const update = async (
             propostaAtual.escopo,
 
           observacoes:
-            body.observacoes ??
-            propostaAtual.observacoes,
+            "observacoes" in body
+              ? body.observacoes
+              : propostaAtual.observacoes,
+
+          observacoesServicos:
+            "observacoesServicos" in body
+              ? body.observacoesServicos
+              : propostaAtual.observacoesServicos,
+
+          observacoesSistema:
+            "observacoesSistema" in body
+              ? body.observacoesSistema
+              : propostaAtual.observacoesSistema,
 
           observacoesInternas:
-            body.observacoesInternas ??
-            propostaAtual.observacoesInternas,
+            "observacoesInternas" in body
+              ? body.observacoesInternas
+              : propostaAtual.observacoesInternas,
 
           status:
             body.status ??
