@@ -1,11 +1,15 @@
 import { Request, Response } from "express";
 import prisma from "../prisma";
 
+function booleanOu(valor: unknown, padrao: boolean): boolean {
+  return typeof valor === "boolean" ? valor : padrao;
+}
+
 function montarDadosTemplate(body: Record<string, unknown>) {
   return {
     nome: body.nome as string,
     descricao: (body.descricao as string) || null,
-    ativo: body.ativo ?? true,
+    ativo: booleanOu(body.ativo, true),
     logo: (body.logo as string) || null,
     corPrimaria: (body.corPrimaria as string) || null,
     corSecundaria: (body.corSecundaria as string) || null,
@@ -17,11 +21,11 @@ function montarDadosTemplate(body: Record<string, unknown>) {
     textoObservacao: (body.textoObservacao as string) || null,
     textoObservacaoServicos: (body.textoObservacaoServicos as string) || null,
     textoObservacaoSistema: (body.textoObservacaoSistema as string) || null,
-    exibirLogo: body.exibirLogo ?? true,
-    exibirEndereco: body.exibirEndereco ?? true,
-    exibirTelefone: body.exibirTelefone ?? true,
-    exibirEmail: body.exibirEmail ?? true,
-    exibirAssinatura: body.exibirAssinatura ?? true,
+    exibirLogo: booleanOu(body.exibirLogo, true),
+    exibirEndereco: booleanOu(body.exibirEndereco, true),
+    exibirTelefone: booleanOu(body.exibirTelefone, true),
+    exibirEmail: booleanOu(body.exibirEmail, true),
+    exibirAssinatura: booleanOu(body.exibirAssinatura, true),
     htmlPersonalizado: (body.htmlPersonalizado as string) || null,
     cssPersonalizado: (body.cssPersonalizado as string) || null,
   };
