@@ -64,6 +64,31 @@ async function enviarWhatsappProposta(id, btn) {
   }
 }
 
+async function duplicarProposta(id, btn) {
+  if (!id) {
+    alert("Selecione uma proposta.");
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  setCardLoading(id, true);
+
+  try {
+    const proposta = await request(`${API_URL}/propostas/${id}/duplicar`, {
+      method: "POST",
+    });
+
+    toastSucesso(`Proposta Nº ${proposta.numero} criada`);
+    await carregarPropostas();
+  } catch (error) {
+    console.error(error);
+    toastErro(error.message || "Erro ao duplicar proposta.");
+  } finally {
+    setCardLoading(id, false);
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function enviarEmailProposta(id, btn) {
   if (!id) {
     alert("Selecione uma proposta.");
@@ -90,6 +115,8 @@ async function executarAcaoProposta(acao, id, btn) {
   try {
     if (acao === "editar") {
       abrirModalProposta(id);
+    } else if (acao === "duplicar") {
+      await duplicarProposta(id, btn);
     } else if (acao === "pdf") {
       await visualizarPdfProposta(id);
     } else if (acao === "whatsapp") {

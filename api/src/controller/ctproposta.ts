@@ -43,9 +43,18 @@ async function gerarNumeroAutomaticoProposta(): Promise<string> {
     }
   }
 
-  return String(
-    Math.max(sequenciaPorId, maiorNumeroCadastrado + 1)
-  );
+  let proximo = Math.max(sequenciaPorId, maiorNumeroCadastrado + 1);
+
+  while (
+    await prisma.proposta.findUnique({
+      where: { numero: String(proximo) },
+      select: { propostaid: true },
+    })
+  ) {
+    proximo += 1;
+  }
+
+  return String(proximo);
 }
 
 async function buscarPropostaCompleta(id: string) {
@@ -752,6 +761,92 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
     console.log(error);
     res.status(500).json({
       error: "Erro ao remover proposta"
+    });
+  }
+};
+
+export const duplicar = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const original = await buscarPropostaCompleta(paramId(id));
+
+    if (!original) {
+      res.status(404).json({
+        error: "Proposta não encontrada"
+      });
+      return;
+    }
+
+    const numero = await gerarNumeroAutomaticoProposta();
+    const titulo = original.titulo.endsWith(" (cópia)")
+      ? original.titulo
+      : `${original.titulo} (cópia)`;
+
+    const proposta = await prisma.proposta.create({
+      data: {
+        numero,
+        titulo,
+        subtitulo: original.subtitulo,
+        tipoProposta: original.tipoProposta,
+        descricao: original.descricao,
+        escopo: original.escopo,
+        observacoes: original.observacoes,
+        observacoesServicos: original.observacoesServicos,
+        observacoesSistema: original.observacoesSistema,
+        observacoesInternas: original.observacoesInternas,
+        status: "RASCUNHO",
+        prioridade: original.prioridade,
+        subtotal: original.subtotal,
+        frete: original.frete,
+        formaPagamento: original.formaPagamento,
+        condicoesPagamento: original.condicoesPagamento,
+        validadeDias: original.validadeDias,
+        dataValidade: original.dataValidade,
+        responsavel: original.responsavel,
+        origem: original.origem,
+        clienteId: original.clienteId,
+        vendedorId: original.vendedorId,
+        templatePropostaTemplateid: original.templatePropostaTemplateid,
+        aprovadoCliente: false,
+        enviadoEmail: false,
+        enviadoWhatsapp: false,
+        visualizada: false,
+        itens: {
+          create: original.itens.map((item) => ({
+            codigo: item.codigo,
+            descricao: item.descricao,
+            detalhes: item.detalhes,
+            unidade: item.unidade,
+            quantidade: item.quantidade,
+            valorUnitario: item.valorUnitario,
+            subtotal: item.subtotal,
+            ordem: item.ordem,
+            observacoes: item.observacoes,
+            servicoId: item.servicoId
+          }))
+        }
+      },
+      include: {
+        cliente: true,
+        vendedor: true,
+        templateProposta: true,
+        itens: {
+          include: {
+            servico: true
+          }
+        }
+      }
+    });
+
+    res.status(201).json(proposta);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      error: "Erro ao duplicar proposta"
     });
   }
 };

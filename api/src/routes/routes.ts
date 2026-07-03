@@ -54,6 +54,7 @@ routes.post("/propostas/:id/pdf", proposta.gerarPdf);
 routes.get("/propostas/:id/download", proposta.downloadPdf);
 routes.post("/propostas/:id/email", proposta.enviarEmail);
 routes.get("/propostas/:id/whatsapp", proposta.whatsapp);
+routes.post("/propostas/:id/duplicar", proposta.duplicar);
 
 routes
   .route("/propostas/:id")
