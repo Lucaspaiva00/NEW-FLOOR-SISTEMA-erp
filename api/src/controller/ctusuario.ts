@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../prisma";
-import nodemailer from "nodemailer";
+import { enviarCodigoRecuperacaoSenha } from "../services/email.service";
 
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -126,34 +126,7 @@ export const solicitarRecuperacao = async (
       }
     });
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Recuperação de senha - NEW FLOOR",
-      html: `
-        <div style="font-family: Arial">
-          <h2>Recuperação de Senha</h2>
-
-          <p>Seu código para redefinição é:</p>
-
-          <h1 style="letter-spacing: 5px;">
-            ${codigo}
-          </h1>
-
-          <p>
-            Este código expira em 15 minutos.
-          </p>
-        </div>
-      `
-    });
+    await enviarCodigoRecuperacaoSenha(email, codigo);
 
     res.status(200).json({
       message: "Código enviado com sucesso"
