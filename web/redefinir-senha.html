@@ -153,9 +153,70 @@
             transition: .2s;
         }
 
-        .btn:hover {
+        .btn:hover:not(:disabled) {
 
             background: #1e293b;
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .btn-secundario {
+            margin-top: 12px;
+            background: white;
+            color: #0f172a;
+            border: 1px solid #cbd5e1;
+        }
+
+        .btn-secundario:hover:not(:disabled) {
+            background: #f8fafc;
+        }
+
+        .btn-loading {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(15, 23, 42, 0.2);
+            border-top-color: #0f172a;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .spinner.branco {
+            border-color: rgba(255, 255, 255, 0.35);
+            border-top-color: white;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .feedback {
+            margin-top: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            color: #64748b;
+        }
+
+        .feedback.error {
+            color: #dc2626;
+        }
+
+        .feedback.success {
+            color: #16a34a;
+        }
+
+        .hidden {
+            display: none;
         }
 
         .voltar {
@@ -267,11 +328,19 @@
 
             <input type="password" id="confirmarSenha" class="input" placeholder="Confirme sua nova senha" required>
 
-            <button type="submit" class="btn">
+            <button type="submit" class="btn" id="btnAlterar">
 
                 Alterar Senha
 
             </button>
+
+            <button type="button" class="btn btn-secundario" id="btnReenviar">
+
+                Reenviar código
+
+            </button>
+
+            <p class="feedback hidden" id="feedback"></p>
 
         </form>
 

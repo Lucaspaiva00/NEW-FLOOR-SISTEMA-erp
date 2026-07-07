@@ -148,9 +148,54 @@
             transition: .2s;
         }
 
-        .btn:hover {
+        .btn:hover:not(:disabled) {
 
             background: #1e293b;
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .btn-loading {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .feedback {
+            margin-top: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            color: #64748b;
+        }
+
+        .feedback.error {
+            color: #dc2626;
+        }
+
+        .feedback.success {
+            color: #16a34a;
+        }
+
+        .hidden {
+            display: none;
         }
 
         .voltar {
@@ -204,11 +249,13 @@
 
             <input type="email" id="email" class="input" placeholder="Digite seu e-mail" required>
 
-            <button type="submit" class="btn">
+            <button type="submit" class="btn" id="btnEnviar">
 
                 Enviar Código
 
             </button>
+
+            <p class="feedback hidden" id="feedback"></p>
 
         </form>
 
