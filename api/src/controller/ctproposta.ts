@@ -3,20 +3,23 @@ import path from "path";
 import fs from "fs";
 import prisma from "../prisma";
 import { gerarHtmlProposta } from "../services/propostaHtml.service";
-import { gerarPdfProposta, nomeDownloadPdfProposta } from "../services/propostaPdf.service";
+import {
+  gerarPdfProposta,
+  nomeDownloadPdfProposta,
+} from "../services/propostaPdf.service";
 import { enviarPropostaPorEmail } from "../services/propostaEmail.service";
 import { gerarLinkWhatsapp } from "../services/propostaWhatsapp.service";
+import {
+  resolverObservacoesNaCriacao,
+  obterObservacoesPadraoCache,
+} from "../constants/observacoesServicosPadrao";
 
-function paramId(
-  id: string | string[] | number
-): string {
-
+function paramId(id: string | string[] | number): string {
   if (Array.isArray(id)) {
     return id[0];
   }
 
   return String(id);
-
 }
 
 async function gerarNumeroAutomaticoProposta(): Promise<string> {
@@ -30,8 +33,7 @@ async function gerarNumeroAutomaticoProposta(): Promise<string> {
     }),
   ]);
 
-  const sequenciaPorId =
-    (ultimaProposta?.propostaid || 650) + 1;
+  const sequenciaPorId = (ultimaProposta?.propostaid || 650) + 1;
 
   let maiorNumeroCadastrado = 650;
 
@@ -60,7 +62,7 @@ async function gerarNumeroAutomaticoProposta(): Promise<string> {
 async function buscarPropostaCompleta(id: string) {
   return prisma.proposta.findUnique({
     where: {
-      propostaid: Number(id)
+      propostaid: Number(id),
     },
     include: {
       cliente: true,
@@ -68,26 +70,23 @@ async function buscarPropostaCompleta(id: string) {
       templateProposta: true,
       itens: {
         include: {
-          servico: true
+          servico: true,
         },
-        orderBy: [
-          { ordem: "asc" },
-          { itempropostaid: "asc" }
-        ]
+        orderBy: [{ ordem: "asc" }, { itempropostaid: "asc" }],
       },
-      agendas: true
-    }
+      agendas: true,
+    },
   });
 }
 
 async function buscarTemplatePadrao() {
   const templateAtivo = await prisma.templateProposta.findFirst({
     where: {
-      ativo: true
+      ativo: true,
     },
     orderBy: {
-      createdAt: "desc"
-    }
+      createdAt: "desc",
+    },
   });
 
   if (templateAtivo) {
@@ -104,594 +103,410 @@ async function buscarTemplatePadrao() {
       textoGarantia: "Garantia conforme condições comerciais apresentadas.",
       textoPagamento: "Condições de pagamento conforme negociação.",
       textoObservacao: "Valores sujeitos à aprovação e validade da proposta.",
-      rodape: "Documento gerado automaticamente pelo sistema NEW FLOOR ERP."
-    }
+      rodape: "Documento gerado automaticamente pelo sistema NEW FLOOR ERP.",
+    },
   });
 }
 
 async function gerarPdfInterno(id: string | string[] | number) {
-
-  const proposta =
-    await buscarPropostaCompleta(
-      paramId(id)
-    );
+  const proposta = await buscarPropostaCompleta(paramId(id));
 
   if (!proposta) {
-
-    throw new Error(
-      "Proposta não encontrada"
-    );
-
+    throw new Error("Proposta não encontrada");
   }
 
-  let template =
-    proposta.templateProposta;
+  let template = proposta.templateProposta;
 
   if (!template) {
-
-    template =
-      await buscarTemplatePadrao();
-
+    template = await buscarTemplatePadrao();
   }
 
-  const html =
-    await gerarHtmlProposta({
+  const html = await gerarHtmlProposta({
+    proposta,
 
-      proposta,
+    cliente: proposta.cliente,
 
-      cliente:
-        proposta.cliente,
+    itens: proposta.itens,
 
-      itens:
-        proposta.itens,
+    template,
+  });
 
-      template
+  const nomeArquivo = `proposta-${proposta.numero}-${Date.now()}.pdf`;
 
-    });
-
-  const nomeArquivo =
-    `proposta-${proposta.numero}-${Date.now()}.pdf`;
-
-  const pdf =
-    await gerarPdfProposta(
-      html,
-      nomeArquivo
-    );
+  const pdf = await gerarPdfProposta(html, nomeArquivo);
 
   await prisma.proposta.update({
-
     where: {
-      propostaid:
-        proposta.propostaid
+      propostaid: proposta.propostaid,
     },
 
     data: {
-      pdfUrl:
-        pdf.url
-    }
-
+      pdfUrl: pdf.url,
+    },
   });
 
   return {
-
     proposta,
 
-    caminho:
-      pdf.caminho,
+    caminho: pdf.caminho,
 
-    pdfUrl:
-      pdf.url
-
+    pdfUrl: pdf.url,
   };
-
 }
-export const create = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-
+export const create = async (req: Request, res: Response): Promise<void> => {
   try {
-
     const body = req.body;
 
-    const numeroAutomatico =
-      await gerarNumeroAutomaticoProposta();
+    const numeroAutomatico = await gerarNumeroAutomaticoProposta();
 
-    const subtotal =
-      (body.itens || []).reduce(
-        (total: number, item: any) =>
-          total + Number(item.subtotal || 0),
-        0
-      );
+    const subtotal = (body.itens || []).reduce(
+      (total: number, item: any) => total + Number(item.subtotal || 0),
+      0,
+    );
 
-    const proposta =
-      await prisma.proposta.create({
+    const observacoesResolvidas = resolverObservacoesNaCriacao(body);
 
-        data: {
+    const proposta = await prisma.proposta.create({
+      data: {
+        numero: numeroAutomatico,
 
-          numero: numeroAutomatico,
+        titulo: body.titulo,
 
-          titulo:
-            body.titulo,
+        subtitulo: body.subtitulo || null,
 
-          subtitulo:
-            body.subtitulo || null,
+        tipoProposta: body.tipoProposta || "SERVICOS",
 
-          tipoProposta:
-            body.tipoProposta || "SERVICOS",
+        descricao: body.descricao || null,
 
-          descricao:
-            body.descricao || null,
+        escopo: body.escopo || null,
 
-          escopo:
-            body.escopo || null,
+        observacoes: observacoesResolvidas.observacoes,
 
-          observacoes:
-            body.observacoes ?? null,
+        observacoesServicos: observacoesResolvidas.observacoesServicos,
 
-          observacoesServicos:
-            body.observacoesServicos ?? null,
+        observacoesSistema: observacoesResolvidas.observacoesSistema,
 
-          observacoesSistema:
-            body.observacoesSistema ?? null,
+        observacoesInternas: body.observacoesInternas || null,
 
-          observacoesInternas:
-            body.observacoesInternas || null,
+        status: body.status || "RASCUNHO",
 
-          status:
-            body.status || "RASCUNHO",
+        prioridade: body.prioridade || null,
 
-          prioridade:
-            body.prioridade || null,
+        subtotal,
 
-          subtotal,
+        frete: body.frete ? Number(body.frete) : null,
 
-          frete:
-            body.frete
-              ? Number(body.frete)
-              : null,
+        formaPagamento: body.formaPagamento || null,
 
-          formaPagamento:
-            body.formaPagamento || null,
+        condicoesPagamento: body.condicoesPagamento || null,
 
-          condicoesPagamento:
-            body.condicoesPagamento || null,
+        validadeDias: body.validadeDias ? Number(body.validadeDias) : null,
 
-          validadeDias:
-            body.validadeDias
-              ? Number(body.validadeDias)
-              : null,
+        dataValidade: body.dataValidade ? new Date(body.dataValidade) : null,
 
-          dataValidade:
-            body.dataValidade
-              ? new Date(body.dataValidade)
-              : null,
+        dataAprovacao: body.dataAprovacao ? new Date(body.dataAprovacao) : null,
 
-          dataAprovacao:
-            body.dataAprovacao
-              ? new Date(body.dataAprovacao)
-              : null,
+        dataRecusa: body.dataRecusa ? new Date(body.dataRecusa) : null,
 
-          dataRecusa:
-            body.dataRecusa
-              ? new Date(body.dataRecusa)
-              : null,
+        motivoRecusa: body.motivoRecusa || null,
 
-          motivoRecusa:
-            body.motivoRecusa || null,
+        responsavel: body.responsavel || null,
 
-          responsavel:
-            body.responsavel || null,
+        vendedorId: body.vendedorId ? Number(body.vendedorId) : null,
 
-          vendedorId:
-            body.vendedorId
-              ? Number(body.vendedorId)
-              : null,
+        pdfUrl: body.pdfUrl || null,
 
-          pdfUrl:
-            body.pdfUrl || null,
+        origem: body.origem || null,
 
-          origem:
-            body.origem || null,
+        assinaturaCliente: body.assinaturaCliente || null,
 
-          assinaturaCliente:
-            body.assinaturaCliente || null,
+        aprovadoCliente: body.aprovadoCliente ?? false,
 
-          aprovadoCliente:
-            body.aprovadoCliente ?? false,
+        enviadoEmail: body.enviadoEmail ?? false,
 
-          enviadoEmail:
-            body.enviadoEmail ?? false,
+        enviadoWhatsapp: body.enviadoWhatsapp ?? false,
 
-          enviadoWhatsapp:
-            body.enviadoWhatsapp ?? false,
+        visualizada: body.visualizada ?? false,
 
-          visualizada:
-            body.visualizada ?? false,
+        clienteId: Number(body.clienteId),
 
-          clienteId:
-            Number(body.clienteId),
+        templatePropostaTemplateid: body.templatePropostaTemplateid
+          ? Number(body.templatePropostaTemplateid)
+          : null,
 
-          templatePropostaTemplateid:
-            body.templatePropostaTemplateid
-              ? Number(body.templatePropostaTemplateid)
-              : null,
+        itens: {
+          create: (body.itens || []).map((item: any) => ({
+            codigo: item.codigo || null,
 
-          itens: {
+            descricao: item.descricao || "",
 
-            create:
-              (body.itens || []).map(
-                (item: any) => ({
+            detalhes: item.detalhes || null,
 
-                  codigo:
-                    item.codigo || null,
+            unidade: item.unidade || null,
 
-                  descricao:
-                    item.descricao || "",
+            quantidade: Number(item.quantidade || 0),
 
-                  detalhes:
-                    item.detalhes || null,
+            valorUnitario: Number(item.valorUnitario || 0),
 
-                  unidade:
-                    item.unidade || null,
+            desconto: Number(item.desconto || 0),
 
-                  quantidade:
-                    Number(item.quantidade || 0),
+            acrescimo: Number(item.acrescimo || 0),
 
-                  valorUnitario:
-                    Number(item.valorUnitario || 0),
+            subtotal: Number(item.subtotal || 0),
 
-                  subtotal:
-                    Number(item.subtotal || 0),
+            ordem: item.ordem ? Number(item.ordem) : null,
 
-                  ordem:
-                    item.ordem
-                      ? Number(item.ordem)
-                      : null,
+            observacoes: item.observacoes || null,
 
-                  observacoes:
-                    item.observacoes || null,
-
-                  servicoId:
-                    item.servicoId
-                      ? Number(item.servicoId)
-                      : null
-
-                })
-              )
-
-          }
-
+            servicoId: item.servicoId ? Number(item.servicoId) : null,
+          })),
         },
+      },
 
-        include: {
+      include: {
+        cliente: true,
 
-          cliente: true,
+        vendedor: true,
 
-          vendedor: true,
+        templateProposta: true,
 
-          templateProposta: true,
-
-          itens: {
-
-            include: {
-              servico: true
-            }
-
-          }
-
-        }
-
-      });
+        itens: {
+          include: {
+            servico: true,
+          },
+        },
+      },
+    });
 
     res.status(201).json(proposta);
-
   } catch (error) {
-
     console.log(error);
 
     res.status(500).json({
-      error: "Erro ao criar proposta"
+      error: "Erro ao criar proposta",
     });
-
   }
-
 };
 
-export const update = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-
+export const update = async (req: Request, res: Response): Promise<void> => {
   try {
-
-
     const { id } = req.params;
     const body = req.body;
 
-    const propostaAtual =
-      await prisma.proposta.findUnique({
-        where: {
-          propostaid: Number(id)
-        }
-      });
+    const propostaAtual = await prisma.proposta.findUnique({
+      where: {
+        propostaid: Number(id),
+      },
+    });
 
     if (!propostaAtual) {
-
       res.status(404).json({
-        error: "Proposta não encontrada"
+        error: "Proposta não encontrada",
       });
 
       return;
-
     }
 
-    const temItensNoBody =
-      Array.isArray(body.itens);
+    const temItensNoBody = Array.isArray(body.itens);
 
     if (temItensNoBody) {
-
       await prisma.itemProposta.deleteMany({
         where: {
-          propostaId: Number(id)
-        }
+          propostaId: Number(id),
+        },
       });
-
     }
 
-    const subtotal =
-      temItensNoBody
-        ? body.itens.reduce(
-          (total: number, item: any) =>
-            total + Number(item.subtotal || 0),
-          0
+    const subtotal = temItensNoBody
+      ? body.itens.reduce(
+          (total: number, item: any) => total + Number(item.subtotal || 0),
+          0,
         )
-        : Number(propostaAtual.subtotal || 0);
+      : Number(propostaAtual.subtotal || 0);
 
-    const proposta =
-      await prisma.proposta.update({
+    const proposta = await prisma.proposta.update({
+      where: {
+        propostaid: Number(id),
+      },
 
-        where: {
-          propostaid: Number(id)
-        },
+      data: {
+        numero: body.numero ?? propostaAtual.numero,
 
-        data: {
+        titulo: body.titulo ?? propostaAtual.titulo,
 
-          numero:
-            body.numero ??
-            propostaAtual.numero,
+        subtitulo: body.subtitulo ?? propostaAtual.subtitulo,
 
-          titulo:
-            body.titulo ??
-            propostaAtual.titulo,
+        tipoProposta: body.tipoProposta ?? propostaAtual.tipoProposta,
 
-          subtitulo:
-            body.subtitulo ??
-            propostaAtual.subtitulo,
+        descricao: body.descricao ?? propostaAtual.descricao,
 
-          tipoProposta:
-            body.tipoProposta ??
-            propostaAtual.tipoProposta,
+        escopo: body.escopo ?? propostaAtual.escopo,
 
-          descricao:
-            body.descricao ??
-            propostaAtual.descricao,
+        observacoes:
+          "observacoes" in body ? body.observacoes : propostaAtual.observacoes,
 
-          escopo:
-            body.escopo ??
-            propostaAtual.escopo,
+        observacoesServicos:
+          "observacoesServicos" in body
+            ? body.observacoesServicos
+            : propostaAtual.observacoesServicos,
 
-          observacoes:
-            "observacoes" in body
-              ? body.observacoes
-              : propostaAtual.observacoes,
+        observacoesSistema:
+          "observacoesSistema" in body
+            ? body.observacoesSistema
+            : propostaAtual.observacoesSistema,
 
-          observacoesServicos:
-            "observacoesServicos" in body
-              ? body.observacoesServicos
-              : propostaAtual.observacoesServicos,
+        observacoesInternas:
+          "observacoesInternas" in body
+            ? body.observacoesInternas
+            : propostaAtual.observacoesInternas,
 
-          observacoesSistema:
-            "observacoesSistema" in body
-              ? body.observacoesSistema
-              : propostaAtual.observacoesSistema,
+        status: body.status ?? propostaAtual.status,
 
-          observacoesInternas:
-            "observacoesInternas" in body
-              ? body.observacoesInternas
-              : propostaAtual.observacoesInternas,
+        prioridade: body.prioridade ?? propostaAtual.prioridade,
 
-          status:
-            body.status ??
-            propostaAtual.status,
+        subtotal: temItensNoBody ? subtotal : propostaAtual.subtotal,
 
-          prioridade:
-            body.prioridade ??
-            propostaAtual.prioridade,
+        frete:
+          body.frete !== undefined ? Number(body.frete) : propostaAtual.frete,
 
-          subtotal:
-            temItensNoBody
-              ? subtotal
-              : propostaAtual.subtotal,
+        formaPagamento: body.formaPagamento ?? propostaAtual.formaPagamento,
 
-          frete:
-            body.frete !== undefined
-              ? Number(body.frete)
-              : propostaAtual.frete,
+        condicoesPagamento:
+          body.condicoesPagamento ?? propostaAtual.condicoesPagamento,
 
-          formaPagamento:
-            body.formaPagamento ??
-            propostaAtual.formaPagamento,
+        validadeDias:
+          body.validadeDias !== undefined
+            ? Number(body.validadeDias)
+            : propostaAtual.validadeDias,
 
-          condicoesPagamento:
-            body.condicoesPagamento ??
-            propostaAtual.condicoesPagamento,
+        dataValidade: body.dataValidade
+          ? new Date(body.dataValidade)
+          : propostaAtual.dataValidade,
 
-          validadeDias:
-            body.validadeDias !== undefined
-              ? Number(body.validadeDias)
-              : propostaAtual.validadeDias,
+        dataAprovacao: body.dataAprovacao
+          ? new Date(body.dataAprovacao)
+          : propostaAtual.dataAprovacao,
 
-          dataValidade:
-            body.dataValidade
-              ? new Date(body.dataValidade)
-              : propostaAtual.dataValidade,
+        dataRecusa: body.dataRecusa
+          ? new Date(body.dataRecusa)
+          : propostaAtual.dataRecusa,
 
-          dataAprovacao:
-            body.dataAprovacao
-              ? new Date(body.dataAprovacao)
-              : propostaAtual.dataAprovacao,
+        motivoRecusa: body.motivoRecusa ?? propostaAtual.motivoRecusa,
 
-          dataRecusa:
-            body.dataRecusa
-              ? new Date(body.dataRecusa)
-              : propostaAtual.dataRecusa,
+        responsavel: body.responsavel ?? propostaAtual.responsavel,
 
-          motivoRecusa:
-            body.motivoRecusa ??
-            propostaAtual.motivoRecusa,
+        vendedorId:
+          body.vendedorId !== undefined
+            ? body.vendedorId
+              ? Number(body.vendedorId)
+              : null
+            : propostaAtual.vendedorId,
 
-          responsavel:
-            body.responsavel ??
-            propostaAtual.responsavel,
+        pdfUrl: temItensNoBody ? null : (body.pdfUrl ?? propostaAtual.pdfUrl),
 
-          vendedorId:
-            body.vendedorId !== undefined
-              ? body.vendedorId
-                ? Number(body.vendedorId)
-                : null
-              : propostaAtual.vendedorId,
+        origem: body.origem ?? propostaAtual.origem,
 
-          pdfUrl: temItensNoBody
-            ? null
-            : body.pdfUrl ?? propostaAtual.pdfUrl,
+        assinaturaCliente:
+          body.assinaturaCliente ?? propostaAtual.assinaturaCliente,
 
-          origem:
-            body.origem ??
-            propostaAtual.origem,
+        aprovadoCliente: body.aprovadoCliente ?? propostaAtual.aprovadoCliente,
 
-          assinaturaCliente:
-            body.assinaturaCliente ??
-            propostaAtual.assinaturaCliente,
+        enviadoEmail: body.enviadoEmail ?? propostaAtual.enviadoEmail,
 
-          aprovadoCliente:
-            body.aprovadoCliente ??
-            propostaAtual.aprovadoCliente,
+        enviadoWhatsapp: body.enviadoWhatsapp ?? propostaAtual.enviadoWhatsapp,
 
-          enviadoEmail:
-            body.enviadoEmail ??
-            propostaAtual.enviadoEmail,
+        visualizada: body.visualizada ?? propostaAtual.visualizada,
 
-          enviadoWhatsapp:
-            body.enviadoWhatsapp ??
-            propostaAtual.enviadoWhatsapp,
+        clienteId:
+          body.clienteId !== undefined
+            ? Number(body.clienteId)
+            : propostaAtual.clienteId,
 
-          visualizada:
-            body.visualizada ??
-            propostaAtual.visualizada,
+        templatePropostaTemplateid:
+          body.templatePropostaTemplateid !== undefined
+            ? body.templatePropostaTemplateid
+              ? Number(body.templatePropostaTemplateid)
+              : null
+            : propostaAtual.templatePropostaTemplateid,
 
-          clienteId:
-            body.clienteId !== undefined
-              ? Number(body.clienteId)
-              : propostaAtual.clienteId,
-
-          templatePropostaTemplateid:
-            body.templatePropostaTemplateid !== undefined
-              ? body.templatePropostaTemplateid
-                ? Number(body.templatePropostaTemplateid)
-                : null
-              : propostaAtual.templatePropostaTemplateid,
-
-          ...(temItensNoBody
-            ? {
+        ...(temItensNoBody
+          ? {
               itens: {
+                create: body.itens.map((item: any) => ({
+                  codigo: item.codigo || null,
 
-                create:
-                  body.itens.map(
-                    (item: any) => ({
+                  descricao: item.descricao || "",
 
-                      codigo:
-                        item.codigo || null,
+                  detalhes: item.detalhes || null,
 
-                      descricao:
-                        item.descricao || "",
+                  unidade: item.unidade || null,
 
-                      detalhes:
-                        item.detalhes || null,
+                  quantidade: Number(item.quantidade || 0),
 
-                      unidade:
-                        item.unidade || null,
+                  valorUnitario: Number(item.valorUnitario || 0),
 
-                      quantidade:
-                        Number(item.quantidade || 0),
+                  desconto: Number(item.desconto || 0),
 
-                      valorUnitario:
-                        Number(item.valorUnitario || 0),
+                  acrescimo: Number(item.acrescimo || 0),
 
-                      subtotal:
-                        Number(item.subtotal || 0),
+                  subtotal: Number(item.subtotal || 0),
 
-                      ordem:
-                        item.ordem
-                          ? Number(item.ordem)
-                          : null,
+                  ordem: item.ordem ? Number(item.ordem) : null,
 
-                      observacoes:
-                        item.observacoes || null,
+                  observacoes: item.observacoes || null,
 
-                      servicoId:
-                        item.servicoId
-                          ? Number(item.servicoId)
-                          : null
-
-                    })
-                  )
-
-              }
+                  servicoId: item.servicoId ? Number(item.servicoId) : null,
+                })),
+              },
             }
-            : {})
+          : {}),
+      },
 
+      include: {
+        cliente: true,
+
+        vendedor: true,
+
+        templateProposta: true,
+
+        itens: {
+          include: {
+            servico: true,
+          },
         },
 
-        include: {
-
-          cliente: true,
-
-          vendedor: true,
-
-          templateProposta: true,
-
-          itens: {
-
-            include: {
-              servico: true
-            }
-
-          },
-
-          agendas: true
-
-        }
-
-      });
+        agendas: true,
+      },
+    });
 
     res.status(200).json(proposta);
-
-
   } catch (error) {
-
-
     console.log(error);
 
     res.status(500).json({
-      error: "Erro ao atualizar proposta"
+      error: "Erro ao atualizar proposta",
     });
-
-
   }
-
 };
 
+export const observacoesPadrao = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const dados = obterObservacoesPadraoCache();
+  const etag = `"observacoes-padrao-v2"`;
+
+  res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+  res.setHeader("ETag", etag);
+  res.setHeader("Access-Control-Expose-Headers", "ETag");
+
+  if (req.headers["if-none-match"] === etag) {
+    res.status(304).end();
+    return;
+  }
+
+  res.json(dados);
+};
 
 export const read = async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -702,21 +517,21 @@ export const read = async (_req: Request, res: Response): Promise<void> => {
         templateProposta: true,
         itens: {
           include: {
-            servico: true
-          }
+            servico: true,
+          },
         },
-        agendas: true
+        agendas: true,
       },
       orderBy: {
-        createdAt: "desc"
-      }
+        createdAt: "desc",
+      },
     });
 
     res.status(200).json(propostas);
   } catch (error) {
     console.log(error);
     res.status(500).json({
-      error: "Erro ao buscar propostas"
+      error: "Erro ao buscar propostas",
     });
   }
 };
@@ -729,7 +544,7 @@ export const readOne = async (req: Request, res: Response): Promise<void> => {
 
     if (!proposta) {
       res.status(404).json({
-        error: "Proposta não encontrada"
+        error: "Proposta não encontrada",
       });
       return;
     }
@@ -738,11 +553,10 @@ export const readOne = async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     console.log(error);
     res.status(500).json({
-      error: "Erro ao buscar proposta"
+      error: "Erro ao buscar proposta",
     });
   }
 };
-
 
 export const remove = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -750,25 +564,22 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
 
     await prisma.proposta.delete({
       where: {
-        propostaid: Number(id)
-      }
+        propostaid: Number(id),
+      },
     });
 
     res.status(200).json({
-      message: "Proposta removida"
+      message: "Proposta removida",
     });
   } catch (error) {
     console.log(error);
     res.status(500).json({
-      error: "Erro ao remover proposta"
+      error: "Erro ao remover proposta",
     });
   }
 };
 
-export const duplicar = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const duplicar = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -776,7 +587,7 @@ export const duplicar = async (
 
     if (!original) {
       res.status(404).json({
-        error: "Proposta não encontrada"
+        error: "Proposta não encontrada",
       });
       return;
     }
@@ -823,12 +634,14 @@ export const duplicar = async (
             unidade: item.unidade,
             quantidade: item.quantidade,
             valorUnitario: item.valorUnitario,
+            desconto: item.desconto,
+            acrescimo: item.acrescimo,
             subtotal: item.subtotal,
             ordem: item.ordem,
             observacoes: item.observacoes,
-            servicoId: item.servicoId
-          }))
-        }
+            servicoId: item.servicoId,
+          })),
+        },
       },
       include: {
         cliente: true,
@@ -836,419 +649,276 @@ export const duplicar = async (
         templateProposta: true,
         itens: {
           include: {
-            servico: true
-          }
-        }
-      }
+            servico: true,
+          },
+        },
+      },
     });
 
     res.status(201).json(proposta);
   } catch (error) {
     console.log(error);
     res.status(500).json({
-      error: "Erro ao duplicar proposta"
+      error: "Erro ao duplicar proposta",
     });
   }
 };
 
-export const dashboard = async (_req: Request, res: Response): Promise<void> => {
+export const dashboard = async (
+  _req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const totalPropostas = await prisma.proposta.count();
 
     const pendentes = await prisma.proposta.count({
       where: {
-        status: "PENDENTE"
-      }
+        status: "PENDENTE",
+      },
     });
 
     const aprovadas = await prisma.proposta.count({
       where: {
-        status: "APROVADA"
-      }
+        status: "APROVADA",
+      },
     });
 
     const faturadas = await prisma.proposta.count({
       where: {
-        status: "FATURADA"
-      }
+        status: "FATURADA",
+      },
     });
-
-
 
     res.status(200).json({
       totalPropostas,
       pendentes,
       aprovadas,
-      faturadas
+      faturadas,
     });
   } catch (error) {
     console.log(error);
     res.status(500).json({
-      error: "Erro dashboard"
+      error: "Erro dashboard",
     });
   }
 };
 
-export const gerarPdf =
-  async (
-    req: Request,
-    res: Response
-  ): Promise<void> => {
+export const gerarPdf = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
 
-    try {
+    const resultado = await gerarPdfInterno(paramId(id));
 
-      const { id } =
-        req.params;
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
 
-      const resultado =
-        await gerarPdfInterno(
-          paramId(id)
-        );
+    res.status(200).json({
+      success: true,
 
-      const baseUrl =
-        process.env.BASE_URL ||
-        `${req.protocol}://${req.get("host")}`;
+      pdfUrl: resultado.pdfUrl,
 
-      res.status(200).json({
+      downloadUrl: `${baseUrl}${resultado.pdfUrl}`,
+    });
+  } catch (error: any) {
+    console.error(error);
 
-        success: true,
+    res.status(500).json({
+      error: error.message || "Erro ao gerar PDF",
+    });
+  }
+};
 
-        pdfUrl:
-          resultado.pdfUrl,
+export const downloadPdf = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
 
-        downloadUrl:
-          `${baseUrl}${resultado.pdfUrl}`
+    const proposta = await buscarPropostaCompleta(paramId(id));
 
+    if (!proposta) {
+      res.status(404).json({
+        error: "Proposta não encontrada",
       });
 
-    } catch (error: any) {
-
-      console.error(error);
-
-      res.status(500).json({
-
-        error:
-          error.message ||
-          "Erro ao gerar PDF"
-
-      });
-
+      return;
     }
 
-  };
+    await gerarPdfInterno(paramId(id));
 
-export const downloadPdf =
-  async (
-    req: Request,
-    res: Response
-  ): Promise<void> => {
+    const propostaAtualizada = await buscarPropostaCompleta(paramId(id));
 
-    try {
-
-      const { id } =
-        req.params;
-
-      const proposta =
-        await buscarPropostaCompleta(
-          paramId(id)
-        );
-
-      if (!proposta) {
-
-        res.status(404).json({
-          error:
-            "Proposta não encontrada"
-        });
-
-        return;
-
-      }
-
-      await gerarPdfInterno(paramId(id));
-
-      const propostaAtualizada =
-        await buscarPropostaCompleta(
-          paramId(id)
-        );
-
-      if (
-        !propostaAtualizada?.pdfUrl
-      ) {
-
-        res.status(404).json({
-
-          error:
-            "PDF não encontrado"
-
-        });
-
-        return;
-
-      }
-
-      const caminhoArquivo =
-        path.join(
-          process.cwd(),
-          "public",
-          propostaAtualizada.pdfUrl.replace(/^\//, "")
-        );
-
-      if (
-        !fs.existsSync(
-          caminhoArquivo
-        )
-      ) {
-
-        res.status(404).json({
-
-          error:
-            "Arquivo inexistente"
-
-        });
-
-        return;
-
-      }
-
-      res.download(
-        caminhoArquivo,
-        nomeDownloadPdfProposta(
-          propostaAtualizada.numero,
-          propostaAtualizada.cliente?.razaoSocial
-        )
-      );
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-
-        error:
-          "Erro download PDF"
-
+    if (!propostaAtualizada?.pdfUrl) {
+      res.status(404).json({
+        error: "PDF não encontrado",
       });
 
+      return;
     }
 
-  };
+    const caminhoArquivo = path.join(
+      process.cwd(),
+      "public",
+      propostaAtualizada.pdfUrl.replace(/^\//, ""),
+    );
 
-export const enviarEmail =
-  async (
-    req: Request,
-    res: Response
-  ): Promise<void> => {
-
-    try {
-
-      const { id } =
-        req.params;
-
-      const proposta =
-        await buscarPropostaCompleta(
-          paramId(id)
-        );
-
-      if (!proposta) {
-
-        res.status(404).json({
-          error:
-            "Proposta não encontrada"
-        });
-
-        return;
-
-      }
-
-      if (
-        !proposta.cliente?.email1
-      ) {
-
-        res.status(400).json({
-
-          error:
-            "Cliente sem e-mail"
-
-        });
-
-        return;
-
-      }
-
-      const resultado =
-        await gerarPdfInterno(
-          paramId(id)
-        );
-
-      await enviarPropostaPorEmail({
-
-        destinatario:
-          proposta.cliente.email1,
-
-        clienteNome:
-          proposta.cliente.nomeFantasia ||
-          proposta.cliente.razaoSocial ||
-          "Cliente",
-
-        numeroProposta:
-          proposta.numero,
-
-        nomeArquivo:
-          nomeDownloadPdfProposta(
-            proposta.numero,
-            proposta.cliente.razaoSocial
-          ),
-
-        caminhoPdf:
-          resultado.caminho
-
+    if (!fs.existsSync(caminhoArquivo)) {
+      res.status(404).json({
+        error: "Arquivo inexistente",
       });
 
-      await prisma.proposta.update({
-
-        where: {
-          propostaid:
-            proposta.propostaid
-        },
-
-        data: {
-          enviadoEmail:
-            true
-        }
-
-      });
-
-      res.status(200).json({
-
-        success: true,
-
-        message:
-          "E-mail enviado"
-
-      });
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-
-        error:
-          "Erro envio e-mail"
-
-      });
-
+      return;
     }
 
-  };
-export const whatsapp =
-  async (
-    req: Request,
-    res: Response
-  ): Promise<void> => {
+    res.download(
+      caminhoArquivo,
+      nomeDownloadPdfProposta(
+        propostaAtualizada.numero,
+        propostaAtualizada.cliente?.razaoSocial,
+      ),
+    );
+  } catch (error) {
+    console.error(error);
 
-    try {
+    res.status(500).json({
+      error: "Erro download PDF",
+    });
+  }
+};
 
-      const { id } =
-        req.params;
+export const enviarEmail = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
 
-      const proposta =
-        await buscarPropostaCompleta(
-          paramId(id)
-        );
+    const proposta = await buscarPropostaCompleta(paramId(id));
 
-      if (!proposta) {
-
-        res.status(404).json({
-
-          error:
-            "Proposta não encontrada"
-
-        });
-
-        return;
-
-      }
-
-      const telefone =
-        proposta.cliente?.telefone1;
-
-      if (!telefone) {
-
-        res.status(400).json({
-
-          error:
-            "Cliente sem telefone"
-
-        });
-
-        return;
-
-      }
-
-      const resultado =
-        await gerarPdfInterno(
-          paramId(id)
-        );
-
-      const baseUrl =
-        process.env.BASE_URL ||
-        "https://new-floor-sistema-erp.onrender.com";
-
-      const linkPdf =
-        `${baseUrl}/propostas/${proposta.propostaid}/download`;
-
-      const whatsappUrl =
-        gerarLinkWhatsapp({
-
-          clienteNome:
-            proposta.cliente.nomeFantasia ||
-            proposta.cliente.razaoSocial ||
-            "Cliente",
-
-          telefone,
-
-          numeroProposta:
-            proposta.numero,
-
-          linkPdf
-
-        });
-
-      await prisma.proposta.update({
-
-        where: {
-          propostaid:
-            proposta.propostaid
-        },
-
-        data: {
-          enviadoWhatsapp:
-            true
-        }
-
+    if (!proposta) {
+      res.status(404).json({
+        error: "Proposta não encontrada",
       });
 
-      res.status(200).json({
-
-        whatsappUrl,
-
-        pdfUrl:
-          linkPdf
-
-      });
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-
-        error:
-          "Erro WhatsApp"
-
-      });
-
+      return;
     }
 
-  };
+    if (!proposta.cliente?.email1) {
+      res.status(400).json({
+        error: "Cliente sem e-mail",
+      });
+
+      return;
+    }
+
+    const resultado = await gerarPdfInterno(paramId(id));
+
+    await enviarPropostaPorEmail({
+      destinatario: proposta.cliente.email1,
+
+      clienteNome:
+        proposta.cliente.nomeFantasia ||
+        proposta.cliente.razaoSocial ||
+        "Cliente",
+
+      numeroProposta: proposta.numero,
+
+      nomeArquivo: nomeDownloadPdfProposta(
+        proposta.numero,
+        proposta.cliente.razaoSocial,
+      ),
+
+      caminhoPdf: resultado.caminho,
+    });
+
+    await prisma.proposta.update({
+      where: {
+        propostaid: proposta.propostaid,
+      },
+
+      data: {
+        enviadoEmail: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+
+      message: "E-mail enviado",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Erro envio e-mail",
+    });
+  }
+};
+export const whatsapp = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const proposta = await buscarPropostaCompleta(paramId(id));
+
+    if (!proposta) {
+      res.status(404).json({
+        error: "Proposta não encontrada",
+      });
+
+      return;
+    }
+
+    const telefone = proposta.cliente?.telefone1;
+
+    if (!telefone) {
+      res.status(400).json({
+        error: "Cliente sem telefone",
+      });
+
+      return;
+    }
+
+    const resultado = await gerarPdfInterno(paramId(id));
+
+    const baseUrl =
+      process.env.BASE_URL || "https://new-floor-sistema-erp.onrender.com";
+
+    const linkPdf = `${baseUrl}/propostas/${proposta.propostaid}/download`;
+
+    const whatsappUrl = gerarLinkWhatsapp({
+      clienteNome:
+        proposta.cliente.nomeFantasia ||
+        proposta.cliente.razaoSocial ||
+        "Cliente",
+
+      telefone,
+
+      numeroProposta: proposta.numero,
+
+      linkPdf,
+    });
+
+    await prisma.proposta.update({
+      where: {
+        propostaid: proposta.propostaid,
+      },
+
+      data: {
+        enviadoWhatsapp: true,
+      },
+    });
+
+    res.status(200).json({
+      whatsappUrl,
+
+      pdfUrl: linkPdf,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Erro WhatsApp",
+    });
+  }
+};

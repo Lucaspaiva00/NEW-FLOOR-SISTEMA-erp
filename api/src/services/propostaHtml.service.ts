@@ -297,6 +297,40 @@ function formatarContatosComNomeHtml(
   return itens.join("");
 }
 
+function valorBrutoItem(item: any): number {
+  return Number(item.quantidade || 0) * Number(item.valorUnitario || 0);
+}
+
+function resolverDescontoItem(item: any): number {
+  const armazenado = Number(item.desconto || 0);
+
+  if (armazenado > 0) {
+    return armazenado;
+  }
+
+  const bruto = valorBrutoItem(item);
+  const subtotal = Number(item.subtotal || 0);
+  const acrescimo = Number(item.acrescimo || 0);
+  const inferido = bruto - subtotal + acrescimo;
+
+  return inferido > 0.005 ? Number(inferido.toFixed(2)) : 0;
+}
+
+function resolverAcrescimoItem(item: any): number {
+  const armazenado = Number(item.acrescimo || 0);
+
+  if (armazenado > 0) {
+    return armazenado;
+  }
+
+  const bruto = valorBrutoItem(item);
+  const subtotal = Number(item.subtotal || 0);
+  const desconto = resolverDescontoItem(item);
+  const inferido = subtotal - bruto + desconto;
+
+  return inferido > 0.005 ? Number(inferido.toFixed(2)) : 0;
+}
+
 export async function gerarHtmlProposta({
   proposta,
   cliente,
@@ -317,17 +351,28 @@ export async function gerarHtmlProposta({
     cliente?.logo ? resolverImagemSrc(cliente.logo) : Promise.resolve(null),
   ]);
 
+  const subtotalBruto = itens.reduce(
+    (acc, item) => acc + valorBrutoItem(item),
+    0,
+  );
+
+  const descontoTotal = itens.reduce(
+    (acc, item) => acc + resolverDescontoItem(item),
+    0,
+  );
+
+  const acrescimoTotal = itens.reduce(
+    (acc, item) => acc + resolverAcrescimoItem(item),
+    0,
+  );
+
   const subtotalCalculado = itens.reduce(
     (acc, item) => acc + Number(item.subtotal || 0),
     0,
   );
 
   const totalCalculado =
-    subtotalCalculado -
-    Number(proposta.desconto || 0) +
-    Number(proposta.acrescimo || 0) +
-    Number(proposta.frete || 0) +
-    Number(proposta.impostos || 0);
+    subtotalCalculado + Number(proposta.frete || 0);
 
   const tabelaItens = itens
     .map(
@@ -349,6 +394,10 @@ export async function gerarHtmlProposta({
 
 <td>
     ${moeda(item.valorUnitario)}
+</td>
+
+<td>
+    ${moeda(resolverDescontoItem(item))}
 </td>
 
 <td>
@@ -390,6 +439,17 @@ ${item.quantidade || 0}
 ${moeda(item.valorUnitario)}
 
 <br>
+
+${
+  resolverDescontoItem(item) > 0
+    ? `
+<strong>Desconto:</strong>
+${moeda(resolverDescontoItem(item))}
+
+<br>
+`
+    : ""
+}
 
 <strong>Valor Total:</strong>
 ${moeda(item.subtotal)}
@@ -921,6 +981,7 @@ Serviços
 <th>Unidade</th>
 <th>Qtd</th>
 <th>Valor Unit.</th>
+<th>Desconto</th>
 <th>Total</th>
 </tr>
 
@@ -938,27 +999,39 @@ ${tabelaItens}
 
 <div class="total-row">
 <span>Subtotal</span>
-<strong>${moeda(subtotalCalculado)}</strong>
+<strong>${moeda(subtotalBruto)}</strong>
 </div>
 
+${
+  descontoTotal > 0
+    ? `
 <div class="total-row">
 <span>Desconto</span>
-<strong>${moeda(proposta.desconto)}</strong>
+<strong>- ${moeda(descontoTotal)}</strong>
 </div>
+`
+    : ""
+}
 
+${
+  acrescimoTotal > 0
+    ? `
 <div class="total-row">
 <span>Acréscimo</span>
-<strong>${moeda(proposta.acrescimo)}</strong>
+<strong>${moeda(acrescimoTotal)}</strong>
+</div>
+`
+    : ""
+}
+
+<div class="total-row">
+<span>Total itens</span>
+<strong>${moeda(subtotalCalculado)}</strong>
 </div>
 
 <div class="total-row">
 <span>Frete</span>
 <strong>${moeda(proposta.frete)}</strong>
-</div>
-
-<div class="total-row">
-<span>Impostos</span>
-<strong>${moeda(proposta.impostos)}</strong>
 </div>
 
 <div class="total-row total-geral">

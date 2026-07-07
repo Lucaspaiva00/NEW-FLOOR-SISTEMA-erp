@@ -127,6 +127,8 @@ model ItemProposta {
   unidade        String?
   quantidade     Decimal  @db.Decimal(10, 2)
   valorUnitario  Decimal  @db.Decimal(10, 2)
+  desconto       Decimal? @db.Decimal(10, 2)
+  acrescimo      Decimal? @db.Decimal(10, 2)
   subtotal       Decimal  @db.Decimal(10, 2)
   ordem          Int?
   observacoes    String?

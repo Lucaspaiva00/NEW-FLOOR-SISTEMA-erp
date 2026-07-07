@@ -156,5 +156,5 @@ document.addEventListener("DOMContentLoaded", () => {
   prepararItensMenu();
   prepararUserBox();
   criarBotaoToggle(sidebar);
-  restaurarEstadoSidebar(sidebar);
+  // restaurarEstadoSidebar(sidebar);
 });

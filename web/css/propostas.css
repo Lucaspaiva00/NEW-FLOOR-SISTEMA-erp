@@ -711,6 +711,34 @@ label {
     min-height: 100px;
 }
 
+#editorObservacoes .ql-editor,
+#editorEditarObservacoes .ql-editor {
+    min-height: 420px;
+}
+
+.editor-descricao .ql-editor h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 18px 0 8px;
+}
+
+.editor-descricao .ql-editor h3:first-child {
+    margin-top: 0;
+}
+
+.editor-descricao .ql-editor p {
+    margin: 0 0 12px;
+}
+
+.editor-descricao .ql-editor ul {
+    margin: 0 0 14px;
+    padding-left: 22px;
+}
+
+.editor-descricao .ql-editor li {
+    margin-bottom: 6px;
+}
+
 .item-servico .editor-descricao {
     min-height: 120px;
 }

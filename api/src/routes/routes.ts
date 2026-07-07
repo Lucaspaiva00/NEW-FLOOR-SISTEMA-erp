@@ -1,12 +1,12 @@
 import express from "express";
-import auth from "../middlewares/auth";
-import * as usuario from "../controller/ctusuario";
-import * as cliente from "../controller/ctcliente";
-import * as servico from "../controller/ctservico";
-import * as proposta from "../controller/ctproposta";
 import * as agenda from "../controller/agenda.controller";
+import * as cliente from "../controller/ctcliente";
+import * as proposta from "../controller/ctproposta";
+import * as servico from "../controller/ctservico";
 import * as template from "../controller/cttemplate";
+import * as usuario from "../controller/ctusuario";
 import * as vendedor from "../controller/ctvendedor";
+import auth from "../middlewares/auth";
 
 const routes = express.Router();
 
@@ -14,21 +14,15 @@ void auth;
 
 routes.get("/", (_req, res) => {
   return res.json({
-    status: "API ONLINE"
+    status: "API ONLINE",
   });
 });
 
 routes.post("/usuarios", usuario.create);
 routes.post("/usuarios/login", usuario.login);
-routes.post(
-  "/usuarios/esqueci-senha",
-  usuario.solicitarRecuperacao
-);
+routes.post("/usuarios/esqueci-senha", usuario.solicitarRecuperacao);
 
-routes.post(
-  "/usuarios/redefinir-senha",
-  usuario.redefinirSenha
-);
+routes.post("/usuarios/redefinir-senha", usuario.redefinirSenha);
 
 routes.route("/clientes").get(cliente.read).post(cliente.create);
 
@@ -49,6 +43,8 @@ routes
 routes.route("/propostas").get(proposta.read).post(proposta.create);
 
 routes.route("/propostas/dashboard").get(proposta.dashboard);
+
+routes.get("/observacoes/observacoes-padrao", proposta.observacoesPadrao);
 
 routes.post("/propostas/:id/pdf", proposta.gerarPdf);
 routes.get("/propostas/:id/download", proposta.downloadPdf);

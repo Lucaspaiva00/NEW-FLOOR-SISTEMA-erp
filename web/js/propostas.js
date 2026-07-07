@@ -40,6 +40,13 @@ let propostasCache = [];
 let clientes = [];
 let servicos = [];
 let templateAtivo = null;
+const observacoesPadraoCache = {
+  SERVICOS: "",
+  SISTEMA: "",
+};
+const OBSERVACOES_PADRAO_STORAGE_KEY = "nf_observacoes_padrao_v2";
+const OBSERVACOES_PADRAO_ETAG_KEY = "nf_observacoes_padrao_etag_v2";
+let observacoesPadraoCarregado = false;
 const observacoesPorTipo = {
   nova: { SERVICOS: null, SISTEMA: null },
   editar: { SERVICOS: null, SISTEMA: null },
@@ -154,7 +161,93 @@ async function carregarTemplateAtivo() {
   }
 }
 
+function aplicarObservacoesPadraoCache(data) {
+  observacoesPadraoCache.SERVICOS =
+    data.servicosHtml || formatarTextoObservacoes(data.servicos) || "";
+  observacoesPadraoCache.SISTEMA =
+    data.sistemaHtml || formatarTextoObservacoes(data.sistema) || "";
+  observacoesPadraoCarregado = Boolean(
+    observacoesPadraoCache.SERVICOS && observacoesPadraoCache.SISTEMA,
+  );
+}
+
+function carregarObservacoesPadraoDoStorage() {
+  try {
+    const cached = localStorage.getItem(OBSERVACOES_PADRAO_STORAGE_KEY);
+
+    if (!cached) {
+      return false;
+    }
+
+    aplicarObservacoesPadraoCache(JSON.parse(cached));
+    return observacoesPadraoCarregado;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+
+async function carregarObservacoesPadrao(force = false) {
+  if (!force && observacoesPadraoCarregado) {
+    return;
+  }
+
+  if (!force && carregarObservacoesPadraoDoStorage()) {
+    return;
+  }
+
+  try {
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+    const etag = localStorage.getItem(OBSERVACOES_PADRAO_ETAG_KEY);
+
+    if (etag) {
+      headers["If-None-Match"] = etag;
+    }
+
+    const response = await fetch(`${API_URL}/observacoes/observacoes-padrao`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok && response.status !== 304) {
+      return;
+    }
+
+    if (response.status === 304) {
+      if (!observacoesPadraoCarregado) {
+        carregarObservacoesPadraoDoStorage();
+      }
+
+      observacoesPadraoCarregado = true;
+      return;
+    }
+
+    const data = await response.json();
+    const responseEtag = response.headers.get("ETag");
+
+    aplicarObservacoesPadraoCache(data);
+    localStorage.setItem(
+      OBSERVACOES_PADRAO_STORAGE_KEY,
+      JSON.stringify(data),
+    );
+
+    if (responseEtag) {
+      localStorage.setItem(OBSERVACOES_PADRAO_ETAG_KEY, responseEtag);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 function textoObservacaoPorTipo(tipo) {
+  const padrao = observacoesPadraoCache[tipo];
+
+  if (padrao) {
+    return padrao;
+  }
+
   if (!templateAtivo) {
     return "";
   }
@@ -168,9 +261,7 @@ function textoObservacaoPorTipo(tipo) {
   }
 
   return (
-    templateAtivo.textoObservacaoServicos ||
-    templateAtivo.textoObservacao ||
-    ""
+    templateAtivo.textoObservacaoServicos || templateAtivo.textoObservacao || ""
   );
 }
 
@@ -179,11 +270,7 @@ function textoParaHtmlObservacao(texto) {
     return "";
   }
 
-  if (texto.trim().startsWith("<")) {
-    return texto;
-  }
-
-  return `<p>${texto.replace(/\n/g, "<br>")}</p>`;
+  return formatarTextoObservacoes(texto);
 }
 
 function tituloObservacaoPorTipo(tipo) {
@@ -211,7 +298,10 @@ function campoIdPorContexto(contexto) {
 }
 
 function resetarObservacoesPorTipo(contexto) {
-  observacoesPorTipo[contexto] = { SERVICOS: null, SISTEMA: null };
+  observacoesPorTipo[contexto] = {
+    SERVICOS: observacoesPadraoCache.SERVICOS || null,
+    SISTEMA: observacoesPadraoCache.SISTEMA || null,
+  };
   tipoPropostaAnterior[contexto] = "SERVICOS";
 }
 
@@ -221,8 +311,7 @@ function carregarObservacoesPorTipoDaProposta(proposta) {
 
   return {
     SERVICOS:
-      proposta.observacoesServicos ??
-      (tipo === "SERVICOS" ? legado : null),
+      proposta.observacoesServicos ?? (tipo === "SERVICOS" ? legado : null),
     SISTEMA:
       proposta.observacoesSistema ?? (tipo === "SISTEMA" ? legado : null),
   };
@@ -239,10 +328,14 @@ function resolverObservacaoParaTipo(contexto, tipo) {
   const salva = observacoesPorTipo[contexto][tipo];
 
   if (salva) {
-    return salva;
+    return formatarTextoObservacoes(salva);
   }
 
-  return textoObservacaoPorTipo(tipo);
+  if (observacoesPadraoCache[tipo]) {
+    return observacoesPadraoCache[tipo];
+  }
+
+  return textoParaHtmlObservacao(textoObservacaoPorTipo(tipo));
 }
 
 function montarObservacoesBody(contexto) {
@@ -278,7 +371,7 @@ async function trocarObservacaoPorTipo(novoTipo, campoId) {
   atualizarLabelObservacoes(novoTipo, labelId);
   definirDescricaoEditor(
     campoId,
-    textoParaHtmlObservacao(resolverObservacaoParaTipo(contexto, novoTipo)),
+    resolverObservacaoParaTipo(contexto, novoTipo),
   );
 }
 
@@ -1475,9 +1568,7 @@ async function abrirModalProposta(id) {
     atualizarLabelObservacoes(tipoProposta, "labelEditarObservacoes");
     definirDescricaoEditor(
       "editarObservacoes",
-      textoParaHtmlObservacao(
-        resolverObservacaoParaTipo("editar", tipoProposta),
-      ),
+      resolverObservacaoParaTipo("editar", tipoProposta),
     );
     preencherCampo("editarStatus", proposta.status);
     preencherCampo("editarPrioridade", proposta.prioridade);
@@ -1812,42 +1903,43 @@ async function iniciarTela() {
   mostrarLoadingKanban();
   await carregarClientes();
   await carregarServicos();
+  await carregarObservacoesPadrao();
   await carregarTemplateAtivo();
   await carregarPropostas();
 
   inicializarEditorDescricao(
     "editorObservacoes",
     "observacoes",
-    "Insira as observações internas",
+    "Observações comerciais da proposta",
   );
   inicializarEditorDescricao(
     "editorEditarObservacoes",
     "editarObservacoes",
-    "Insira as observações internas",
+    "Observações comerciais da proposta",
   );
 
-  document.getElementById("modalNovaProposta")?.addEventListener(
-    "shown.bs.modal",
-    async () => {
-      await carregarTemplateAtivo();
+  document
+    .getElementById("modalNovaProposta")
+    ?.addEventListener("shown.bs.modal",     async () => {
+      if (!observacoesPadraoCarregado) {
+        await carregarObservacoesPadrao();
+      }
       resetarObservacoesPorTipo("nova");
       preencherCampo("tipoProposta", "SERVICOS");
       await trocarObservacaoPorTipo("SERVICOS", "observacoes");
-    },
-  );
+    });
 
-  document.getElementById("tipoProposta")?.addEventListener("change", async (e) => {
-    await carregarTemplateAtivo();
-    await trocarObservacaoPorTipo(e.target.value, "observacoes");
-  });
+  document
+    .getElementById("tipoProposta")
+    ?.addEventListener("change", async (e) => {
+      await trocarObservacaoPorTipo(e.target.value, "observacoes");
+    });
 
-  document.getElementById("editarTipoProposta")?.addEventListener(
-    "change",
-    async (e) => {
-      await carregarTemplateAtivo();
+  document
+    .getElementById("editarTipoProposta")
+    ?.addEventListener("change", async (e) => {
       await trocarObservacaoPorTipo(e.target.value, "editarObservacoes");
-    },
-  );
+    });
 
   const nomeResponsavel =
     usuarioLogado?.usuario?.nome || usuarioLogado?.nome || "";
