@@ -804,7 +804,12 @@ export const enviarEmail = async (
       return;
     }
 
-    if (!proposta.cliente?.email1) {
+    const destinatario =
+      req.body?.destinatario ||
+      proposta.cliente?.email1 ||
+      proposta.cliente?.email2;
+
+    if (!destinatario) {
       res.status(400).json({
         error: "Cliente sem e-mail",
       });
@@ -814,8 +819,13 @@ export const enviarEmail = async (
 
     const resultado = await gerarPdfInterno(paramId(id));
 
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+
+    const linkDownload = `${baseUrl}/propostas/${proposta.propostaid}/download`;
+
     await enviarPropostaPorEmail({
-      destinatario: proposta.cliente.email1,
+      destinatario,
 
       clienteNome:
         proposta.cliente.nomeFantasia ||
@@ -824,12 +834,7 @@ export const enviarEmail = async (
 
       numeroProposta: proposta.numero,
 
-      nomeArquivo: nomeDownloadPdfProposta(
-        proposta.numero,
-        proposta.cliente.razaoSocial,
-      ),
-
-      caminhoPdf: resultado.caminho,
+      linkDownload,
     });
 
     await prisma.proposta.update({
@@ -845,13 +850,20 @@ export const enviarEmail = async (
     res.status(200).json({
       success: true,
 
-      message: "E-mail enviado",
+      message: "E-mail enviado com link para download do PDF",
+
+      destinatario,
+
+      linkDownload,
     });
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
-      error: "Erro envio e-mail",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Erro envio e-mail",
     });
   }
 };

@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { templateEmailRecuperacaoSenha } from "../templates/emailLayout";
 
 const port = Number(process.env.SMTP_PORT || 465);
 const secure = process.env.SMTP_SECURE === "true" || port === 465;
@@ -49,15 +50,6 @@ export async function enviarCodigoRecuperacaoSenha(
   await sendEmail({
     to: email,
     subject: "Recuperação de senha - NEW FLOOR",
-    html: `
-      <div style="font-family: Arial; font-size: 14px; color: #333;">
-        <h2>Recuperação de Senha</h2>
-        <p>Seu código para redefinição é:</p>
-        <h1 style="letter-spacing: 5px;">${codigo}</h1>
-        <p>Este código expira em 15 minutos.</p>
-        <br>
-        <p>Atenciosamente,<br>Equipe NEW FLOOR</p>
-      </div>
-    `,
+    html: templateEmailRecuperacaoSenha(codigo),
   });
 }

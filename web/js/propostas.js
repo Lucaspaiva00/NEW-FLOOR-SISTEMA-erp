@@ -106,6 +106,11 @@ async function carregarClientes() {
     });
 
     clientes = await response.json();
+    clientes.sort((a, b) => {
+      const nomeA = (a.nomeFantasia || a.razaoSocial || "").toLowerCase();
+      const nomeB = (b.nomeFantasia || b.razaoSocial || "").toLowerCase();
+      return nomeA.localeCompare(nomeB, "pt-BR");
+    });
 
     clienteSelect.innerHTML = "";
     editarClienteSelect.innerHTML = "";

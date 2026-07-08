@@ -91,23 +91,61 @@ async function duplicarProposta(id, btn) {
 
 async function enviarEmailProposta(id, btn) {
   if (!id) {
-    alert("Selecione uma proposta.");
+    toastErro("Selecione uma proposta.");
     return;
   }
 
-  if (btn) btn.disabled = true;
+  const proposta = (typeof propostasCache !== "undefined" ? propostasCache : []).find(
+    (p) => Number(p.propostaid) === Number(id),
+  );
+
+  const emailPadrao =
+    proposta?.cliente?.email1 || proposta?.cliente?.email2 || "";
+
+  if (!emailPadrao) {
+    toastErro("Cliente sem e-mail cadastrado.");
+    return;
+  }
+
+  const destinatario = prompt(
+    "E-mail do destinatário:",
+    emailPadrao,
+  )?.trim();
+
+  if (!destinatario) return;
+
+  const textoOriginal = btn?.textContent;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Enviando...";
+  }
+
+  setCardLoading(id, true);
 
   try {
     const data = await request(`${API_URL}/propostas/${id}/email`, {
       method: "POST",
+      body: JSON.stringify({ destinatario }),
     });
 
-    alert(data.message || "E-mail enviado com sucesso.");
+    toastSucesso(
+      data.message
+        ? `${data.message} para ${data.destinatario || destinatario}`
+        : "E-mail enviado com sucesso.",
+    );
+
+    if (proposta) {
+      proposta.enviadoEmail = true;
+    }
   } catch (error) {
     console.error(error);
-    alert(error.message);
+    toastErro(error.message || "Erro ao enviar e-mail.");
   } finally {
-    if (btn) btn.disabled = false;
+    setCardLoading(id, false);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = textoOriginal;
+    }
   }
 }
 
