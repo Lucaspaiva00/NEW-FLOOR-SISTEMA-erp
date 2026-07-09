@@ -53,26 +53,25 @@ export async function enviarPropostaPorEmail({
     await sendEmail({
       to: destinatario,
       subject: assunto,
-      text: textoEmailPropostaComAnexo(dados),
+      html: templateEmailPropostaComAnexo(dados),
       attachments: [anexo],
     });
 
     return "anexo";
-  } catch (erroTextoAnexo) {
-    console.warn("Falha texto+anexo, tentando HTML+anexo:", erroTextoAnexo);
+  } catch (erroTemplateAnexo) {
+    console.warn("Falha template+anexo, tentando texto+anexo:", erroTemplateAnexo);
 
     try {
       await sendEmail({
         to: destinatario,
         subject: assunto,
         text: textoEmailPropostaComAnexo(dados),
-        html: templateEmailPropostaComAnexo(dados),
         attachments: [anexo],
       });
 
       return "anexo";
-    } catch (erroHtmlAnexo) {
-      console.warn("Falha com anexo, enviando por link:", erroHtmlAnexo);
+    } catch (erroTextoAnexo) {
+      console.warn("Falha com anexo, enviando por link:", erroTextoAnexo);
 
       await enviarComLink(dados);
       return "link";
