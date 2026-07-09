@@ -1,5 +1,8 @@
 import { sendEmail } from "./email.service";
-import { textoEmailProposta } from "../templates/emailLayout";
+import {
+  templateEmailProposta,
+  textoEmailProposta,
+} from "../templates/emailLayout";
 
 interface EmailProposta {
   destinatario: string;
@@ -20,6 +23,7 @@ export async function enviarPropostaPorEmail({
     to: destinatario,
     subject: `Proposta ${numeroProposta} - NEW FLOOR`,
     text: textoEmailProposta(dados),
+    html: templateEmailProposta(dados),
   });
 
   return "link";

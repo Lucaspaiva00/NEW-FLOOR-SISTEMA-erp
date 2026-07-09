@@ -26,13 +26,8 @@ function isErroFilaSmtp(error: unknown) {
   );
 }
 
-function isEmailLocaweb() {
-  const host = (process.env.SMTP_HOST || "email-ssl.com.br").toLowerCase();
-  return host.includes("email-ssl.com.br") || host.includes("locaweb");
-}
-
 function usarSomenteTexto() {
-  return process.env.EMAIL_SOMENTE_TEXTO === "true" || isEmailLocaweb();
+  return process.env.EMAIL_SOMENTE_TEXTO === "true";
 }
 
 function normalizarAssunto(subject: string) {
@@ -47,10 +42,7 @@ function remetente() {
 }
 
 function portasSmtp() {
-  const configurada = Number(process.env.SMTP_PORT || 465);
-  const alternativa = configurada === 465 ? 587 : 465;
-
-  return [configurada, alternativa];
+  return [465, 587];
 }
 
 function criarTransporter(port: number): nodemailer.Transporter {
@@ -67,13 +59,6 @@ function criarTransporter(port: number): nodemailer.Transporter {
       pass: process.env.SMTP_PASS,
     },
   } as nodemailer.TransportOptions);
-}
-
-async function enviarComTransporter(
-  transporter: nodemailer.Transporter,
-  mail: nodemailer.SendMailOptions
-) {
-  await transporter.sendMail(mail);
 }
 
 export async function sendEmail({
@@ -93,6 +78,16 @@ export async function sendEmail({
 
   const mensagens: nodemailer.SendMailOptions[] = [];
 
+  if (html && !somenteTexto) {
+    mensagens.push({
+      from,
+      to,
+      subject: assunto,
+      html,
+      attachments,
+    });
+  }
+
   if (text) {
     mensagens.push({
       from,
@@ -100,16 +95,6 @@ export async function sendEmail({
       subject: assunto,
       text,
       encoding: "7bit",
-    });
-  }
-
-  if (html && !somenteTexto) {
-    mensagens.unshift({
-      from,
-      to,
-      subject: assunto,
-      html,
-      attachments,
     });
   }
 
@@ -124,7 +109,7 @@ export async function sendEmail({
 
     for (const mail of mensagens) {
       try {
-        await enviarComTransporter(transporter, mail);
+        await transporter.sendMail(mail);
         return;
       } catch (error) {
         ultimoErro = error;
