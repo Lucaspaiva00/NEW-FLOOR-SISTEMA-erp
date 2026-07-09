@@ -22,6 +22,17 @@ app.use(
   )
 );
 
+app.use(
+  "/assets",
+  express.static(
+    path.join(
+      process.cwd(),
+      "public",
+      "assets"
+    )
+  )
+);
+
 app.use(routes);
 
 const PORT = process.env.PORT || 3000;
