@@ -1,9 +1,5 @@
 import { sendEmail } from "./email.service";
-import {
-  templateEmailProposta,
-  templateEmailPropostaMinimo,
-  textoEmailProposta,
-} from "../templates/emailLayout";
+import { textoEmailProposta } from "../templates/emailLayout";
 
 interface EmailProposta {
   destinatario: string;
@@ -22,18 +18,8 @@ export async function enviarPropostaPorEmail({
 
   await sendEmail({
     to: destinatario,
-    subject: `Proposta Comercial Nº ${numeroProposta} - NEW FLOOR`,
+    subject: `Proposta ${numeroProposta} - NEW FLOOR`,
     text: textoEmailProposta(dados),
-    html: templateEmailProposta(dados),
-  }).catch(async (error) => {
-    console.warn("Tentando e-mail mínimo da proposta:", error);
-
-    await sendEmail({
-      to: destinatario,
-      subject: `Proposta Nº ${numeroProposta} - NEW FLOOR`,
-      text: textoEmailProposta(dados),
-      html: templateEmailPropostaMinimo(dados),
-    });
   });
 
   return "link";

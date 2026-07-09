@@ -4,20 +4,6 @@ import {
   textoEmailRecuperacaoSenha,
 } from "../templates/emailLayout";
 
-const port = Number(process.env.SMTP_PORT || 465);
-const secure = process.env.SMTP_SECURE === "true" || port === 465;
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "email-ssl.com.br",
-  port,
-  secure,
-  ...(port === 587 && { requireTLS: true }),
-  auth: {
-    user: process.env.SMTP_USER?.trim(),
-    pass: process.env.SMTP_PASS,
-  },
-});
-
 interface SendEmailOptions {
   to: string;
   subject: string;
@@ -40,6 +26,56 @@ function isErroFilaSmtp(error: unknown) {
   );
 }
 
+function isEmailLocaweb() {
+  const host = (process.env.SMTP_HOST || "email-ssl.com.br").toLowerCase();
+  return host.includes("email-ssl.com.br") || host.includes("locaweb");
+}
+
+function usarSomenteTexto() {
+  return process.env.EMAIL_SOMENTE_TEXTO === "true" || isEmailLocaweb();
+}
+
+function normalizarAssunto(subject: string) {
+  return subject
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "");
+}
+
+function remetente() {
+  return process.env.EMAIL_FROM?.trim() || process.env.SMTP_USER!.trim();
+}
+
+function portasSmtp() {
+  const configurada = Number(process.env.SMTP_PORT || 465);
+  const alternativa = configurada === 465 ? 587 : 465;
+
+  return [configurada, alternativa];
+}
+
+function criarTransporter(port: number): nodemailer.Transporter {
+  const secure = port === 465;
+
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || "email-ssl.com.br",
+    port,
+    secure,
+    requireTLS: !secure,
+    pool: false,
+    auth: {
+      user: process.env.SMTP_USER?.trim(),
+      pass: process.env.SMTP_PASS,
+    },
+  } as nodemailer.TransportOptions);
+}
+
+async function enviarComTransporter(
+  transporter: nodemailer.Transporter,
+  mail: nodemailer.SendMailOptions
+) {
+  await transporter.sendMail(mail);
+}
+
 export async function sendEmail({
   to,
   subject,
@@ -51,46 +87,57 @@ export async function sendEmail({
     throw new Error("SMTP_USER não configurado no .env");
   }
 
-  const from = process.env.EMAIL_FROM?.trim() || process.env.SMTP_USER.trim();
-  const tentativas: nodemailer.SendMailOptions[] = [];
+  const from = remetente();
+  const assunto = normalizarAssunto(subject);
+  const somenteTexto = usarSomenteTexto();
 
-  if (html) {
-    tentativas.push({
-      from: `"NEW FLOOR" <${from}>`,
+  const mensagens: nodemailer.SendMailOptions[] = [];
+
+  if (text) {
+    mensagens.push({
+      from,
       to,
-      subject,
+      subject: assunto,
+      text,
+      encoding: "7bit",
+    });
+  }
+
+  if (html && !somenteTexto) {
+    mensagens.unshift({
+      from,
+      to,
+      subject: assunto,
       html,
       attachments,
     });
   }
 
-  if (text) {
-    tentativas.push({
-      from: `"NEW FLOOR" <${from}>`,
-      to,
-      subject,
-      text,
-    });
-  }
-
-  if (!tentativas.length) {
+  if (!mensagens.length) {
     throw new Error("E-mail sem conteúdo");
   }
 
   let ultimoErro: unknown;
 
-  for (const mail of tentativas) {
-    try {
-      await transporter.sendMail(mail);
-      return;
-    } catch (error) {
-      ultimoErro = error;
+  for (const porta of portasSmtp()) {
+    const transporter = criarTransporter(porta);
 
-      if (!isErroFilaSmtp(error)) {
-        throw error;
+    for (const mail of mensagens) {
+      try {
+        await enviarComTransporter(transporter, mail);
+        return;
+      } catch (error) {
+        ultimoErro = error;
+
+        if (!isErroFilaSmtp(error)) {
+          throw error;
+        }
+
+        console.warn(
+          `Falha SMTP (porta ${porta}), tentando alternativa:`,
+          error
+        );
       }
-
-      console.warn("Falha SMTP, tentando formato mais leve:", error);
     }
   }
 
@@ -103,7 +150,7 @@ export async function enviarCodigoRecuperacaoSenha(
 ): Promise<void> {
   await sendEmail({
     to: email,
-    subject: "Recuperação de senha - NEW FLOOR",
+    subject: "Recuperacao de senha - NEW FLOOR",
     text: textoEmailRecuperacaoSenha(codigo),
     html: templateEmailRecuperacaoSenha(codigo),
   });

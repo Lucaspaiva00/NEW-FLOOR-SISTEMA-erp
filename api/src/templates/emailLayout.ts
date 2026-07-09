@@ -100,15 +100,16 @@ export function textoEmailProposta({
   linkDownload: string;
 }) {
   return [
-    "NEW FLOOR - Proposta Técnica Comercial",
+    "NEW FLOOR - Proposta Tecnica Comercial",
     "",
-    `Olá, ${clienteNome}.`,
+    `Ola, ${clienteNome}.`,
     "",
-    `Sua proposta nº ${numeroProposta} está disponível.`,
+    `Sua proposta n ${numeroProposta} esta disponivel.`,
     `Baixar PDF: ${linkDownload}`,
     "",
     "Equipe NEW FLOOR",
-  ].join("\n");
+    "Pisos e Revestimentos",
+  ].join("\r\n");
 }
 
 export function templateEmailRecuperacaoSenha(codigo: string) {
@@ -129,10 +130,10 @@ export function templateEmailRecuperacaoSenha(codigo: string) {
 
 export function textoEmailRecuperacaoSenha(codigo: string) {
   return [
-    "NEW FLOOR - Recuperação de senha",
+    "NEW FLOOR - Recuperacao de senha",
     "",
-    `Seu código: ${codigo}`,
+    `Seu codigo: ${codigo}`,
     "",
     "Expira em 15 minutos.",
-  ].join("\n");
+  ].join("\r\n");
 }
