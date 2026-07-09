@@ -14,13 +14,11 @@ function escapeHtml(valor: string) {
     .replace(/"/g, "&quot;");
 }
 
-export function logoUrlEmail() {
-  const base =
-    process.env.EMAIL_LOGO_URL ||
-    process.env.BASE_URL ||
-    "https://new-floor-sistema-erp.onrender.com";
+const LOGO_PADRAO =
+  "https://res.cloudinary.com/dfdinbti3/image/upload/v1783556030/logo-newfloor_b4hart.png";
 
-  return `${base.replace(/\/$/, "")}/assets/logo-newfloor.png`;
+export function logoUrlEmail() {
+  return process.env.EMAIL_LOGO_URL || LOGO_PADRAO;
 }
 
 function layoutEmail({
