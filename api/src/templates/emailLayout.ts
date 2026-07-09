@@ -65,6 +65,28 @@ export function templateEmailProposta({
   });
 }
 
+export function templateEmailPropostaComAnexo({
+  clienteNome,
+  numeroProposta,
+}: {
+  clienteNome: string;
+  numeroProposta: string;
+}) {
+  const nome = escapeHtml(clienteNome);
+  const numero = escapeHtml(numeroProposta);
+
+  return layoutEmail({
+    titulo: `Proposta Nº ${numeroProposta}`,
+    conteudo: `
+      <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:${CORES.primaria};">Proposta Técnica Comercial</p>
+      <p style="margin:0 0 20px;color:${CORES.muted};">Olá, <strong>${nome}</strong></p>
+      <p style="margin:0 0 12px;">Segue em anexo a proposta comercial <strong>nº ${numero}</strong>.</p>
+      <p style="margin:0 0 16px;">Permanecemos à disposição para esclarecimentos, ajustes ou visita técnica.</p>
+      <p style="margin:0;">Atenciosamente,<br><strong>Equipe NEW FLOOR</strong></p>
+    `,
+  });
+}
+
 export function templateEmailPropostaMinimo({
   clienteNome,
   numeroProposta,
@@ -106,6 +128,25 @@ export function textoEmailProposta({
     "",
     `Sua proposta n ${numeroProposta} esta disponivel.`,
     `Baixar PDF: ${linkDownload}`,
+    "",
+    "Equipe NEW FLOOR",
+    "Pisos e Revestimentos",
+  ].join("\r\n");
+}
+
+export function textoEmailPropostaComAnexo({
+  clienteNome,
+  numeroProposta,
+}: {
+  clienteNome: string;
+  numeroProposta: string;
+}) {
+  return [
+    "NEW FLOOR - Proposta Tecnica Comercial",
+    "",
+    `Ola, ${clienteNome}.`,
+    "",
+    `Segue em anexo a proposta n ${numeroProposta}.`,
     "",
     "Equipe NEW FLOOR",
     "Pisos e Revestimentos",

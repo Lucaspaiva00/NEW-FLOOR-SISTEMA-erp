@@ -1,7 +1,10 @@
+import fs from "fs";
 import { sendEmail } from "./email.service";
 import {
   templateEmailProposta,
+  templateEmailPropostaComAnexo,
   textoEmailProposta,
+  textoEmailPropostaComAnexo,
 } from "../templates/emailLayout";
 
 interface EmailProposta {
@@ -9,6 +12,25 @@ interface EmailProposta {
   clienteNome: string;
   numeroProposta: string;
   linkDownload: string;
+  caminhoPdf: string;
+}
+
+function nomeAnexoSeguro(numeroProposta: string) {
+  return `Proposta-${numeroProposta}.pdf`;
+}
+
+async function enviarComLink(dados: {
+  destinatario: string;
+  clienteNome: string;
+  numeroProposta: string;
+  linkDownload: string;
+}) {
+  await sendEmail({
+    to: dados.destinatario,
+    subject: `Proposta ${dados.numeroProposta} - NEW FLOOR`,
+    text: textoEmailProposta(dados),
+    html: templateEmailProposta(dados),
+  });
 }
 
 export async function enviarPropostaPorEmail({
@@ -16,15 +38,44 @@ export async function enviarPropostaPorEmail({
   clienteNome,
   numeroProposta,
   linkDownload,
-}: EmailProposta): Promise<"link"> {
-  const dados = { clienteNome, numeroProposta, linkDownload };
+  caminhoPdf,
+}: EmailProposta): Promise<"anexo" | "link"> {
+  const dados = { destinatario, clienteNome, numeroProposta, linkDownload };
+  const assunto = `Proposta ${numeroProposta} - NEW FLOOR`;
+  const pdfBuffer = fs.readFileSync(caminhoPdf);
+  const anexo = {
+    filename: nomeAnexoSeguro(numeroProposta),
+    content: pdfBuffer,
+    contentType: "application/pdf",
+  };
 
-  await sendEmail({
-    to: destinatario,
-    subject: `Proposta ${numeroProposta} - NEW FLOOR`,
-    text: textoEmailProposta(dados),
-    html: templateEmailProposta(dados),
-  });
+  try {
+    await sendEmail({
+      to: destinatario,
+      subject: assunto,
+      text: textoEmailPropostaComAnexo(dados),
+      attachments: [anexo],
+    });
 
-  return "link";
+    return "anexo";
+  } catch (erroTextoAnexo) {
+    console.warn("Falha texto+anexo, tentando HTML+anexo:", erroTextoAnexo);
+
+    try {
+      await sendEmail({
+        to: destinatario,
+        subject: assunto,
+        text: textoEmailPropostaComAnexo(dados),
+        html: templateEmailPropostaComAnexo(dados),
+        attachments: [anexo],
+      });
+
+      return "anexo";
+    } catch (erroHtmlAnexo) {
+      console.warn("Falha com anexo, enviando por link:", erroHtmlAnexo);
+
+      await enviarComLink(dados);
+      return "link";
+    }
+  }
 }

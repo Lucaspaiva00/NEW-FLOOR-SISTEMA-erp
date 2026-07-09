@@ -824,7 +824,7 @@ export const enviarEmail = async (
 
     const linkDownload = `${baseUrl}/propostas/${proposta.propostaid}/download`;
 
-    await enviarPropostaPorEmail({
+    const modoEnvio = await enviarPropostaPorEmail({
       destinatario,
 
       clienteNome:
@@ -835,6 +835,8 @@ export const enviarEmail = async (
       numeroProposta: proposta.numero,
 
       linkDownload,
+
+      caminhoPdf: resultado.caminho,
     });
 
     await prisma.proposta.update({
@@ -850,11 +852,16 @@ export const enviarEmail = async (
     res.status(200).json({
       success: true,
 
-      message: "E-mail enviado com link para download do PDF",
+      message:
+        modoEnvio === "anexo"
+          ? "E-mail enviado com PDF em anexo"
+          : "E-mail enviado com link para download do PDF",
 
       destinatario,
 
       linkDownload,
+
+      modoEnvio,
     });
   } catch (error) {
     console.error(error);

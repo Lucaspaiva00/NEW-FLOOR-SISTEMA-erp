@@ -76,26 +76,15 @@ export async function sendEmail({
   const assunto = normalizarAssunto(subject);
   const somenteTexto = usarSomenteTexto();
 
+  const base = { from, to, subject: assunto, attachments };
   const mensagens: nodemailer.SendMailOptions[] = [];
 
   if (html && !somenteTexto) {
-    mensagens.push({
-      from,
-      to,
-      subject: assunto,
-      html,
-      attachments,
-    });
+    mensagens.push({ ...base, html });
   }
 
   if (text) {
-    mensagens.push({
-      from,
-      to,
-      subject: assunto,
-      text,
-      encoding: "7bit",
-    });
+    mensagens.push({ ...base, text, encoding: "7bit" });
   }
 
   if (!mensagens.length) {
