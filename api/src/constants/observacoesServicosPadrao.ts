@@ -13,26 +13,26 @@ Caso houver a necessidade de remoção do substrato/piso presente ou execução 
 Para o valor acima proposto, foi considerado a execução do revestimento/pintura em substrato de concreto armado usinado liso/polido com idade de cura igual ou superior a 28 dias e espessura de 15cm (FCK 30 MPa).
 Se houver remoção de faixas ou sinalizações presentes e a área não for revitalizada ou aplicada pintura/revestimento, as marcas da remoção estarão perceptíveis.
 
-FATURAMENTO:
-Nosso faturamento consiste na emissão de 01 (uma) nota fiscal sendo;
+FATURAMENTO: 
+Nosso faturamento consiste na emissão de 01 (uma) nota fiscal sendo; 
 
-a) Nota Fiscal de Prestação de Serviços
-Emitida por:
-NEW FLOOR COMERCIO E SERVICOS EM REVESTIMENTOS LTDA
-CNPJ 46.429.017/0001-60 I.E 276.116.020.110
-R LAVINIO REBECHI, 65 - JD. BETO SPANA - COSMOPOLIS-SP CEP 13152-386
+a) Nota Fiscal de Prestação de Serviços 
+Emitida por: 
+NEW FLOOR COMERCIO E SERVICOS EM REVESTIMENTOS LTDA 
+CNPJ 46.429.017/0001-60 I.E 276.116.020.110 
+R LAVINIO REBECHI, 65 - JD. BETO SPANA - COSMOPOLIS-SP CEP 13152-386 
 
-ou
+ou 
 
-UVL - SERVICOS ESPECIALIZADOS EM REVESTIMENTOS LTDA - ME
-CNPJ: 61.349.347/0001-39 I.E: 276.116.020.110 I.M: 276.140.506.114
+UVL - SERVICOS ESPECIALIZADOS EM REVESTIMENTOS LTDA - ME 
+CNPJ: 61.349.347/0001-39 I.E: 276.116.020.110 I.M: 276.140.506.114 
 R: LAVINIO REBECHI, 65 - CASA B - JD. BETO SPANA - COSMOPOLIS-SP CEP 13152-386
 
 
 FORMA DE PAGAMENTO: Boleto Bancário
 
 CONDIÇÕES DE PAGAMENTO:
-Prestação de Serviços: 5 dias após emissão da nota fiscal no início da obra ou termino de cada etapa.
+Prestação de Serviços: 5 dias após emissão da nota fiscal no início da obra	ou termino de cada etapa.
 
 PRAZO DE EXECUÇÃO:
 A obra será executada em etapa(s) de dia(s) consecutivos, para a(s) qual(ais) será(ão) cobrada(as) taxa (s) de mobilização(ões), acima(s) descrita(s).
@@ -98,13 +98,13 @@ A proteção de eventuais equipamentos da CONTRATANTE existentes na área onde s
 As notas emitidas pela NEW FLOOR - UITEMBERGUE VIEIRA DE LIMA , não poderão ser utilizadas para fins de Habite-se, visto que não há alocação de funcionários por obra na folha de pagamento.
 
 A NEW FLOOR PISOS E REVESTIMENTOS é "Empresa optante pelo Simples Nacional.
-Não gera direito a crédito de ISS e IPI, conforme Lei Complementar n.º 123/2006." "O serviço correspondente ao código 7.07, qual seja "Recuperação, raspagem, polimento e lustração de pisos e congêneres" não gera retenção de ISS, conforme Lei Complementar n.º 116/2003, bem como não incide retenção de INSS, conforme Instrução Normativa n.º971/2009, por não se tratar de cessão de mão-de-obra ou execução de obras por empreitada ou subempreitada.
+Não gera direito a crédito de ISS e IPI, conforme Lei Complementar n.º 123/2006." "O serviço correspondente ao código 7.07, qual seja "Recuperação, raspagem, polimento e lustração de pisos e congêneres" não gera retenção de ISS, conforme Lei Complementar n.º 116/2003, bem como não incide retenção de INSS, conforme Instrução Normativa n.º971/2009, por não se tratar de cessão de mão-de-obra ou execução de obras por empreitada ou subempreitada."
 
 VALIDADE DESTA PROPOSTA: 10 dias`;
 
 export const OBSERVACOES_SISTEMA_PADRAO = `OBSERVAÇÕES GERAIS:
 
-PROPOSTA TÉCNICA PARA PRESTAÇÃO DE SERVIÇOS E FORNECIMENTO DE MATERIAIS. FRETE INCLUSO
+PROPOSTA TÉCNICA PARA PRESTAÇÃO DE SERVIÇOS E FORNECIMENTO DE MATERIAIS. FRETE INCLUSO 
 
 Os materiais paletizados necessitam de descarregamento por empilhadeiras , sendo esse de responsabilidade da contratante.
 
@@ -117,26 +117,26 @@ Caso houver a necessidade de remoção do substrato/piso presente ou execução 
 Para o valor acima proposto, foi considerado a execução do revestimento/pintura em substrato de concreto armado usinado liso/polido com idade de cura igual ou superior a 28 dias e espessura de 15cm (FCK 30 MPa).
 Se houver remoção de faixas ou sinalizações presentes e a área não for revitalizada ou aplicada pintura/revestimento, as marcas da remoção estarão perceptíveis.
 
-FATURAMENTO:
-Nosso faturamento consiste na emissão de 01 (uma) nota fiscal sendo;
+FATURAMENTO: 
+Nosso faturamento consiste na emissão de 01 (uma) nota fiscal sendo; 
 
-a) Nota Fiscal de Prestação de Serviços
-Emitida por:
-NEW FLOOR COMERCIO E SERVICOS EM REVESTIMENTOS LTDA
-CNPJ 46.429.017/0001-60 I.E 276.116.020.110
-R LAVINIO REBECHI, 65 - JD. BETO SPANA - COSMOPOLIS-SP CEP 13152-386
+a) Nota Fiscal de Prestação de Serviços 
+Emitida por: 
+NEW FLOOR COMERCIO E SERVICOS EM REVESTIMENTOS LTDA 
+CNPJ 46.429.017/0001-60 I.E 276.116.020.110 
+R LAVINIO REBECHI, 65 - JD. BETO SPANA - COSMOPOLIS-SP CEP 13152-386 
 
-ou
+ou 
 
-UVL - SERVICOS ESPECIALIZADOS EM REVESTIMENTOS LTDA - ME
-CNPJ: 61.349.347/0001-39 I.E: 276.116.020.110 I.M: 276.140.506.114
+UVL - SERVICOS ESPECIALIZADOS EM REVESTIMENTOS LTDA - ME 
+CNPJ: 61.349.347/0001-39 I.E: 276.116.020.110 I.M: 276.140.506.114 
 R: LAVINIO REBECHI, 65 - CASA B - JD. BETO SPANA - COSMOPOLIS-SP CEP 13152-386
 
 
 FORMA DE PAGAMENTO: Boleto Bancário
 
 CONDIÇÕES DE PAGAMENTO:
-Prestação de Serviços: 5 dias após emissão da nota fiscal no início da obra ou termino de cada etapa.
+Prestação de Serviços: 5 dias após emissão da nota fiscal no início da obra	ou termino de cada etapa.
 
 PRAZO DE EXECUÇÃO:
 A obra será executada em etapa(s) de dia(s) consecutivos, para a(s) qual(ais) será(ão) cobrada(as) taxa (s) de mobilização(ões), acima(s) descrita(s).
@@ -202,7 +202,7 @@ A proteção de eventuais equipamentos da CONTRATANTE existentes na área onde s
 As notas emitidas pela NEW FLOOR - UITEMBERGUE VIEIRA DE LIMA , não poderão ser utilizadas para fins de Habite-se, visto que não há alocação de funcionários por obra na folha de pagamento.
 
 A NEW FLOOR PISOS E REVESTIMENTOS é "Empresa optante pelo Simples Nacional.
-Não gera direito a crédito de ISS e IPI, conforme Lei Complementar n.º 123/2006." "O serviço correspondente ao código 7.07, qual seja "Recuperação, raspagem, polimento e lustração de pisos e congêneres" não gera retenção de ISS, conforme Lei Complementar n.º 116/2003, bem como não incide retenção de INSS, conforme Instrução Normativa n.º971/2009, por não se tratar de cessão de mão-de-obra ou execução de obras por empreitada ou subempreitada.
+Não gera direito a crédito de ISS e IPI, conforme Lei Complementar n.º 123/2006." "O serviço correspondente ao código 7.07, qual seja "Recuperação, raspagem, polimento e lustração de pisos e congêneres" não gera retenção de ISS, conforme Lei Complementar n.º 116/2003, bem como não incide retenção de INSS, conforme Instrução Normativa n.º971/2009, por não se tratar de cessão de mão-de-obra ou execução de obras por empreitada ou subempreitada." 
 
 VALIDADE DESTA PROPOSTA: 10 dias`;
 
