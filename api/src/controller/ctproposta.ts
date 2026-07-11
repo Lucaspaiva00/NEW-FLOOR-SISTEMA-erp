@@ -508,6 +508,49 @@ export const observacoesPadrao = async (
   res.json(dados);
 };
 
+export const readKanban = async (
+  _req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const propostas = await prisma.proposta.findMany({
+      select: {
+        propostaid: true,
+        numero: true,
+        titulo: true,
+        subtitulo: true,
+        descricao: true,
+        status: true,
+        prioridade: true,
+        origem: true,
+        subtotal: true,
+        createdAt: true,
+        cliente: {
+          select: {
+            nomeFantasia: true,
+            razaoSocial: true,
+          },
+        },
+        vendedor: {
+          select: {
+            nome: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.status(200).json(propostas);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      error: "Erro ao buscar propostas",
+    });
+  }
+};
+
 export const read = async (_req: Request, res: Response): Promise<void> => {
   try {
     const propostas = await prisma.proposta.findMany({

@@ -40,6 +40,7 @@ routes
   .put(servico.update)
   .delete(servico.remove);
 
+routes.route("/propostas/kanban").get(proposta.readKanban);
 routes.route("/propostas").get(proposta.read).post(proposta.create);
 
 routes.route("/propostas/dashboard").get(proposta.dashboard);

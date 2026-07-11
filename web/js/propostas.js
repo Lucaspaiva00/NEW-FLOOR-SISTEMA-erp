@@ -414,7 +414,7 @@ async function carregarPropostas() {
   mostrarLoadingKanban();
 
   try {
-    const response = await fetch(`${API_URL}/propostas`, {
+    const response = await fetch(`${API_URL}/propostas/kanban`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -620,35 +620,47 @@ function criarCardProposta(proposta) {
 }
 
 function renderizarKanban(lista) {
-  colunaPendente.innerHTML = "";
-  colunaAprovada.innerHTML = "";
-  colunaExecutando.innerHTML = "";
-  colunaEspeciais.innerHTML = "";
-  colunaFaturada.innerHTML = "";
+  const htmlPorColuna = {
+    pendente: "",
+    aprovada: "",
+    executando: "",
+    especiais: "",
+    faturada: "",
+  };
 
   lista.forEach((proposta) => {
     const card = criarCardProposta(proposta);
 
     if (proposta.status === "PENDENTE" || proposta.status === "RASCUNHO") {
-      colunaPendente.innerHTML += card;
+      htmlPorColuna.pendente += card;
+      return;
     }
 
     if (proposta.status === "APROVADA") {
-      colunaAprovada.innerHTML += card;
+      htmlPorColuna.aprovada += card;
+      return;
     }
 
     if (proposta.status === "EXECUTANDO") {
-      colunaExecutando.innerHTML += card;
+      htmlPorColuna.executando += card;
+      return;
     }
 
     if (proposta.status === "ESPECIAIS") {
-      colunaEspeciais.innerHTML += card;
+      htmlPorColuna.especiais += card;
+      return;
     }
 
     if (proposta.status === "FATURADA") {
-      colunaFaturada.innerHTML += card;
+      htmlPorColuna.faturada += card;
     }
   });
+
+  colunaPendente.innerHTML = htmlPorColuna.pendente;
+  colunaAprovada.innerHTML = htmlPorColuna.aprovada;
+  colunaExecutando.innerHTML = htmlPorColuna.executando;
+  colunaEspeciais.innerHTML = htmlPorColuna.especiais;
+  colunaFaturada.innerHTML = htmlPorColuna.faturada;
 
   iniciarSortableKanban();
 }
@@ -1547,6 +1559,8 @@ async function abrirModalProposta(id) {
   setCardLoading(id, true);
 
   try {
+    await carregarDadosModal();
+
     const response = await fetch(`${API_URL}/propostas/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -1904,13 +1918,28 @@ const wizardNovaProposta = criarWizardProposta({
   validarStep: validarStepNovaProposta,
 });
 
+let dadosModalCarregados = false;
+
+async function carregarDadosModal() {
+  if (dadosModalCarregados) return;
+
+  await Promise.all([
+    carregarClientes(),
+    carregarServicos(),
+    carregarObservacoesPadrao(),
+    carregarTemplateAtivo(),
+    carregarVendedores(),
+  ]);
+
+  dadosModalCarregados = true;
+}
+
 async function iniciarTela() {
-  mostrarLoadingKanban();
-  await carregarClientes();
-  await carregarServicos();
-  await carregarObservacoesPadrao();
-  await carregarTemplateAtivo();
   await carregarPropostas();
+
+  carregarDadosModal().catch((error) => {
+    console.log(error);
+  });
 
   inicializarEditorDescricao(
     "editorObservacoes",
@@ -1925,7 +1954,8 @@ async function iniciarTela() {
 
   document
     .getElementById("modalNovaProposta")
-    ?.addEventListener("shown.bs.modal",     async () => {
+    ?.addEventListener("shown.bs.modal", async () => {
+      await carregarDadosModal();
       if (!observacoesPadraoCarregado) {
         await carregarObservacoesPadrao();
       }
@@ -1957,4 +1987,3 @@ async function iniciarTela() {
 }
 
 iniciarTela();
-carregarVendedores();
