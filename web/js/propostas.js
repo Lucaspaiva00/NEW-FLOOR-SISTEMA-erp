@@ -44,8 +44,8 @@ const observacoesPadraoCache = {
   SERVICOS: "",
   SISTEMA: "",
 };
-const OBSERVACOES_PADRAO_STORAGE_KEY = "nf_observacoes_padrao_v2";
-const OBSERVACOES_PADRAO_ETAG_KEY = "nf_observacoes_padrao_etag_v2";
+const OBSERVACOES_PADRAO_STORAGE_KEY = "nf_observacoes_padrao_v3";
+const OBSERVACOES_PADRAO_ETAG_KEY = "nf_observacoes_padrao_etag_v3";
 let observacoesPadraoCarregado = false;
 const observacoesPorTipo = {
   nova: { SERVICOS: null, SISTEMA: null },

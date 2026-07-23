@@ -35,11 +35,65 @@ function linhaTituloInline(linha: string): string | null {
   const titulo = linha.slice(0, indice).trim();
   const conteudo = linha.slice(indice + 1).trim();
 
-  if (!conteudo || !isTituloSecao(`${titulo}:`)) {
+  if (!conteudo || !titulo || titulo.length > 80) {
+    return null;
+  }
+
+  const podeNegritar =
+    isTituloSecao(`${titulo}:`) ||
+    (titulo.length <= 50 && /[A-Za-zÀ-ú]/.test(titulo));
+
+  if (!podeNegritar) {
     return null;
   }
 
   return `<p><strong>${escHtml(`${titulo}:`)}</strong> ${escHtml(conteudo)}</p>`;
+}
+
+function linhaTituloComTraco(linha: string): string | null {
+  const indice = linha.indexOf(" - ");
+
+  if (indice === -1) {
+    return null;
+  }
+
+  const titulo = linha.slice(0, indice).trim();
+  const conteudo = linha.slice(indice + 3).trim();
+
+  if (!conteudo || !titulo || titulo.length > 120) {
+    return null;
+  }
+
+  const letras = titulo.replace(/[^A-Za-zÀ-ú]/g, "");
+  const maiusculas = titulo.replace(/[^A-ZÀ-Ú]/g, "");
+
+  if (letras.length === 0 || maiusculas.length < letras.length * 0.55) {
+    return null;
+  }
+
+  return `<p><strong>${escHtml(titulo)}</strong> - ${escHtml(conteudo)}</p>`;
+}
+
+function linhaSubitem(linha: string): string | null {
+  if (!/^[a-z]\)\s+.+/i.test(linha)) {
+    return null;
+  }
+
+  return `<p><strong>${escHtml(linha)}</strong></p>`;
+}
+
+function linhaLabelSozinha(linha: string): string | null {
+  if (!linha.endsWith(":") || isTituloSecao(linha)) {
+    return null;
+  }
+
+  const titulo = linha.slice(0, -1).trim();
+
+  if (!titulo || titulo.length > 50) {
+    return null;
+  }
+
+  return `<p><strong>${escHtml(linha)}</strong></p>`;
 }
 
 function secaoEmLista(titulo: string): boolean {
@@ -107,10 +161,34 @@ export function formatarTextoObservacoes(texto?: string | null): string {
       continue;
     }
 
+    const tituloComTraco = linhaTituloComTraco(linha);
+
+    if (tituloComTraco) {
+      flush();
+      partes.push(tituloComTraco);
+      continue;
+    }
+
+    const subitem = linhaSubitem(linha);
+
+    if (subitem) {
+      flush();
+      partes.push(subitem);
+      continue;
+    }
+
     if (isTituloSecao(linha)) {
       flush();
       partes.push(`<h3><strong>${escHtml(linha)}</strong></h3>`);
       modoLista = secaoEmLista(linha);
+      continue;
+    }
+
+    const labelSozinha = linhaLabelSozinha(linha);
+
+    if (labelSozinha) {
+      flush();
+      partes.push(labelSozinha);
       continue;
     }
 

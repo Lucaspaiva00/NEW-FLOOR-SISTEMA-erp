@@ -35,11 +35,65 @@ function linhaTituloInlineObservacao(linha) {
   const titulo = linha.slice(0, indice).trim();
   const conteudo = linha.slice(indice + 1).trim();
 
-  if (!conteudo || !isTituloSecaoObservacao(`${titulo}:`)) {
+  if (!conteudo || !titulo || titulo.length > 80) {
+    return null;
+  }
+
+  const podeNegritar =
+    isTituloSecaoObservacao(`${titulo}:`) ||
+    (titulo.length <= 50 && /[A-Za-zÀ-ú]/.test(titulo));
+
+  if (!podeNegritar) {
     return null;
   }
 
   return `<p><strong>${escHtmlObservacao(`${titulo}:`)}</strong> ${escHtmlObservacao(conteudo)}</p>`;
+}
+
+function linhaTituloComTracoObservacao(linha) {
+  const indice = linha.indexOf(" - ");
+
+  if (indice === -1) {
+    return null;
+  }
+
+  const titulo = linha.slice(0, indice).trim();
+  const conteudo = linha.slice(indice + 3).trim();
+
+  if (!conteudo || !titulo || titulo.length > 120) {
+    return null;
+  }
+
+  const letras = titulo.replace(/[^A-Za-zÀ-ú]/g, "");
+  const maiusculas = titulo.replace(/[^A-ZÀ-Ú]/g, "");
+
+  if (letras.length === 0 || maiusculas.length < letras.length * 0.55) {
+    return null;
+  }
+
+  return `<p><strong>${escHtmlObservacao(titulo)}</strong> - ${escHtmlObservacao(conteudo)}</p>`;
+}
+
+function linhaSubitemObservacao(linha) {
+  if (!/^[a-z]\)\s+.+/i.test(linha)) {
+    return null;
+  }
+
+  return `<p><strong>${escHtmlObservacao(linha)}</strong></p>`;
+}
+
+function linhaLabelSozinhaObservacao(linha) {
+  if (!linha.endsWith(":") || isTituloSecaoObservacao(linha)) {
+    return null;
+  }
+
+  const titulo = linha.slice(0, -1).trim();
+
+  if (!titulo || titulo.length > 50) {
+    return null;
+  }
+
+  return `<p><strong>${escHtmlObservacao(linha)}</strong></p>`;
 }
 
 function secaoEmListaObservacao(titulo) {
@@ -107,10 +161,34 @@ function formatarTextoObservacoes(texto) {
       continue;
     }
 
+    const tituloComTraco = linhaTituloComTracoObservacao(linha);
+
+    if (tituloComTraco) {
+      flush();
+      partes.push(tituloComTraco);
+      continue;
+    }
+
+    const subitem = linhaSubitemObservacao(linha);
+
+    if (subitem) {
+      flush();
+      partes.push(subitem);
+      continue;
+    }
+
     if (isTituloSecaoObservacao(linha)) {
       flush();
       partes.push(`<h3><strong>${escHtmlObservacao(linha)}</strong></h3>`);
       modoLista = secaoEmListaObservacao(linha);
+      continue;
+    }
+
+    const labelSozinha = linhaLabelSozinhaObservacao(linha);
+
+    if (labelSozinha) {
+      flush();
+      partes.push(labelSozinha);
       continue;
     }
 

@@ -662,14 +662,15 @@ color:${corPrimaria};
 }
 
 .descricao-comercial{
-    line-height:1.6;
+    line-height:1.35;
     margin-bottom:8px;
     text-align:justify;
     font-size:12px;
 }
 
 .descricao-comercial p{
-    margin:0 0 8px 0;
+    margin:0 0 4px 0;
+    line-height:1.35;
 }
 
 .descricao-comercial p:last-child{
@@ -693,9 +694,10 @@ color:${corPrimaria};
 
 .descricao-comercial ul li,
 .descricao-comercial ol li{
-    margin-bottom:4px;
+    margin-bottom:2px;
     padding-left:0.2em;
     display:list-item;
+    line-height:1.35;
 }
 
 .descricao-comercial ol li[data-list="bullet"]{

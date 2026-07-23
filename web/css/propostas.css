@@ -716,6 +716,36 @@ label {
     min-height: 420px;
 }
 
+#editorObservacoes .ql-editor h3,
+#editorEditarObservacoes .ql-editor h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 18px 0 8px;
+}
+
+#editorObservacoes .ql-editor h3:first-child,
+#editorEditarObservacoes .ql-editor h3:first-child {
+    margin-top: 0;
+}
+
+#editorObservacoes .ql-editor p,
+#editorEditarObservacoes .ql-editor p {
+    margin: 0 0 4px;
+    line-height: 1.3;
+}
+
+#editorObservacoes .ql-editor ul,
+#editorEditarObservacoes .ql-editor ul {
+    margin: 0 0 8px;
+    padding-left: 22px;
+}
+
+#editorObservacoes .ql-editor li,
+#editorEditarObservacoes .ql-editor li {
+    margin-bottom: 3px;
+    line-height: 1.3;
+}
+
 .editor-descricao .ql-editor h3 {
     font-size: 15px;
     font-weight: 700;

@@ -494,7 +494,7 @@ export const observacoesPadrao = async (
   res: Response,
 ): Promise<void> => {
   const dados = obterObservacoesPadraoCache();
-  const etag = `"observacoes-padrao-v2"`;
+  const etag = `"observacoes-padrao-v3"`;
 
   res.setHeader("Cache-Control", "public, max-age=86400, immutable");
   res.setHeader("ETag", etag);
