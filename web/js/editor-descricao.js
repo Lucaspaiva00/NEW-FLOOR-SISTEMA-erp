@@ -32,7 +32,13 @@ function inicializarEditorDescricao(editorId, campoId, placeholder) {
     const conteudo = campo.value || "";
 
     if (conteudo && conteudo !== "<p><br></p>") {
-        quill.root.innerHTML = conteudo;
+        const html =
+            typeof normalizarConteudoObservacao === "function"
+                ? normalizarConteudoObservacao(conteudo)
+                : conteudo;
+
+        quill.root.innerHTML = html;
+        campo.value = html;
     }
 
     return quill;
@@ -46,18 +52,23 @@ function definirDescricaoEditor(campoId, valor) {
         return;
     }
 
-    const conteudo = valor || "";
+  const conteudo = valor || "";
 
-    campo.value = conteudo;
-
-    if (quill) {
-        if (!conteudo || conteudo === "<p><br></p>") {
-            quill.setText("");
-            return;
-        }
-
-        quill.root.innerHTML = conteudo;
+  if (quill) {
+    if (!conteudo || conteudo === "<p><br></p>") {
+      quill.setText("");
+      campo.value = "";
+      return;
     }
+
+    const html =
+      typeof normalizarConteudoObservacao === "function"
+        ? normalizarConteudoObservacao(conteudo)
+        : conteudo;
+
+    quill.root.innerHTML = html;
+    campo.value = html;
+  }
 }
 
 function limparDescricaoEditor(campoId) {
@@ -91,7 +102,13 @@ function inicializarEditorItemDescricao(itemEl) {
     const conteudo = campo.value || "";
 
     if (conteudo && conteudo !== "<p><br></p>") {
-        quill.root.innerHTML = conteudo;
+        const html =
+            typeof normalizarConteudoObservacao === "function"
+                ? normalizarConteudoObservacao(conteudo)
+                : conteudo;
+
+        quill.root.innerHTML = html;
+        campo.value = html;
     }
 
     return quill;
@@ -120,7 +137,13 @@ function definirDescricaoEditorItem(itemEl, valor) {
         return;
     }
 
-    quill.root.innerHTML = conteudo;
+    const html =
+        typeof normalizarConteudoObservacao === "function"
+            ? normalizarConteudoObservacao(conteudo)
+            : conteudo;
+
+    quill.root.innerHTML = html;
+    campo.value = html;
 }
 
 function sincronizarEditoresItemDescricao(raiz = document) {

@@ -1122,6 +1122,14 @@ function preencherItemComServico(select) {
   item.querySelector(".item-valor").value =
     calcularValorUnitarioServico(servico);
 
+  const campoObservacoes = item.querySelector(".item-observacoes");
+
+  if (campoObservacoes && !campoObservacoes.value.trim() && servico?.observacoes) {
+    campoObservacoes.value = conteudoObservacaoEhHtml(servico.observacoes)
+      ? textoPlanoDescricao(servico.observacoes)
+      : servico.observacoes;
+  }
+
   calcularSubtotalItem(item);
 }
 

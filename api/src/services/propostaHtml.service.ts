@@ -1,5 +1,9 @@
 import fs from "fs";
 import path from "path";
+import {
+  formatarTextoObservacoes,
+  normalizarConteudoObservacao,
+} from "../utils/formatarObservacoes";
 
 interface DadosProposta {
   proposta: any;
@@ -205,7 +209,31 @@ function formatarDescricaoComercial(descricao?: string | null): string {
     return texto;
   }
 
-  return escHtml(texto).replace(/\n/g, "<br>");
+  return formatarTextoObservacoes(texto);
+}
+
+function formatarObservacoesItem(item: any): string {
+  const bruto =
+    item.observacoes?.trim() || item.servico?.observacoes?.trim() || "";
+
+  if (!bruto) {
+    return "";
+  }
+
+  const html = normalizarConteudoObservacao(bruto);
+
+  if (!html) {
+    return "";
+  }
+
+  return `
+<p>
+<strong>Observações:</strong>
+</p>
+<div class="descricao-comercial">
+${html}
+</div>
+`;
 }
 
 function resolverDescricaoComercialItem(item: any): string {
@@ -458,23 +486,7 @@ ${moeda(item.subtotal)}
 
 ${descricaoComercialHtml}
 
-${
-  item.observacoes
-    ? `
-<p>
-<strong>Observações:</strong>
-${item.observacoes}
-</p>
-`
-    : item.servico?.observacoes
-      ? `
-<p>
-<strong>Observações:</strong>
-${item.servico.observacoes}
-</p>
-`
-      : ""
-}
+${formatarObservacoesItem(item)}
 
 </div>
 `;

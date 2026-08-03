@@ -96,6 +96,24 @@ function linhaLabelSozinhaObservacao(linha) {
   return `<p><strong>${escHtmlObservacao(linha)}</strong></p>`;
 }
 
+function conteudoObservacaoEhHtml(texto) {
+  return /<[a-z][\s\S]*>/i.test(String(texto || "").trim());
+}
+
+function normalizarConteudoObservacao(texto) {
+  if (!texto?.trim()) {
+    return "";
+  }
+
+  const valor = String(texto).trim();
+
+  if (conteudoObservacaoEhHtml(valor)) {
+    return valor;
+  }
+
+  return formatarTextoObservacoes(valor);
+}
+
 function secaoEmListaObservacao(titulo) {
   const upper = titulo.toUpperCase();
 
