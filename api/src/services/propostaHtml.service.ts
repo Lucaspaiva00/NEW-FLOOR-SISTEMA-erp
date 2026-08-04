@@ -194,6 +194,78 @@ function normalizarHtmlEditor(html: string): string {
     .replace(/\scontenteditable="true"/gi, "");
 }
 
+function removerParagrafosVazios(html: string): string {
+  return html.replace(/<p[^>]*>\s*(?:<br\s*\/?>)?\s*<\/p>/gi, "");
+}
+
+function paragrafoSoTitulo(html: string): boolean {
+  const inner = html
+    .replace(/^<p[^>]*>/i, "")
+    .replace(/<\/p>$/i, "")
+    .trim();
+
+  return /^<strong>[\s\S]*<\/strong>\s*$/i.test(inner);
+}
+
+function paragrafoTituloComTraco(html: string): boolean {
+  const inner = html
+    .replace(/^<p[^>]*>/i, "")
+    .replace(/<\/p>$/i, "")
+    .trim();
+
+  return /^<strong>[\s\S]*<\/strong>\s*-\s+/i.test(inner);
+}
+
+function compactarHtmlDescricaoComercial(html: string): string {
+  const limpo = removerParagrafosVazios(normalizarHtmlEditor(html));
+
+  const tokenRegex =
+    /<(h[1-6][^>]*>[\s\S]*?<\/h[1-6]>|<ul[\s\S]*?<\/ul>|<ol[\s\S]*?<\/ol>|<p[^>]*>[\s\S]*?<\/p>)/gi;
+
+  const tokens = limpo.match(tokenRegex);
+
+  if (!tokens?.length) {
+    return limpo;
+  }
+
+  const merged: string[] = [];
+  const buffer: string[] = [];
+
+  const flushBuffer = () => {
+    if (!buffer.length) {
+      return;
+    }
+
+    merged.push(`<p>${buffer.join("<br>")}</p>`);
+    buffer.length = 0;
+  };
+
+  for (const token of tokens) {
+    if (/^<h[1-6]/i.test(token) || /^<ul/i.test(token) || /^<ol/i.test(token)) {
+      flushBuffer();
+      merged.push(token);
+      continue;
+    }
+
+    if (!/^<p/i.test(token)) {
+      continue;
+    }
+
+    if (paragrafoSoTitulo(token) || paragrafoTituloComTraco(token)) {
+      flushBuffer();
+      merged.push(token);
+      continue;
+    }
+
+    const inner = token.replace(/^<p[^>]*>/i, "").replace(/<\/p>$/i, "");
+    buffer.push(inner);
+  }
+
+  flushBuffer();
+
+  return merged.join("");
+}
+
 function formatarDescricaoComercial(descricao?: string | null): string {
   if (!descricao) {
     return "";
@@ -205,11 +277,11 @@ function formatarDescricaoComercial(descricao?: string | null): string {
     return "";
   }
 
-  if (/<[a-z][\s\S]*>/i.test(texto)) {
-    return texto;
-  }
+  const formatado = /<[a-z][\s\S]*>/i.test(texto)
+    ? texto
+    : formatarTextoObservacoes(texto);
 
-  return formatarTextoObservacoes(texto);
+  return compactarHtmlDescricaoComercial(formatado);
 }
 
 function formatarObservacoesItem(item: any): string {
@@ -667,7 +739,7 @@ margin-bottom:8px;
 color:${corPrimaria};
 }
 
-.item-tecnico p{
+.item-tecnico > p{
     line-height:1.5;
     margin-bottom:8px;
     text-align: justify;
@@ -681,8 +753,12 @@ color:${corPrimaria};
 }
 
 .descricao-comercial p{
-    margin:0 0 4px 0;
+    margin:0;
     line-height:1.35;
+}
+
+.descricao-comercial p + p{
+    margin-top:0;
 }
 
 .descricao-comercial p:last-child{
@@ -737,9 +813,14 @@ color:${corPrimaria};
 .descricao-comercial h1,
 .descricao-comercial h2,
 .descricao-comercial h3{
-    margin:10px 0 6px;
+    margin:6px 0 4px;
     color:${corPrimaria};
     font-weight:bold;
+}
+
+.descricao-comercial p + h3,
+.descricao-comercial br + h3{
+    margin-top:10px;
 }
 
 .descricao-comercial h1{
