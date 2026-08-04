@@ -1,3 +1,72 @@
+function pareceBlocoObservacoes(texto) {
+  const t = String(texto || "").trim();
+
+  if (!t) {
+    return false;
+  }
+
+  if (/OBSERVAÇÕES GERAIS/i.test(t)) {
+    return true;
+  }
+
+  if (t.split(/\r?\n/).filter((linha) => linha.trim()).length >= 3) {
+    return true;
+  }
+
+  return t.length >= 180;
+}
+
+function clipboardHtmlFormatadoObservacao(html) {
+  const valor = String(html || "").trim();
+
+  if (!valor) {
+    return false;
+  }
+
+  return /<h3[\s>]/i.test(valor) || /<strong[\s>]/i.test(valor);
+}
+
+function configurarPasteObservacao(quill, campo) {
+  if (!quill?.root || !campo) {
+    return;
+  }
+
+  quill.root.addEventListener("paste", (evento) => {
+    if (typeof normalizarConteudoObservacao !== "function") {
+      return;
+    }
+
+    const clipboard = evento.clipboardData;
+
+    if (!clipboard) {
+      return;
+    }
+
+    const htmlClip = clipboard.getData("text/html");
+    const plain = clipboard.getData("text/plain");
+
+    if (clipboardHtmlFormatadoObservacao(htmlClip)) {
+      return;
+    }
+
+    if (!plain?.trim() || !pareceBlocoObservacoes(plain)) {
+      return;
+    }
+
+    evento.preventDefault();
+    evento.stopPropagation();
+
+    const html = normalizarConteudoObservacao(plain);
+
+    quill.root.innerHTML = html;
+    campo.value = html;
+  });
+}
+
+function ehCampoObservacaoProposta(campoId) {
+  return campoId === "observacoes" || campoId === "editarObservacoes";
+}
+
 const quillToolbar = [
     ["bold", "italic", "underline"],
     [{ list: "ordered" }, { list: "bullet" }],
@@ -28,6 +97,10 @@ function inicializarEditorDescricao(editorId, campoId, placeholder) {
     });
 
     editoresDescricao[campoId] = quill;
+
+    if (ehCampoObservacaoProposta(campoId)) {
+        configurarPasteObservacao(quill, campo);
+    }
 
     const conteudo = campo.value || "";
 
