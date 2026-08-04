@@ -54,7 +54,10 @@ function tituloObservacaoPorTipo(proposta?: any): string {
     : "Observações Serviços";
 }
 
-function resolverTextoObservacao(proposta?: any, template?: any): string | null {
+function resolverTextoObservacao(
+  proposta?: any,
+  template?: any,
+): string | null {
   if (proposta?.tipoProposta === "SISTEMA") {
     return (
       proposta.observacoesSistema ||
@@ -204,7 +207,7 @@ function paragrafoSoTitulo(html: string): boolean {
     .replace(/<\/p>$/i, "")
     .trim();
 
-  return /^<strong>[\s\S]*<\/strong>\s*$/i.test(inner);
+  return /^<(strong|b)\b[\s\S]*<\/(strong|b)>\s*$/i.test(inner);
 }
 
 function paragrafoTituloComTraco(html: string): boolean {
@@ -213,19 +216,219 @@ function paragrafoTituloComTraco(html: string): boolean {
     .replace(/<\/p>$/i, "")
     .trim();
 
-  return /^<strong>[\s\S]*<\/strong>\s*-\s+/i.test(inner);
+  return /^<(strong|b)\b[\s\S]*<\/(strong|b)>\s*-\s+/i.test(inner);
 }
 
-function compactarHtmlDescricaoComercial(html: string): string {
-  const limpo = removerParagrafosVazios(normalizarHtmlEditor(html));
+function paragrafoTituloServico(html: string): boolean {
+  const inner = html
+    .replace(/^<p[^>]*>/i, "")
+    .replace(/<\/p>$/i, "")
+    .trim();
 
+  if (!/^<(strong|b)\b/i.test(inner)) {
+    return false;
+  }
+
+  const texto = inner
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return linhaPareceTituloServico(texto);
+}
+
+function linhaPareceTituloServico(texto: string): boolean {
+  const t = texto.trim();
+
+  if (!t || t.length > 220) {
+    return false;
+  }
+
+  return (
+    /\bm²\b|\bm2\b|\(\s*[\d.,]+\s*m\s*\)/i.test(t) ||
+    /\(\s*\d+[\d.,]*\s*(?:dias?|etapas?)\s*\)/i.test(t)
+  );
+}
+
+function ehHtmlObservacoesEstruturado(html: string): boolean {
+  return /<h3[\s>]/i.test(html);
+}
+
+function aplicarClasseEstiloParagrafo(
+  html: string,
+  classe: string,
+  estilo: string,
+): string {
+  const match = html.match(/^<p(\s[^>]*)?>/i);
+
+  if (!match) {
+    return html;
+  }
+
+  let attrs = match[1] || "";
+
+  if (/class=/i.test(attrs)) {
+    attrs = attrs.replace(
+      /class=(["'])([\s\S]*?)\1/i,
+      (_, aspas, classes) => `class=${aspas}${classes} ${classe}${aspas}`,
+    );
+  } else {
+    attrs = ` class="${classe}"${attrs}`;
+  }
+
+  if (/style=/i.test(attrs)) {
+    attrs = attrs.replace(
+      /style=(["'])([\s\S]*?)\1/i,
+      (_, aspas, valor) => `style=${aspas}${valor};${estilo}${aspas}`,
+    );
+  } else {
+    attrs = ` style="${estilo}"${attrs}`;
+  }
+
+  return `<p${attrs}>` + html.slice(match[0].length);
+}
+
+const ESTILO_PARAGRAFO_TEXTO = "margin:0;padding:0;line-height:1.35;display:block;";
+const ESTILO_PARAGRAFO_TITULO =
+  "margin:0;padding:8px 0;line-height:1.35;display:block;";
+const ESTILO_PARAGRAFO_TITULO_INLINE =
+  "margin:0;padding:8px 0;line-height:1.35;display:block;";
+const ESTILO_HEADING_DESCRICAO =
+  "margin:0;padding:8px 0;line-height:1.35;display:block;";
+
+function expandirParagrafosDescricaoComercial(html: string): string {
+  let resultado = html.replace(
+    /<p([^>]*)>([\s\S]*?)<\/p>/gi,
+    (full, attrs, inner) => {
+      const trimmed = inner.trim();
+
+      if (!trimmed) {
+        return full;
+      }
+
+      const expandido: string[] = [];
+
+      const tituloCorpo = trimmed.match(
+        /^(<(?:strong|b)\b[^>]*>[\s\S]*?<\/(?:strong|b)>)(\s*(?:<br\s*\/?>\s*)+)([\s\S]+)$/i,
+      );
+
+      const blocosIniciais =
+        tituloCorpo && tituloCorpo[3]?.trim()
+          ? [tituloCorpo[1], tituloCorpo[3]]
+          : [trimmed];
+
+      for (const bloco of blocosIniciais) {
+        const porQuebraDupla = bloco
+          .split(/(?:<br\s*\/?>\s*){2,}/i)
+          .map((parte: string) => parte.trim())
+          .filter(Boolean);
+
+        if (porQuebraDupla.length > 1) {
+          expandido.push(...porQuebraDupla);
+          continue;
+        }
+
+        const porTitulo = bloco
+          .split(/(?=<(?:strong|b)\b)/i)
+          .map((parte: string) => parte.trim())
+          .filter(Boolean);
+
+        if (
+          porTitulo.length > 1 &&
+          /\bm²\b|\bm2\b|\(\s*[\d.,]+\s*m/i.test(bloco)
+        ) {
+          expandido.push(...porTitulo);
+          continue;
+        }
+
+        expandido.push(bloco);
+      }
+
+      if (expandido.length <= 1) {
+        return full;
+      }
+
+      return expandido.map((parte) => `<p${attrs}>${parte}</p>`).join("");
+    },
+  );
+
+  resultado = resultado.replace(
+    /<(h[1-6])(\s[^>]*)?>/gi,
+    (match, tag, rest = "") => {
+      if (/style=/i.test(rest)) {
+        return `<${tag}${rest.replace(
+          /style=(["'])([\s\S]*?)\1/i,
+          (_: string, aspas: string, valor: string) =>
+            `style=${aspas}${valor};${ESTILO_HEADING_DESCRICAO}${aspas}`,
+        )}>`;
+      }
+
+      return `<${tag} style="${ESTILO_HEADING_DESCRICAO}"${rest}>`;
+    },
+  );
+
+  return resultado;
+}
+
+function marcarTitulosServicoHtml(html: string): string {
+  return html.replace(/<p[^>]*>[\s\S]*?<\/p>/gi, (paragrafo) => {
+    const inner = paragrafo
+      .replace(/^<p[^>]*>/i, "")
+      .replace(/<\/p>$/i, "")
+      .trim();
+
+    if (!inner) {
+      return "";
+    }
+
+    const texto = inner
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!texto) {
+      return "";
+    }
+
+    const ehTituloInline = paragrafoTituloComTraco(paragrafo);
+    const ehTitulo =
+      paragrafoSoTitulo(paragrafo) ||
+      ehTituloInline ||
+      paragrafoTituloServico(paragrafo) ||
+      linhaPareceTituloServico(texto);
+
+    if (ehTituloInline) {
+      return aplicarClasseEstiloParagrafo(
+        paragrafo,
+        "paragrafo-titulo-inline",
+        ESTILO_PARAGRAFO_TITULO_INLINE,
+      );
+    }
+
+    if (ehTitulo) {
+      return aplicarClasseEstiloParagrafo(
+        paragrafo,
+        "paragrafo-titulo",
+        ESTILO_PARAGRAFO_TITULO,
+      );
+    }
+
+    return aplicarClasseEstiloParagrafo(
+      paragrafo,
+      "paragrafo-texto",
+      ESTILO_PARAGRAFO_TEXTO,
+    );
+  });
+}
+
+function compactarParagrafosTextoDescricao(html: string): string {
   const tokenRegex =
     /<(h[1-6][^>]*>[\s\S]*?<\/h[1-6]>|<ul[\s\S]*?<\/ul>|<ol[\s\S]*?<\/ol>|<p[^>]*>[\s\S]*?<\/p>)/gi;
 
-  const tokens = limpo.match(tokenRegex);
+  const tokens = html.match(tokenRegex);
 
   if (!tokens?.length) {
-    return limpo;
+    return html;
   }
 
   const merged: string[] = [];
@@ -236,24 +439,29 @@ function compactarHtmlDescricaoComercial(html: string): string {
       return;
     }
 
-    merged.push(`<p>${buffer.join("<br>")}</p>`);
+    merged.push(
+      aplicarClasseEstiloParagrafo(
+        `<p>${buffer.join("<br>")}</p>`,
+        "paragrafo-texto",
+        ESTILO_PARAGRAFO_TEXTO,
+      ),
+    );
     buffer.length = 0;
   };
 
   for (const token of tokens) {
-    if (/^<h[1-6]/i.test(token) || /^<ul/i.test(token) || /^<ol/i.test(token)) {
+    if (
+      /^<h[1-6]/i.test(token) ||
+      /^<ul/i.test(token) ||
+      /^<ol/i.test(token) ||
+      /paragrafo-titulo/i.test(token)
+    ) {
       flushBuffer();
       merged.push(token);
       continue;
     }
 
     if (!/^<p/i.test(token)) {
-      continue;
-    }
-
-    if (paragrafoSoTitulo(token) || paragrafoTituloComTraco(token)) {
-      flushBuffer();
-      merged.push(token);
       continue;
     }
 
@@ -264,6 +472,51 @@ function compactarHtmlDescricaoComercial(html: string): string {
   flushBuffer();
 
   return merged.join("");
+}
+
+function normalizarHtmlObservacoesPdf(html: string): string {
+  let resultado = removerParagrafosVazios(normalizarHtmlEditor(html));
+
+  resultado = resultado.replace(
+    /<(h[1-6])(\s[^>]*)?>/gi,
+    (_match, tag: string, rest = "") => {
+      if (/style=/i.test(rest)) {
+        return `<${tag}${rest.replace(
+          /style=(["'])([\s\S]*?)\1/i,
+          (_: string, aspas: string, valor: string) =>
+            `style=${aspas}${valor};${ESTILO_HEADING_DESCRICAO}${aspas}`,
+        )}>`;
+      }
+
+      return `<${tag} style="${ESTILO_HEADING_DESCRICAO}"${rest}>`;
+    },
+  );
+
+  resultado = resultado.replace(/<p[^>]*>[\s\S]*?<\/p>/gi, (paragrafo) =>
+    aplicarClasseEstiloParagrafo(
+      paragrafo,
+      "paragrafo-texto",
+      ESTILO_PARAGRAFO_TEXTO,
+    ),
+  );
+
+  return resultado;
+}
+
+function normalizarHtmlDescricaoServicoPdf(html: string): string {
+  const limpo = removerParagrafosVazios(normalizarHtmlEditor(html));
+  const expandido = expandirParagrafosDescricaoComercial(limpo);
+  const marcado = marcarTitulosServicoHtml(expandido);
+
+  return compactarParagrafosTextoDescricao(marcado);
+}
+
+function compactarHtmlDescricaoComercial(html: string): string {
+  if (ehHtmlObservacoesEstruturado(html)) {
+    return normalizarHtmlObservacoesPdf(html);
+  }
+
+  return normalizarHtmlDescricaoServicoPdf(html);
 }
 
 function formatarDescricaoComercial(descricao?: string | null): string {
@@ -292,7 +545,7 @@ function formatarObservacoesItem(item: any): string {
     return "";
   }
 
-  const html = normalizarConteudoObservacao(bruto);
+  const html = formatarDescricaoComercial(normalizarConteudoObservacao(bruto));
 
   if (!html) {
     return "";
@@ -471,8 +724,7 @@ export async function gerarHtmlProposta({
     0,
   );
 
-  const totalCalculado =
-    subtotalCalculado + Number(proposta.frete || 0);
+  const totalCalculado = subtotalCalculado + Number(proposta.frete || 0);
 
   const tabelaItens = itens
     .map(
@@ -734,7 +986,8 @@ padding-bottom:15px;
 border-bottom:1px dashed #ccc;
 }
 
-.item-tecnico h4{
+h4{
+margin-top:8px;
 margin-bottom:8px;
 color:${corPrimaria};
 }
@@ -757,11 +1010,30 @@ color:${corPrimaria};
     line-height:1.35;
 }
 
-.descricao-comercial p + p{
+.descricao-comercial p.paragrafo-texto{
+    margin:0;
+    line-height:1.35;
+}
+
+.descricao-comercial p.paragrafo-titulo{
+    margin:0;
+    padding:8px 0;
+    line-height:1.35;
+    display:block;
+}
+
+.descricao-comercial p.paragrafo-titulo-inline{
+    margin:0;
+    padding:8px 0;
+    line-height:1.35;
+    display:block;
+}
+
+.descricao-comercial p.paragrafo-texto + p.paragrafo-texto{
     margin-top:0;
 }
 
-.descricao-comercial p:last-child{
+.descricao-comercial p.paragrafo-texto:last-child{
     margin-bottom:0;
 }
 
@@ -813,14 +1085,16 @@ color:${corPrimaria};
 .descricao-comercial h1,
 .descricao-comercial h2,
 .descricao-comercial h3{
-    margin:6px 0 4px;
+    margin:0;
+    padding:8px 0;
+    display:block;
     color:${corPrimaria};
     font-weight:bold;
 }
 
 .descricao-comercial p + h3,
 .descricao-comercial br + h3{
-    margin-top:10px;
+    padding-top:8px;
 }
 
 .descricao-comercial h1{
@@ -939,9 +1213,7 @@ ${template?.cabecalho || "NEW FLOOR PISOS E REVESTIMENTOS"}
 </h2>
 
 <p>
-${template?.textoApresentacao
-  ? `<p>${template.textoApresentacao}</p>`
-  : ""}
+${template?.textoApresentacao ? `<p>${template.textoApresentacao}</p>` : ""}
 </p>
 
 <p>
