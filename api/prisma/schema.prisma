@@ -53,6 +53,7 @@ model Cliente {
   logo              String?
   agendas           Agenda[]
   propostas         Proposta[]
+  notasFiscais      NotaFiscal[]
 }
 
 model Servico {
@@ -117,6 +118,7 @@ model Proposta {
   cliente                    Cliente           @relation(fields: [clienteId], references: [clienteid])
   templateProposta           TemplateProposta? @relation(fields: [templatePropostaTemplateid], references: [templateid])
   vendedor                   Vendedor?         @relation(fields: [vendedorId], references: [vendedorid])
+  notasFiscais                NotaFiscal[]
 }
 
 model ItemProposta {
@@ -252,3 +254,201 @@ enum TipoCliente {
   PESSOA_FISICA
   PESSOA_JURIDICA
 }
+
+model EmpresaFiscal {
+  empresafiscalid              Int                  @id @default(autoincrement())
+  razaoSocial                  String
+  nomeFantasia                 String?
+  cnpj                         String               @unique
+  inscricaoEstadual            String?
+  inscricaoMunicipal           String?
+  regimeTributario             Int                  @default(1)
+  cnae                         String?
+  cep                          String?
+  endereco                     String?
+  numero                       String?
+  complemento                  String?
+  bairro                       String?
+  cidade                       String?
+  estado                       String?
+  codigoMunicipioIbge          String?
+  telefone                     String?
+  email                        String?
+  ambiente                     AmbienteFiscal       @default(HOMOLOGACAO)
+  provedor                     String               @default("FOCUS_NFE")
+  tokenHomologacao             String?
+  tokenProducao                String?
+  padraoNfse                   PadraoNfse           @default(MUNICIPAL)
+  serieNfe                     String?
+  serieNfse                    String?
+  naturezaOperacaoNfe          String?
+  naturezaOperacaoNfse         String?              @default("1")
+  regimeEspecialTributacaoNfse String?
+  optanteSimplesNacional       Boolean              @default(true)
+  incentivadorCultural         Boolean              @default(false)
+  itemListaServicoPadrao       String?
+  codigoTributarioMunicipal    String?
+  aliquotaIssPadrao            Decimal?             @db.Decimal(7, 4)
+  cfopDentroEstado             String?
+  cfopForaEstado               String?
+  ncmPadrao                    String?
+  unidadePadrao                String?              @default("UN")
+  icmsOrigemPadrao             Int?                 @default(0)
+  icmsSituacaoTributariaPadrao String?
+  pisSituacaoTributariaPadrao  String?
+  cofinsSituacaoTributariaPadrao String?
+  informacoesAdicionaisPadrao  String?
+  ativo                        Boolean              @default(true)
+  createdAt                    DateTime             @default(now())
+  updatedAt                    DateTime             @updatedAt
+  notas                        NotaFiscal[]
+}
+
+model NotaFiscal {
+  notafiscalid                  Int                 @id @default(autoincrement())
+  referencia                    String              @unique
+  tipo                          TipoDocumentoFiscal
+  status                        StatusNotaFiscal    @default(RASCUNHO)
+  empresaFiscalId               Int
+  clienteId                     Int
+  propostaId                    Int?
+  numero                        String?
+  serie                         String?
+  chave                         String?
+  protocolo                     String?
+  codigoVerificacao             String?
+  dataEmissao                   DateTime?
+  dataAutorizacao               DateTime?
+  dataCancelamento              DateTime?
+  naturezaOperacao              String?
+  finalidadeEmissao             Int                 @default(1)
+  consumidorFinal               Int                 @default(1)
+  presencaComprador             Int                 @default(9)
+  modalidadeFrete               Int                 @default(9)
+  indicadorIeDestinatario       Int                 @default(9)
+  destinatarioNome              String
+  destinatarioCnpj              String?
+  destinatarioCpf               String?
+  destinatarioIe                String?
+  destinatarioIm                String?
+  destinatarioEmail             String?
+  destinatarioTelefone          String?
+  destinatarioCep               String?
+  destinatarioEndereco          String?
+  destinatarioNumero            String?
+  destinatarioComplemento       String?
+  destinatarioBairro            String?
+  destinatarioCidade            String?
+  destinatarioEstado            String?
+  destinatarioCodigoMunicipio   String?
+  destinatarioPais              String?             @default("Brasil")
+  valorProdutos                 Decimal             @default(0) @db.Decimal(14, 2)
+  valorServicos                 Decimal             @default(0) @db.Decimal(14, 2)
+  valorFrete                    Decimal             @default(0) @db.Decimal(14, 2)
+  valorSeguro                   Decimal             @default(0) @db.Decimal(14, 2)
+  valorDesconto                 Decimal             @default(0) @db.Decimal(14, 2)
+  valorOutrasDespesas           Decimal             @default(0) @db.Decimal(14, 2)
+  valorTotal                    Decimal             @default(0) @db.Decimal(14, 2)
+  itemListaServico              String?
+  codigoTributarioMunicipal     String?
+  cnaeServico                   String?
+  aliquotaIss                   Decimal?            @db.Decimal(7, 4)
+  issRetido                     Boolean             @default(false)
+  codigoObra                    String?
+  art                           String?
+  informacoesAdicionais         String?
+  payloadExtra                  Json?
+  payloadEnviado                Json?
+  retornoProvedor               Json?
+  mensagemRetorno               String?
+  caminhoXml                    String?
+  caminhoPdf                    String?
+  createdAt                     DateTime            @default(now())
+  updatedAt                     DateTime            @updatedAt
+  empresaFiscal                 EmpresaFiscal       @relation(fields: [empresaFiscalId], references: [empresafiscalid])
+  cliente                       Cliente             @relation(fields: [clienteId], references: [clienteid])
+  proposta                      Proposta?           @relation(fields: [propostaId], references: [propostaid])
+  itens                         ItemNotaFiscal[]
+  eventos                       EventoNotaFiscal[]
+
+  @@index([empresaFiscalId])
+  @@index([clienteId])
+  @@index([propostaId])
+  @@index([status])
+  @@index([tipo])
+  @@index([createdAt])
+}
+
+model ItemNotaFiscal {
+  itemnotafiscalid              Int       @id @default(autoincrement())
+  notaFiscalId                  Int
+  codigo                        String?
+  descricao                     String
+  ncm                           String?
+  cest                          String?
+  cfop                          String?
+  unidade                       String    @default("UN")
+  quantidade                    Decimal   @db.Decimal(14, 4)
+  valorUnitario                 Decimal   @db.Decimal(14, 6)
+  valorBruto                    Decimal   @db.Decimal(14, 2)
+  valorDesconto                 Decimal   @default(0) @db.Decimal(14, 2)
+  icmsOrigem                    Int?      @default(0)
+  icmsSituacaoTributaria        String?
+  icmsModalidadeBaseCalculo     Int?
+  icmsBaseCalculo               Decimal?  @db.Decimal(14, 2)
+  icmsAliquota                  Decimal?  @db.Decimal(7, 4)
+  icmsValor                     Decimal?  @db.Decimal(14, 2)
+  pisSituacaoTributaria         String?
+  pisBaseCalculo                Decimal?  @db.Decimal(14, 2)
+  pisAliquota                   Decimal?  @db.Decimal(7, 4)
+  pisValor                      Decimal?  @db.Decimal(14, 2)
+  cofinsSituacaoTributaria      String?
+  cofinsBaseCalculo             Decimal?  @db.Decimal(14, 2)
+  cofinsAliquota                Decimal?  @db.Decimal(7, 4)
+  cofinsValor                   Decimal?  @db.Decimal(14, 2)
+  informacoesAdicionais         String?
+  payloadExtra                  Json?
+  createdAt                     DateTime  @default(now())
+  notaFiscal                    NotaFiscal @relation(fields: [notaFiscalId], references: [notafiscalid], onDelete: Cascade)
+
+  @@index([notaFiscalId])
+}
+
+model EventoNotaFiscal {
+  eventonotafiscalid Int        @id @default(autoincrement())
+  notaFiscalId       Int
+  tipo               String
+  status             String?
+  descricao          String?
+  protocolo          String?
+  retorno             Json?
+  createdAt          DateTime   @default(now())
+  notaFiscal         NotaFiscal @relation(fields: [notaFiscalId], references: [notafiscalid], onDelete: Cascade)
+
+  @@index([notaFiscalId])
+}
+
+enum AmbienteFiscal {
+  HOMOLOGACAO
+  PRODUCAO
+}
+
+enum PadraoNfse {
+  MUNICIPAL
+  NACIONAL
+}
+
+enum TipoDocumentoFiscal {
+  NFE
+  NFSE
+}
+
+enum StatusNotaFiscal {
+  RASCUNHO
+  PROCESSANDO
+  AUTORIZADA
+  REJEITADA
+  CANCELADA
+  ERRO
+}
+

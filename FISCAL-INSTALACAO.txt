@@ -1,0 +1,57 @@
+NEW FLOOR - MODULO FISCAL
+
+Projeto preparado a partir do ZIP NEW-FLOOR-SISTEMA-erp-main(1).zip.
+
+ARQUIVOS FISCAIS PRINCIPAIS
+- api/prisma/schema.prisma
+- api/prisma/migrations/20260824110500_add_modulo_fiscal/migration.sql
+- api/src/controller/ctfiscal.ts
+- api/src/services/focusNfe.service.ts
+- api/src/routes/routes.ts
+- web/fiscal.html
+- web/css/fiscal.css
+- web/js/fiscal.js
+- web/js/sidebar.js
+
+ANTES DE SUBIR/RODAR
+1. Garanta que o arquivo api/.env possui DATABASE_URL correto.
+2. Entre na pasta api e instale as dependencias.
+3. Aplique a migration fiscal.
+4. Gere o Prisma Client.
+5. Rode o build.
+
+COMANDOS
+cd api
+npm install
+npx prisma migrate deploy
+npx prisma generate
+npm run build
+
+PARA DESENVOLVIMENTO LOCAL
+cd api
+npm install
+npx prisma migrate dev
+npx prisma generate
+npm run dev
+
+GIT
+cd ..
+git add api/prisma/schema.prisma \
+  api/prisma/migrations/20260824110500_add_modulo_fiscal/migration.sql \
+  api/src/controller/ctfiscal.ts \
+  api/src/services/focusNfe.service.ts \
+  api/src/routes/routes.ts \
+  web/fiscal.html \
+  web/css/fiscal.css \
+  web/js/fiscal.js \
+  web/js/sidebar.js \
+  FISCAL-INSTALACAO.txt
+
+git commit -m "feat: adiciona modulo fiscal completo New Floor"
+git push origin main
+
+OBSERVACOES
+- O modulo inicia sem token fiscal configurado; cadastre a empresa emitente em Fiscal > Empresas.
+- Use HOMOLOGACAO antes de PRODUCAO.
+- Tokens Focus NFe ficam no banco e nao sao devolvidos abertamente ao frontend.
+- Dados tributarios (NCM/CFOP/CST/CSOSN/ISS/CNAE etc.) devem ser preenchidos conforme a contabilidade da empresa.

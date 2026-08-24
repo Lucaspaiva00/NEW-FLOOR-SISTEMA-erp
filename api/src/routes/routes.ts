@@ -6,6 +6,7 @@ import * as servico from "../controller/ctservico";
 import * as template from "../controller/cttemplate";
 import * as usuario from "../controller/ctusuario";
 import * as vendedor from "../controller/ctvendedor";
+import * as fiscal from "../controller/ctfiscal";
 import auth from "../middlewares/auth";
 
 const routes = express.Router();
@@ -84,5 +85,27 @@ routes
   .get(vendedor.readOne)
   .put(vendedor.update)
   .delete(vendedor.remove);
+
+// Módulo fiscal
+routes.get("/fiscal/dashboard", auth, fiscal.dashboard);
+routes.route("/fiscal/empresas")
+  .get(auth, fiscal.listarEmpresas)
+  .post(auth, fiscal.criarEmpresa);
+routes.route("/fiscal/empresas/:id")
+  .put(auth, fiscal.atualizarEmpresa)
+  .delete(auth, fiscal.removerEmpresa);
+routes.get("/fiscal/propostas/:id/importar", auth, fiscal.importarProposta);
+routes.route("/fiscal/notas")
+  .get(auth, fiscal.listarNotas)
+  .post(auth, fiscal.criarNota);
+routes.route("/fiscal/notas/:id")
+  .get(auth, fiscal.buscarNota)
+  .put(auth, fiscal.atualizarNota)
+  .delete(auth, fiscal.removerNota);
+routes.get("/fiscal/notas/:id/payload", auth, fiscal.visualizarPayload);
+routes.post("/fiscal/notas/:id/emitir", auth, fiscal.emitirNota);
+routes.post("/fiscal/notas/:id/consultar", auth, fiscal.consultarNota);
+routes.post("/fiscal/notas/:id/cancelar", auth, fiscal.cancelarNota);
+routes.post("/fiscal/notas/:id/carta-correcao", auth, fiscal.cartaCorrecaoNota);
 
 export default routes;

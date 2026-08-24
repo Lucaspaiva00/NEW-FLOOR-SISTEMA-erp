@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiscal - NEW FLOOR ERP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/fiscal.css">
+    <link rel="stylesheet" href="css/menu-mobile.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-btn">☰</button>
+    <div class="mobile-overlay"></div>
+    <div class="layout">
+        <aside class="sidebar">
+            <div>
+                <div class="logo">
+                    <img src="assets/logo-newfloor.png" alt="New Floor" class="logo-img">
+                </div>
+                <nav class="menu">
+                    <a href="dashboard.html">Dashboard</a>
+                    <a href="clientes.html">Clientes</a>
+                    <a href="vendedores.html">Vendedores</a>
+                    <a href="servicos.html">Serviços</a>
+                    <a href="propostas.html">Propostas</a>
+                    <a href="agenda.html">Agenda</a>
+                    <a class="active" href="fiscal.html">Fiscal</a>
+                    <a href="templates.html">Templates</a>
+                </nav>
+            </div>
+            <div class="user-box">
+                <div class="avatar">U</div>
+                <div class="user-info">
+                    <strong>Usuário</strong>
+                    <span>Administrador</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content fiscal-main">
+            <div class="topbar fiscal-topbar">
+                <div>
+                    <h1>Módulo Fiscal</h1>
+                    <p>Emissão e controle de NF-e e NFS-e da NEW FLOOR.</p>
+                </div>
+                <div class="fiscal-top-actions">
+                    <button class="btn-secondary-fiscal" id="btnNovaEmpresa">+ Empresa emissora</button>
+                    <button class="btn-new" id="btnNovaNota">+ Nova nota fiscal</button>
+                </div>
+            </div>
+
+            <div class="fiscal-kpis">
+                <div class="fiscal-kpi"><span>Total</span><strong id="kpiFiscalTotal">0</strong></div>
+                <div class="fiscal-kpi"><span>Rascunhos</span><strong id="kpiFiscalRascunhos">0</strong></div>
+                <div class="fiscal-kpi"><span>Processando</span><strong id="kpiFiscalProcessando">0</strong></div>
+                <div class="fiscal-kpi"><span>Autorizadas</span><strong id="kpiFiscalAutorizadas">0</strong></div>
+                <div class="fiscal-kpi"><span>Erros/Rejeições</span><strong id="kpiFiscalRejeitadas">0</strong></div>
+                <div class="fiscal-kpi fiscal-kpi-money"><span>Valor autorizado</span><strong id="kpiFiscalValor">R$ 0,00</strong></div>
+            </div>
+
+            <div class="fiscal-panel">
+                <div class="fiscal-tabs">
+                    <button class="fiscal-tab active" data-fiscal-tab="notas">Notas fiscais</button>
+                    <button class="fiscal-tab" data-fiscal-tab="empresas">Empresas emissoras</button>
+                </div>
+
+                <section id="tabFiscalNotas" class="fiscal-tab-content active">
+                    <div class="fiscal-filters">
+                        <div class="fiscal-search-wrap">
+                            <input id="buscaFiscal" class="form-control" placeholder="Buscar por cliente, número, referência ou chave...">
+                        </div>
+                        <select id="filtroTipoFiscal" class="form-select">
+                            <option value="">Todos os tipos</option>
+                            <option value="NFE">NF-e</option>
+                            <option value="NFSE">NFS-e</option>
+                        </select>
+                        <select id="filtroStatusFiscal" class="form-select">
+                            <option value="">Todos os status</option>
+                            <option value="RASCUNHO">Rascunho</option>
+                            <option value="PROCESSANDO">Processando</option>
+                            <option value="AUTORIZADA">Autorizada</option>
+                            <option value="REJEITADA">Rejeitada</option>
+                            <option value="ERRO">Erro</option>
+                            <option value="CANCELADA">Cancelada</option>
+                        </select>
+                        <button class="btn-secondary-fiscal" id="btnAtualizarFiscal">Atualizar</button>
+                    </div>
+
+                    <div class="table-responsive fiscal-table-wrap">
+                        <table class="table fiscal-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Documento</th>
+                                    <th>Cliente</th>
+                                    <th>Emitente</th>
+                                    <th>Emissão</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaNotasFiscais"></tbody>
+                        </table>
+                    </div>
+                    <div class="fiscal-empty d-none" id="emptyNotasFiscal">Nenhuma nota fiscal encontrada.</div>
+                </section>
+
+                <section id="tabFiscalEmpresas" class="fiscal-tab-content">
+                    <div class="empresa-grid" id="listaEmpresasFiscais"></div>
+                    <div class="fiscal-empty d-none" id="emptyEmpresasFiscal">Nenhuma empresa emissora cadastrada.</div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal empresa fiscal -->
+    <div class="modal fade" id="modalEmpresaFiscal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content fiscal-modal">
+                <form id="formEmpresaFiscal">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="tituloModalEmpresa">Empresa emissora</h5>
+                            <small>Dados do CNPJ, tributação e credenciais do provedor fiscal.</small>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="empresaFiscalId">
+
+                        <div class="fiscal-section-title">Dados da empresa</div>
+                        <div class="row g-3">
+                            <div class="col-md-6"><label>Razão social *</label><input id="efRazaoSocial" class="form-control" required></div>
+                            <div class="col-md-6"><label>Nome fantasia</label><input id="efNomeFantasia" class="form-control"></div>
+                            <div class="col-md-4"><label>CNPJ *</label><input id="efCnpj" class="form-control" required></div>
+                            <div class="col-md-4"><label>Inscrição estadual</label><input id="efIe" class="form-control"></div>
+                            <div class="col-md-4"><label>Inscrição municipal</label><input id="efIm" class="form-control"></div>
+                            <div class="col-md-4"><label>Regime tributário</label>
+                                <select id="efRegime" class="form-select">
+                                    <option value="1">1 - Simples Nacional</option>
+                                    <option value="2">2 - Simples Nacional - excesso sublimite</option>
+                                    <option value="3">3 - Regime Normal</option>
+                                    <option value="4">4 - MEI</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4"><label>CNAE principal</label><input id="efCnae" class="form-control"></div>
+                            <div class="col-md-4"><label>Código município IBGE</label><input id="efCodigoMunicipio" class="form-control" maxlength="7"></div>
+                        </div>
+
+                        <div class="fiscal-section-title mt-4">Endereço</div>
+                        <div class="row g-3">
+                            <div class="col-md-3"><label>CEP</label><input id="efCep" class="form-control"></div>
+                            <div class="col-md-6"><label>Endereço</label><input id="efEndereco" class="form-control"></div>
+                            <div class="col-md-3"><label>Número</label><input id="efNumero" class="form-control"></div>
+                            <div class="col-md-4"><label>Complemento</label><input id="efComplemento" class="form-control"></div>
+                            <div class="col-md-4"><label>Bairro</label><input id="efBairro" class="form-control"></div>
+                            <div class="col-md-3"><label>Cidade</label><input id="efCidade" class="form-control"></div>
+                            <div class="col-md-1"><label>UF</label><input id="efEstado" class="form-control text-uppercase" maxlength="2"></div>
+                            <div class="col-md-4"><label>Telefone</label><input id="efTelefone" class="form-control"></div>
+                            <div class="col-md-8"><label>E-mail fiscal</label><input id="efEmail" type="email" class="form-control"></div>
+                        </div>
+
+                        <div class="fiscal-section-title mt-4">Integração fiscal</div>
+                        <div class="row g-3">
+                            <div class="col-md-4"><label>Ambiente ativo</label>
+                                <select id="efAmbiente" class="form-select">
+                                    <option value="HOMOLOGACAO">Homologação</option>
+                                    <option value="PRODUCAO">Produção</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4"><label>Provedor</label><input id="efProvedor" class="form-control" value="FOCUS_NFE" readonly></div>
+                            <div class="col-md-4"><label>Padrão NFS-e</label>
+                                <select id="efPadraoNfse" class="form-select">
+                                    <option value="MUNICIPAL">NFS-e municipal</option>
+                                    <option value="NACIONAL">NFS-e Nacional / DPS</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6"><label>Token Focus - Homologação</label><input id="efTokenHomologacao" type="password" class="form-control" autocomplete="new-password"><small id="tokenHomologacaoInfo"></small></div>
+                            <div class="col-md-6"><label>Token Focus - Produção</label><input id="efTokenProducao" type="password" class="form-control" autocomplete="new-password"><small id="tokenProducaoInfo"></small></div>
+                        </div>
+
+                        <div class="fiscal-section-title mt-4">Padrões NF-e</div>
+                        <div class="row g-3">
+                            <div class="col-md-3"><label>Série NF-e</label><input id="efSerieNfe" class="form-control"></div>
+                            <div class="col-md-5"><label>Natureza da operação</label><input id="efNaturezaNfe" class="form-control" placeholder="Ex.: Venda de mercadoria"></div>
+                            <div class="col-md-2"><label>CFOP dentro UF</label><input id="efCfopDentro" class="form-control"></div>
+                            <div class="col-md-2"><label>CFOP fora UF</label><input id="efCfopFora" class="form-control"></div>
+                            <div class="col-md-3"><label>NCM padrão</label><input id="efNcm" class="form-control"></div>
+                            <div class="col-md-2"><label>Unidade padrão</label><input id="efUnidade" class="form-control" value="UN"></div>
+                            <div class="col-md-2"><label>Origem ICMS</label><input id="efIcmsOrigem" type="number" min="0" max="8" class="form-control"></div>
+                            <div class="col-md-2"><label>CST/CSOSN ICMS</label><input id="efIcmsCst" class="form-control"></div>
+                            <div class="col-md-1"><label>CST PIS</label><input id="efPisCst" class="form-control"></div>
+                            <div class="col-md-2"><label>CST COFINS</label><input id="efCofinsCst" class="form-control"></div>
+                        </div>
+
+                        <div class="fiscal-section-title mt-4">Padrões NFS-e</div>
+                        <div class="row g-3">
+                            <div class="col-md-2"><label>Série NFS-e/DPS</label><input id="efSerieNfse" class="form-control"></div>
+                            <div class="col-md-3"><label>Natureza operação</label>
+                                <select id="efNaturezaNfse" class="form-select">
+                                    <option value="1">1 - Tributação no município</option>
+                                    <option value="2">2 - Tributação fora do município</option>
+                                    <option value="3">3 - Isenção</option>
+                                    <option value="4">4 - Imune</option>
+                                    <option value="5">5 - Exigibilidade suspensa judicial</option>
+                                    <option value="6">6 - Exigibilidade suspensa administrativa</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3"><label>Regime especial</label>
+                                <select id="efRegimeEspecialNfse" class="form-select">
+                                    <option value="">Nenhum</option>
+                                    <option value="1">1 - Microempresa municipal</option>
+                                    <option value="2">2 - Estimativa</option>
+                                    <option value="3">3 - Sociedade de profissionais</option>
+                                    <option value="4">4 - Cooperativa</option>
+                                    <option value="5">5 - MEI</option>
+                                    <option value="6">6 - ME/EPP Simples Nacional</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2"><label>Item lista serviço</label><input id="efItemLista" class="form-control"></div>
+                            <div class="col-md-2"><label>Alíquota ISS %</label><input id="efAliquotaIss" type="number" step="0.0001" class="form-control"></div>
+                            <div class="col-md-6"><label>Código tributário municipal</label><input id="efCodigoTributario" class="form-control"></div>
+                            <div class="col-md-3 fiscal-check"><input id="efOptanteSimples" type="checkbox" checked><label for="efOptanteSimples">Optante Simples Nacional</label></div>
+                            <div class="col-md-3 fiscal-check"><input id="efIncentivador" type="checkbox"><label for="efIncentivador">Incentivador cultural</label></div>
+                            <div class="col-12"><label>Informações adicionais padrão</label><textarea id="efInfoAdicional" class="form-control" rows="3"></textarea></div>
+                            <div class="col-12 fiscal-check"><input id="efAtivo" type="checkbox" checked><label for="efAtivo">Empresa ativa para emissão</label></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn-new" id="btnSalvarEmpresa">Salvar empresa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal nota -->
+    <div class="modal fade" id="modalNotaFiscal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content fiscal-modal">
+                <form id="formNotaFiscal">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="tituloModalNota">Nova nota fiscal</h5>
+                            <small>Crie o rascunho, confira e depois faça a emissão.</small>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="notaFiscalId">
+                        <input type="hidden" id="nfPropostaId">
+
+                        <div class="fiscal-import-box">
+                            <div>
+                                <strong>Importar proposta da New Floor</strong>
+                                <span>Preenche cliente, itens e valores usando uma proposta já cadastrada.</span>
+                            </div>
+                            <div class="fiscal-import-action">
+                                <input id="nfPropostaNumero" class="form-control" placeholder="ID da proposta">
+                                <button type="button" id="btnImportarProposta" class="btn-secondary-fiscal">Importar</button>
+                            </div>
+                        </div>
+
+                        <div class="fiscal-section-title">Documento</div>
+                        <div class="row g-3">
+                            <div class="col-md-3"><label>Tipo *</label>
+                                <select id="nfTipo" class="form-select" required>
+                                    <option value="NFE">NF-e - Mercadoria</option>
+                                    <option value="NFSE">NFS-e - Serviço</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5"><label>Empresa emitente *</label><select id="nfEmpresa" class="form-select" required></select></div>
+                            <div class="col-md-4"><label>Cliente / tomador *</label><select id="nfCliente" class="form-select" required></select></div>
+                            <div class="col-md-4"><label>Data de emissão</label><input id="nfDataEmissao" type="datetime-local" class="form-control"></div>
+                            <div class="col-md-5"><label>Natureza da operação</label><input id="nfNaturezaOperacao" class="form-control"></div>
+                            <div class="col-md-3"><label>Série</label><input id="nfSerie" class="form-control"></div>
+                        </div>
+
+                        <div class="fiscal-section-title mt-4">Destinatário / tomador</div>
+                        <div class="row g-3">
+                            <div class="col-md-6"><label>Nome / razão social *</label><input id="nfDestNome" class="form-control" required></div>
+                            <div class="col-md-3"><label>CNPJ</label><input id="nfDestCnpj" class="form-control"></div>
+                            <div class="col-md-3"><label>CPF</label><input id="nfDestCpf" class="form-control"></div>
+                            <div class="col-md-3"><label>Inscrição estadual</label><input id="nfDestIe" class="form-control"></div>
+                            <div class="col-md-3"><label>Indicador IE</label>
+                                <select id="nfIndicadorIe" class="form-select">
+                                    <option value="1">1 - Contribuinte ICMS</option>
+                                    <option value="2">2 - Isento</option>
+                                    <option value="9" selected>9 - Não contribuinte</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3"><label>Inscrição municipal</label><input id="nfDestIm" class="form-control"></div>
+                            <div class="col-md-3"><label>E-mail</label><input id="nfDestEmail" type="email" class="form-control"></div>
+                            <div class="col-md-3"><label>Telefone</label><input id="nfDestTelefone" class="form-control"></div>
+                            <div class="col-md-3"><label>CEP</label><input id="nfDestCep" class="form-control"></div>
+                            <div class="col-md-5"><label>Endereço</label><input id="nfDestEndereco" class="form-control"></div>
+                            <div class="col-md-2"><label>Número</label><input id="nfDestNumero" class="form-control"></div>
+                            <div class="col-md-2"><label>Complemento</label><input id="nfDestComplemento" class="form-control"></div>
+                            <div class="col-md-4"><label>Bairro</label><input id="nfDestBairro" class="form-control"></div>
+                            <div class="col-md-3"><label>Cidade</label><input id="nfDestCidade" class="form-control"></div>
+                            <div class="col-md-1"><label>UF</label><input id="nfDestEstado" maxlength="2" class="form-control text-uppercase"></div>
+                            <div class="col-md-2"><label>Cód. município IBGE</label><input id="nfDestCodigoMunicipio" maxlength="7" class="form-control"></div>
+                            <div class="col-md-2"><label>País</label><input id="nfDestPais" class="form-control" value="Brasil"></div>
+                        </div>
+
+                        <div id="blocoNfe" class="mt-4">
+                            <div class="fiscal-section-title">Configuração NF-e</div>
+                            <div class="row g-3">
+                                <div class="col-md-3"><label>Finalidade</label>
+                                    <select id="nfFinalidade" class="form-select">
+                                        <option value="1">1 - Normal</option><option value="2">2 - Complementar</option><option value="3">3 - Ajuste</option><option value="4">4 - Devolução</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3"><label>Consumidor final</label><select id="nfConsumidorFinal" class="form-select"><option value="1">Sim</option><option value="0">Não</option></select></div>
+                                <div class="col-md-3"><label>Presença comprador</label>
+                                    <select id="nfPresenca" class="form-select"><option value="0">0 - Não se aplica</option><option value="1">1 - Presencial</option><option value="2">2 - Internet</option><option value="3">3 - Teleatendimento</option><option value="4">4 - Entrega domicílio</option><option value="9" selected>9 - Outros</option></select>
+                                </div>
+                                <div class="col-md-3"><label>Modalidade frete</label>
+                                    <select id="nfModalidadeFrete" class="form-select"><option value="9">9 - Sem frete</option><option value="0">0 - Emitente</option><option value="1">1 - Destinatário</option><option value="2">2 - Terceiros</option></select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="blocoNfse" class="mt-4 d-none">
+                            <div class="fiscal-section-title">Configuração NFS-e</div>
+                            <div class="row g-3">
+                                <div class="col-md-3"><label>Item lista de serviço</label><input id="nfItemListaServico" class="form-control"></div>
+                                <div class="col-md-3"><label>Código tributário municipal</label><input id="nfCodigoTributarioMunicipal" class="form-control"></div>
+                                <div class="col-md-2"><label>CNAE serviço</label><input id="nfCnaeServico" class="form-control"></div>
+                                <div class="col-md-2"><label>Alíquota ISS %</label><input id="nfAliquotaIss" type="number" step="0.0001" class="form-control"></div>
+                                <div class="col-md-2 fiscal-check"><input id="nfIssRetido" type="checkbox"><label for="nfIssRetido">ISS retido</label></div>
+                                <div class="col-md-4"><label>Código da obra</label><input id="nfCodigoObra" class="form-control"></div>
+                                <div class="col-md-4"><label>ART</label><input id="nfArt" class="form-control"></div>
+                            </div>
+                        </div>
+
+                        <div class="fiscal-section-head mt-4">
+                            <div class="fiscal-section-title mb-0">Itens</div>
+                            <button type="button" id="btnAdicionarItemFiscal" class="btn-secondary-fiscal btn-sm">+ Adicionar item</button>
+                        </div>
+                        <div id="listaItensFiscal" class="fiscal-items"></div>
+
+                        <div class="fiscal-section-title mt-4">Totais</div>
+                        <div class="row g-3">
+                            <div class="col-md-2"><label>Produtos</label><input id="nfValorProdutos" type="number" step="0.01" class="form-control fiscal-total-input"></div>
+                            <div class="col-md-2"><label>Serviços</label><input id="nfValorServicos" type="number" step="0.01" class="form-control fiscal-total-input"></div>
+                            <div class="col-md-2"><label>Frete</label><input id="nfValorFrete" type="number" step="0.01" class="form-control fiscal-total-input" value="0"></div>
+                            <div class="col-md-2"><label>Seguro</label><input id="nfValorSeguro" type="number" step="0.01" class="form-control fiscal-total-input" value="0"></div>
+                            <div class="col-md-2"><label>Desconto</label><input id="nfValorDesconto" type="number" step="0.01" class="form-control fiscal-total-input" value="0"></div>
+                            <div class="col-md-2"><label>Outras despesas</label><input id="nfValorOutras" type="number" step="0.01" class="form-control fiscal-total-input" value="0"></div>
+                            <div class="col-md-3 ms-auto"><label>Total da nota</label><input id="nfValorTotal" type="number" step="0.01" class="form-control fiscal-total-highlight"></div>
+                        </div>
+
+                        <div class="fiscal-section-title mt-4">Informações adicionais</div>
+                        <textarea id="nfInformacoesAdicionais" class="form-control" rows="3" placeholder="Informações complementares da operação ou discriminação do serviço."></textarea>
+
+                        <details class="fiscal-advanced mt-3">
+                            <summary>Configuração avançada / JSON adicional do provedor</summary>
+                            <p>Use somente quando o contador ou a prefeitura exigir um campo específico que não esteja acima. Este JSON é mesclado ao payload enviado à Focus.</p>
+                            <textarea id="nfPayloadExtra" class="form-control font-monospace" rows="6" placeholder='{"campo_especifico": "valor"}'></textarea>
+                        </details>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn-new" id="btnSalvarNota">Salvar rascunho</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal detalhes -->
+    <div class="modal fade" id="modalDetalheFiscal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content fiscal-modal">
+                <div class="modal-header">
+                    <div><h5 class="modal-title">Documento fiscal</h5><small id="detalheFiscalRef"></small></div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="conteudoDetalheFiscal"></div>
+                <div class="modal-footer fiscal-detail-actions" id="acoesDetalheFiscal"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/fiscal.js"></script>
+    <script src="js/menu-mobile.js"></script>
+    <script src="js/sidebar.js"></script>
+</body>
+</html>
