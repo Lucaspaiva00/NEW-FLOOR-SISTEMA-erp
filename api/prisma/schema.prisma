@@ -54,6 +54,7 @@ model Cliente {
   agendas           Agenda[]
   propostas         Proposta[]
   notasFiscais      NotaFiscal[]
+  lancamentosFinanceiros LancamentoFinanceiro[]
 }
 
 model Servico {
@@ -119,6 +120,7 @@ model Proposta {
   templateProposta           TemplateProposta? @relation(fields: [templatePropostaTemplateid], references: [templateid])
   vendedor                   Vendedor?         @relation(fields: [vendedorId], references: [vendedorid])
   notasFiscais                NotaFiscal[]
+  lancamentosFinanceiros      LancamentoFinanceiro[]
 }
 
 model ItemProposta {
@@ -452,3 +454,89 @@ enum StatusNotaFiscal {
   ERRO
 }
 
+
+
+model ContaFinanceira {
+  contafinanceiraid Int                    @id @default(autoincrement())
+  nome              String
+  tipo              TipoContaFinanceira    @default(BANCO)
+  banco             String?
+  agencia           String?
+  conta             String?
+  saldoInicial      Decimal                @default(0) @db.Decimal(14, 2)
+  ativo             Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  lancamentos       LancamentoFinanceiro[]
+}
+
+model CategoriaFinanceira {
+  categoriafinanceiraid Int                    @id @default(autoincrement())
+  nome                  String
+  tipo                  TipoLancamentoFinanceiro
+  descricao             String?
+  cor                   String?
+  ativo                  Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  lancamentos           LancamentoFinanceiro[]
+
+  @@unique([nome, tipo])
+}
+
+model LancamentoFinanceiro {
+  lancamentofinanceiroid Int                       @id @default(autoincrement())
+  tipo                   TipoLancamentoFinanceiro
+  status                 StatusLancamentoFinanceiro @default(ABERTO)
+  origem                 OrigemLancamentoFinanceiro @default(MANUAL)
+  descricao              String
+  documento              String?
+  valor                  Decimal                   @db.Decimal(14, 2)
+  valorPago              Decimal                   @default(0) @db.Decimal(14, 2)
+  dataCompetencia        DateTime                   @default(now())
+  dataVencimento         DateTime?
+  dataPagamento          DateTime?
+  formaPagamento         String?
+  parcelaNumero          Int                        @default(1)
+  totalParcelas          Int                        @default(1)
+  observacoes            String?
+  chaveOrigem            String?                    @unique
+  propostaId             Int?
+  clienteId              Int?
+  categoriaFinanceiraId  Int?
+  contaFinanceiraId      Int?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+  proposta               Proposta?                  @relation(fields: [propostaId], references: [propostaid], onDelete: SetNull)
+  cliente                Cliente?                   @relation(fields: [clienteId], references: [clienteid], onDelete: SetNull)
+  categoria              CategoriaFinanceira?       @relation(fields: [categoriaFinanceiraId], references: [categoriafinanceiraid], onDelete: SetNull)
+  conta                   ContaFinanceira?           @relation(fields: [contaFinanceiraId], references: [contafinanceiraid], onDelete: SetNull)
+
+  @@index([tipo])
+  @@index([status])
+  @@index([dataVencimento])
+  @@index([propostaId])
+  @@index([clienteId])
+}
+
+enum TipoLancamentoFinanceiro {
+  ENTRADA
+  SAIDA
+}
+
+enum StatusLancamentoFinanceiro {
+  ABERTO
+  PAGO
+  CANCELADO
+}
+
+enum OrigemLancamentoFinanceiro {
+  MANUAL
+  PROPOSTA
+}
+
+enum TipoContaFinanceira {
+  BANCO
+  CAIXA
+  CARTEIRA
+}

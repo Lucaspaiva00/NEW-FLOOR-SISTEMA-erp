@@ -8,6 +8,7 @@ const MENU_ICONS = {
   propostas: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
   agenda: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
   templates: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>`,
+  financeiro: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 4-7"/><circle cx="7" cy="16" r="1"/><circle cx="11" cy="11" r="1"/><circle cx="15" cy="14" r="1"/><circle cx="19" cy="7" r="1"/></svg>`,
   fiscal: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17H6z"/><path d="M14 2v4h4"/><path d="M9 11h6"/><path d="M9 15h6"/><path d="M9 19h4"/></svg>`,
 };
 
@@ -16,6 +17,21 @@ function menuKeyFromLink(link) {
   if (!href || href === "#" || href.includes("dashboard")) return "dashboard";
   const match = href.match(/([a-z]+)\.html/);
   return match ? match[1] : "dashboard";
+}
+
+function garantirLinkFinanceiro() {
+  const menu = document.querySelector(".menu");
+  if (!menu || menu.querySelector('a[href="financeiro.html"]')) return;
+
+  const link = document.createElement("a");
+  link.href = "financeiro.html";
+  link.textContent = "Financeiro";
+
+  const fiscal = menu.querySelector('a[href="fiscal.html"]');
+  const templates = menu.querySelector('a[href="templates.html"]');
+  if (fiscal) menu.insertBefore(link, fiscal);
+  else if (templates) menu.insertBefore(link, templates);
+  else menu.appendChild(link);
 }
 
 function garantirLinkFiscal() {
@@ -169,6 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!sidebar) return;
 
   garantirLinkFiscal();
+  garantirLinkFinanceiro();
   prepararItensMenu();
   prepararUserBox();
   criarBotaoToggle(sidebar);

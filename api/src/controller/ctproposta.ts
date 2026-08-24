@@ -13,6 +13,7 @@ import {
   resolverObservacoesNaCriacao,
   obterObservacoesPadraoCache,
 } from "../constants/observacoesServicosPadrao";
+import { cancelarLancamentoPropostaDesfaturada, sincronizarPropostaFaturada } from "../services/financeiro.service";
 
 function paramId(id: string | string[] | number): string {
   if (Array.isArray(id)) {
@@ -478,6 +479,16 @@ export const update = async (req: Request, res: Response): Promise<void> => {
         agendas: true,
       },
     });
+
+    try {
+      if (proposta.status === "FATURADA") {
+        await sincronizarPropostaFaturada(proposta.propostaid);
+      } else if (propostaAtual.status === "FATURADA") {
+        await cancelarLancamentoPropostaDesfaturada(proposta.propostaid);
+      }
+    } catch (financeiroError) {
+      console.error("Não foi possível sincronizar a proposta com o financeiro:", financeiroError);
+    }
 
     res.status(200).json(proposta);
   } catch (error) {

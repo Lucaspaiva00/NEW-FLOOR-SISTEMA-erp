@@ -7,6 +7,7 @@ import * as template from "../controller/cttemplate";
 import * as usuario from "../controller/ctusuario";
 import * as vendedor from "../controller/ctvendedor";
 import * as fiscal from "../controller/ctfiscal";
+import * as financeiro from "../controller/ctfinanceiro";
 import auth from "../middlewares/auth";
 
 const routes = express.Router();
@@ -107,5 +108,25 @@ routes.post("/fiscal/notas/:id/emitir", auth, fiscal.emitirNota);
 routes.post("/fiscal/notas/:id/consultar", auth, fiscal.consultarNota);
 routes.post("/fiscal/notas/:id/cancelar", auth, fiscal.cancelarNota);
 routes.post("/fiscal/notas/:id/carta-correcao", auth, fiscal.cartaCorrecaoNota);
+
+// Módulo financeiro
+routes.get("/financeiro/dashboard", auth, financeiro.dashboard);
+routes.get("/financeiro/fluxo", auth, financeiro.fluxo);
+routes.post("/financeiro/sincronizar-faturadas", auth, financeiro.sincronizarFaturadas);
+routes.get("/financeiro/categorias", auth, financeiro.categorias);
+routes.post("/financeiro/categorias", auth, financeiro.criarCategoria);
+routes.get("/financeiro/contas", auth, financeiro.contas);
+routes.post("/financeiro/contas", auth, financeiro.criarConta);
+routes.post("/financeiro/propostas/:id/importar", auth, financeiro.importarProposta);
+routes.route("/financeiro/lancamentos")
+  .get(auth, financeiro.listar)
+  .post(auth, financeiro.criar);
+routes.route("/financeiro/lancamentos/:id")
+  .get(auth, financeiro.buscar)
+  .put(auth, financeiro.atualizar)
+  .delete(auth, financeiro.excluir);
+routes.post("/financeiro/lancamentos/:id/baixar", auth, financeiro.baixar);
+routes.post("/financeiro/lancamentos/:id/reabrir", auth, financeiro.reabrir);
+routes.post("/financeiro/lancamentos/:id/cancelar", auth, financeiro.cancelar);
 
 export default routes;
