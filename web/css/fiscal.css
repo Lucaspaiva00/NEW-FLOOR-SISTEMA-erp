@@ -2,3 +2,40 @@
 
 /* Classes usadas pela implementação do módulo fiscal */
 .fiscal-row-clickable{cursor:pointer}.fiscal-row-clickable:hover td{background:#fbfcfe}.fiscal-table td small{display:block;color:#94a3b8;font-size:11px;margin-top:3px}.fiscal-status{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.02em}.fiscal-status-draft{background:#f1f5f9;color:#475569}.fiscal-status-processing{background:#fff7ed;color:#c2410c}.fiscal-status-authorized{background:#ecfdf5;color:#047857}.fiscal-status-rejected,.fiscal-status-error{background:#fef2f2;color:#b91c1c}.fiscal-status-cancelled{background:#f3f4f6;color:#6b7280}.fiscal-icon-button{border:1px solid #e2e8f0;background:#fff;width:34px;height:34px;border-radius:9px;font-weight:900;color:#475569;display:inline-flex;align-items:center;justify-content:center}.fiscal-icon-button:hover{background:#f8fafc}.empresa-fiscal-card.empresa-inativa{opacity:.6}.empresa-fiscal-environment{display:inline-flex;font-size:10px;font-weight:800;border-radius:999px;padding:5px 8px;background:#eef2ff;color:#4338ca;margin-bottom:10px}.empresa-fiscal-environment.producao{background:#fff1f2;color:#be123c}.empresa-fiscal-environment.homologacao{background:#eff6ff;color:#1d4ed8}.empresa-fiscal-data{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:16px 0}.empresa-fiscal-data div{background:#f8fafc;border-radius:11px;padding:10px}.empresa-fiscal-data span{display:block;color:#94a3b8;font-size:10px;text-transform:uppercase;font-weight:800}.empresa-fiscal-data strong{font-size:12px}.empresa-fiscal-footer{display:flex;gap:12px;align-items:center;justify-content:space-between;border-top:1px solid #edf1f5;padding-top:12px}.fiscal-token-ok{font-size:11px;font-weight:800;color:#047857}.fiscal-token-warn{font-size:11px;font-weight:800;color:#b45309}.fiscal-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.fiscal-item-header strong{font-size:13px}.fiscal-remove-item{border:none;background:#fff1f2;color:#be123c;padding:7px 10px;border-radius:9px;font-size:11px;font-weight:800}.fiscal-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}.fiscal-detail-head h3{font-size:20px;margin:0}.fiscal-detail-head p{font-size:12px;color:#64748b;margin:4px 0 0}.fiscal-detail-grid>div{background:#f8fafc;border-radius:12px;padding:12px}.fiscal-detail-grid>div span{display:block;color:#94a3b8;font-size:10px;text-transform:uppercase;font-weight:800}.fiscal-detail-grid>div strong{display:block;margin-top:4px;font-size:12px;word-break:break-word}.fiscal-detail-grid .detail-wide{grid-column:span 2}.fiscal-detail-table th{font-size:10px;text-transform:uppercase;color:#64748b}.fiscal-detail-table td{font-size:12px}.fiscal-text-box{white-space:pre-wrap;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:13px;font-size:12px}.fiscal-event-item{border-left:3px solid #cbd5e1;padding:8px 12px;background:#f8fafc;border-radius:0 10px 10px 0}.fiscal-event-item span{font-size:10px;color:#94a3b8;display:block}.fiscal-event-item strong{font-size:11px}.fiscal-event-item p{font-size:11px;color:#475569;margin:3px 0 0}
+
+
+/* Correção de rolagem dos formulários fiscais dentro dos modais */
+#modalEmpresaFiscal .modal-content,
+#modalNotaFiscal .modal-content {
+  max-height: calc(100vh - 3.5rem);
+}
+
+#modalEmpresaFiscal .fiscal-modal-form,
+#modalNotaFiscal .fiscal-modal-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+}
+
+#modalEmpresaFiscal .fiscal-modal-form > .modal-body,
+#modalNotaFiscal .fiscal-modal-form > .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#modalEmpresaFiscal .fiscal-modal-form > .modal-header,
+#modalEmpresaFiscal .fiscal-modal-form > .modal-footer,
+#modalNotaFiscal .fiscal-modal-form > .modal-header,
+#modalNotaFiscal .fiscal-modal-form > .modal-footer {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 767.98px) {
+  #modalEmpresaFiscal .modal-content,
+  #modalNotaFiscal .modal-content {
+    max-height: calc(100vh - 1rem);
+  }
+}
