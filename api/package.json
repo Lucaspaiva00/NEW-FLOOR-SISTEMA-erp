@@ -8,7 +8,7 @@
     "build": "prisma generate && npx puppeteer browsers install chrome && tsc",
     "prisma:generate": "prisma generate",
     "postbuild": "node -e \"require('fs').cpSync('public','dist/public',{recursive:true})\"",
-    "start": "prisma migrate deploy && node dist/server.js"
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
