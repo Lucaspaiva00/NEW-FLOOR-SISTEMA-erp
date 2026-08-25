@@ -199,30 +199,29 @@
                         <div class="fiscal-section-title mt-4">Padrões NFS-e</div>
                         <div class="row g-3">
                             <div class="col-md-2"><label>Série NFS-e/DPS</label><input id="efSerieNfse" class="form-control"></div>
-                            <div class="col-md-3"><label>Natureza operação</label>
+                            <div class="col-md-3"><label>Tributação ISS - NFS-e Nacional</label>
                                 <select id="efNaturezaNfse" class="form-select">
-                                    <option value="1">1 - Tributação no município</option>
-                                    <option value="2">2 - Tributação fora do município</option>
-                                    <option value="3">3 - Isenção</option>
-                                    <option value="4">4 - Imune</option>
-                                    <option value="5">5 - Exigibilidade suspensa judicial</option>
-                                    <option value="6">6 - Exigibilidade suspensa administrativa</option>
+                                    <option value="1">1 - Operação tributável</option>
+                                    <option value="2">2 - Imunidade</option>
+                                    <option value="3">3 - Exportação de serviço</option>
+                                    <option value="4">4 - Não incidência</option>
                                 </select>
                             </div>
-                            <div class="col-md-3"><label>Regime especial</label>
+                            <div class="col-md-3"><label>Regime especial - NFS-e Nacional</label>
                                 <select id="efRegimeEspecialNfse" class="form-select">
-                                    <option value="">Nenhum</option>
-                                    <option value="1">1 - Microempresa municipal</option>
+                                    <option value="0">0 - Nenhum</option>
+                                    <option value="1">1 - Ato Cooperado</option>
                                     <option value="2">2 - Estimativa</option>
-                                    <option value="3">3 - Sociedade de profissionais</option>
-                                    <option value="4">4 - Cooperativa</option>
-                                    <option value="5">5 - MEI</option>
-                                    <option value="6">6 - ME/EPP Simples Nacional</option>
+                                    <option value="3">3 - Microempresa Municipal</option>
+                                    <option value="4">4 - Notário ou Registrador</option>
+                                    <option value="5">5 - Profissional Autônomo</option>
+                                    <option value="6">6 - Sociedade de Profissionais</option>
+                                    <option value="9">9 - Outros</option>
                                 </select>
                             </div>
-                            <div class="col-md-2"><label>Item lista serviço</label><input id="efItemLista" class="form-control"></div>
-                            <div class="col-md-2"><label>Alíquota ISS %</label><input id="efAliquotaIss" type="number" step="0.0001" class="form-control"></div>
-                            <div class="col-md-6"><label>Código tributário municipal</label><input id="efCodigoTributario" class="form-control"></div>
+                            <div class="col-md-2"><label>Cód. tributação nacional ISS</label><input id="efItemLista" class="form-control" placeholder="070701" maxlength="6"></div>
+                            <div class="col-md-2"><label>Alíquota ISS % (se exigida)</label><input id="efAliquotaIss" type="number" step="0.0001" class="form-control"></div>
+                            <div class="col-md-6"><label>Código tributário municipal (opcional no padrão nacional)</label><input id="efCodigoTributario" class="form-control"></div>
                             <div class="col-md-3 fiscal-check"><input id="efOptanteSimples" type="checkbox" checked><label for="efOptanteSimples">Optante Simples Nacional</label></div>
                             <div class="col-md-3 fiscal-check"><input id="efIncentivador" type="checkbox"><label for="efIncentivador">Incentivador cultural</label></div>
                             <div class="col-12"><label>Informações adicionais padrão</label><textarea id="efInfoAdicional" class="form-control" rows="3"></textarea></div>

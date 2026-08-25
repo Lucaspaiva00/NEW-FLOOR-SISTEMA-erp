@@ -39,3 +39,23 @@
     max-height: calc(100vh - 1rem);
   }
 }
+
+
+/* NEW FLOOR - botão editar empresa explícito */
+.btn-edit-empresa {
+  border: 1px solid #d7dce3;
+  background: #fff;
+  color: #111827;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: .18s ease;
+}
+.btn-edit-empresa:hover {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+}

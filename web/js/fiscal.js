@@ -192,6 +192,16 @@
     }
   }
 
+  function selecionarAbaFiscal(nome = "notas") {
+    document.querySelectorAll("[data-fiscal-tab]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.fiscalTab === nome);
+    });
+    document.querySelectorAll(".fiscal-tab-content").forEach((section) => {
+      section.classList.remove("active");
+    });
+    $(nome === "empresas" ? "tabFiscalEmpresas" : "tabFiscalNotas").classList.add("active");
+  }
+
   function atualizarSelectEmpresas() {
     const atual = $("nfEmpresa").value;
     $("nfEmpresa").innerHTML = `<option value="">Selecione a empresa emitente...</option>` +
@@ -227,7 +237,7 @@
               <h3>${esc(nomeEmpresa(e))}</h3>
               <p>${esc(e.razaoSocial)}</p>
             </div>
-            <button class="fiscal-icon-button" type="button" data-editar-empresa="${e.empresafiscalid}" title="Editar">✎</button>
+            <button class="btn-edit-empresa" type="button" data-editar-empresa="${e.empresafiscalid}" title="Editar empresa">✎ Editar empresa</button>
           </div>
           <div class="empresa-fiscal-data">
             <div><span>CNPJ</span><strong>${esc(cnpjFormatado(e.cnpj))}</strong></div>
@@ -269,20 +279,54 @@
       </tr>`).join("");
   }
 
+  function aplicarDefaultsNewFloor(force = false) {
+    const cnpjAtual = soDigitos($("efCnpj").value);
+    const ehNewFloor = !cnpjAtual || cnpjAtual === "46429017000160";
+    if (!ehNewFloor) return;
+
+    const defaults = {
+      efRazaoSocial: "NEW FLOOR COMERCIO E SERVICOS EM REVESTIMENTOS LTDA",
+      efNomeFantasia: "NEW FLOOR PISOS E REVESTIMENTOS",
+      efCnpj: "46.429.017/0001-60",
+      efIe: "276.116.020.110",
+      efIm: "16704",
+      efCnae: "4330405",
+      efCodigoMunicipio: "3512803",
+      efCep: "13152-386",
+      efEndereco: "Rua Lavinio Rebechi",
+      efNumero: "65",
+      efComplemento: "ESCRITÓRIO",
+      efBairro: "Jardim Beto Spana",
+      efCidade: "Cosmópolis",
+      efEstado: "SP",
+      efTelefone: "(19) 3882-2904",
+      efEmail: "adm@newfloorpisos.com.br",
+      efNaturezaNfe: "Venda de mercadoria",
+      efUnidade: "UN",
+      efSerieNfse: "1",
+      efItemLista: "070701",
+    };
+
+    Object.entries(defaults).forEach(([id, value]) => {
+      const el = $(id);
+      if (el && (force || !String(el.value || "").trim())) el.value = value;
+    });
+
+    $("efRegime").value = "1";
+    $("efAmbiente").value = "HOMOLOGACAO";
+    $("efProvedor").value = "FOCUS_NFE";
+    $("efPadraoNfse").value = "NACIONAL";
+    $("efNaturezaNfse").value = "1";
+    $("efRegimeEspecialNfse").value = "0";
+    $("efOptanteSimples").checked = true;
+    $("efAtivo").checked = true;
+  }
+
   function abrirNovaEmpresa() {
     $("formEmpresaFiscal").reset();
     $("empresaFiscalId").value = "";
     $("tituloModalEmpresa").textContent = "Nova empresa emissora";
-    $("efAmbiente").value = "HOMOLOGACAO";
-    $("efProvedor").value = "FOCUS_NFE";
-    $("efPadraoNfse").value = "MUNICIPAL";
-    $("efRegime").value = "1";
-    $("efSerieNfe").value = "1";
-    $("efSerieNfse").value = "1";
-    $("efNaturezaNfse").value = "1";
-    $("efUnidade").value = "UN";
-    $("efAtivo").checked = true;
-    $("efOptanteSimples").checked = true;
+    aplicarDefaultsNewFloor(true);
     $("tokenHomologacaoInfo").textContent = "";
     $("tokenProducaoInfo").textContent = "";
     modalEmpresa.show();
@@ -334,6 +378,9 @@
     Object.entries(campos).forEach(([id, value]) => {
       if ($(id)) $(id).value = value ?? "";
     });
+
+    aplicarDefaultsNewFloor(false);
+
     $("efTokenHomologacao").value = "";
     $("efTokenProducao").value = "";
     $("tokenHomologacaoInfo").textContent = e.temTokenHomologacao ? "Token já configurado. Deixe vazio para manter." : "Nenhum token salvo.";
@@ -403,7 +450,14 @@
       });
       modalEmpresa.hide();
       await Promise.all([carregarEmpresas(), carregarDashboard()]);
-      Swal.fire({ icon: "success", title: "Empresa fiscal salva", timer: 1500, showConfirmButton: false });
+      selecionarAbaFiscal("empresas");
+      Swal.fire({
+        icon: "success",
+        title: "Empresa fiscal salva",
+        text: "A empresa está na aba Empresas emissoras e pode ser editada pelo botão Editar empresa.",
+        timer: 2200,
+        showConfirmButton: false,
+      });
     } catch (error) {
       mostrarErro(error, "Erro ao salvar empresa emissora");
     }
@@ -1081,12 +1135,9 @@
     $("nfDestEstado").addEventListener("change", () => document.querySelectorAll(".fiscal-item-card").forEach(aplicarPadraoItem));
     ["nfValorFrete", "nfValorSeguro", "nfValorDesconto", "nfValorOutras"].forEach((id) => $(id).addEventListener("input", calcularTotais));
 
-    document.querySelectorAll("[data-fiscal-tab]").forEach((btn) => btn.addEventListener("click", () => {
-      document.querySelectorAll("[data-fiscal-tab]").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".fiscal-tab-content").forEach((s) => s.classList.remove("active"));
-      btn.classList.add("active");
-      $(btn.dataset.fiscalTab === "empresas" ? "tabFiscalEmpresas" : "tabFiscalNotas").classList.add("active");
-    }));
+    document.querySelectorAll("[data-fiscal-tab]").forEach((btn) =>
+      btn.addEventListener("click", () => selecionarAbaFiscal(btn.dataset.fiscalTab || "notas")),
+    );
 
     let buscaTimer;
     $("buscaFiscal").addEventListener("input", () => {

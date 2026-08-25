@@ -96,6 +96,28 @@ function documentPath(nota: any): "nfe" | "nfse" | "nfsen" {
   return nota.empresaFiscal.padraoNfse === "NACIONAL" ? "nfsen" : "nfse";
 }
 
+function codigoOpcaoSimplesNacional(empresa: any): "1" | "2" | "3" {
+  if (!empresa.optanteSimplesNacional) return "1";
+
+  // Focus / NFS-e Nacional:
+  // 1 = Não optante
+  // 2 = MEI
+  // 3 = Optante Simples Nacional ME/EPP
+  return Number(empresa.regimeTributario) === 4 ? "2" : "3";
+}
+
+function codigoTributacaoNacionalIss(nota: any): string | undefined {
+  const informado = nota.itemListaServico || nota.empresaFiscal?.itemListaServicoPadrao;
+  const digits = onlyDigits(informado);
+
+  if (!digits && onlyDigits(nota.empresaFiscal?.cnpj) === "46429017000160") {
+    return "070701";
+  }
+  if (digits === "707" || digits === "0707") return "070701";
+
+  return digits;
+}
+
 function localDestino(nota: any): number {
   const pais = String(nota.destinatarioPais || "Brasil").toUpperCase();
   if (pais !== "BRASIL" && pais !== "BRAZIL") return 3;
@@ -272,21 +294,52 @@ function buildNfseNacionalPayload(nota: any): Record<string, any> {
   const payload = {
     data_emissao: isoWithBrazilOffset(nota.dataEmissao),
     data_competencia: isoWithBrazilOffset(nota.dataEmissao).slice(0, 10),
-    serie_dps: empresa.serieNfse ? Number(empresa.serieNfse) : undefined,
+    serie_dps: Number(empresa.serieNfse || 1),
+    emitente_dps: "1",
+
     codigo_municipio_emissora: onlyDigits(empresa.codigoMunicipioIbge),
     cnpj_prestador: onlyDigits(empresa.cnpj),
-    codigo_opcao_simples_nacional: empresa.optanteSimplesNacional ? "1" : "3",
-    regime_especial_tributacao: empresa.regimeEspecialTributacaoNfse,
+    inscricao_municipal_prestador: onlyDigits(empresa.inscricaoMunicipal),
+
+    // NFS-e Nacional: 1=não optante, 2=MEI, 3=Simples ME/EPP.
+    codigo_opcao_simples_nacional: codigoOpcaoSimplesNacional(empresa),
+
+    // No padrão nacional, 0 significa "Nenhum regime especial".
+    regime_especial_tributacao:
+      String(empresa.regimeEspecialTributacaoNfse || "0"),
+
     cnpj_tomador: onlyDigits(nota.destinatarioCnpj),
     cpf_tomador: onlyDigits(nota.destinatarioCpf),
+    inscricao_municipal_tomador: onlyDigits(nota.destinatarioIm),
+    razao_social_tomador: nota.destinatarioNome,
+    codigo_municipio_tomador: onlyDigits(nota.destinatarioCodigoMunicipio),
+    cep_tomador: onlyDigits(nota.destinatarioCep),
+    logradouro_tomador: nota.destinatarioEndereco,
+    numero_tomador: nota.destinatarioNumero,
+    complemento_tomador: nota.destinatarioComplemento,
+    bairro_tomador: nota.destinatarioBairro,
+    telefone_tomador: onlyDigits(nota.destinatarioTelefone),
+    email_tomador: nota.destinatarioEmail,
+
     codigo_municipio_prestacao:
       onlyDigits(nota.destinatarioCodigoMunicipio) ||
       onlyDigits(empresa.codigoMunicipioIbge),
-    codigo_tributacao_nacional_iss:
-      nota.itemListaServico || empresa.itemListaServicoPadrao,
+
+    codigo_tributacao_nacional_iss: codigoTributacaoNacionalIss(nota),
+    codigo_tributacao_municipal_iss:
+      nota.codigoTributarioMunicipal || empresa.codigoTributarioMunicipal,
+
     descricao_servico: descricao,
     valor_servico: decimal(nota.valorServicos) ?? decimal(nota.valorTotal),
-    tributacao_iss: Number(nota.naturezaOperacao || empresa.naturezaOperacaoNfse || "1"),
+
+    // NFS-e Nacional:
+    // 1=tributável, 2=imunidade, 3=exportação, 4=não incidência.
+    tributacao_iss: Number(
+      nota.naturezaOperacao || empresa.naturezaOperacaoNfse || "1",
+    ),
+
+    percentual_aliquota_relativa_municipio:
+      decimal(nota.aliquotaIss) ?? decimal(empresa.aliquotaIssPadrao),
   };
 
   return compactObject(deepMerge(payload, nota.payloadExtra));
