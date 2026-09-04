@@ -16,6 +16,7 @@
   let empresas = [];
   let clientes = [];
   let notas = [];
+  let logsFiscais = [];
   let notaAtual = null;
   let itemSeq = 0;
 
@@ -184,6 +185,20 @@
     renderNotas();
   }
 
+  async function carregarLogs() {
+    logsFiscais = await api("/fiscal/logs");
+    const corpo = $("listaLogsFiscais");
+    corpo.innerHTML = logsFiscais.map((l) => `<tr><td>${esc(dataBr(l.createdAt))}</td><td><strong>${esc(l.notaFiscal?.numero || l.notaFiscal?.referencia || "-")}</strong><small class="d-block text-muted">${esc(l.notaFiscal?.tipo || "")}</small></td><td>${esc(l.notaFiscal?.destinatarioNome || "-")}</td><td>${esc(l.tipo || "-")}</td><td>${statusBadge(l.status || l.notaFiscal?.status)}<small class="d-block mt-1">${esc(l.descricao || "-")}</small></td><td><button class="btn btn-sm btn-outline-dark" data-ver-log="${l.eventonotafiscalid}">Detalhes</button></td></tr>`).join("");
+    $("emptyLogsFiscal").classList.toggle("d-none", logsFiscais.length > 0);
+  }
+
+  function verLog(id) {
+    const log = logsFiscais.find((l) => String(l.eventonotafiscalid) === String(id));
+    if (!log) return;
+    const retorno = log.retorno ? JSON.stringify(log.retorno, null, 2) : "Não houve retorno técnico armazenado para este evento.";
+    Swal.fire({ title: "Detalhe do log fiscal", width: "900px", html: `<div class="text-start"><p><strong>${esc(log.descricao || log.tipo)}</strong></p><pre class="p-3 bg-dark text-light rounded" style="max-height:55vh;overflow:auto;font-size:12px">${esc(retorno)}</pre></div>`, confirmButtonText: "Fechar" });
+  }
+
   async function atualizarTudo() {
     try {
       await Promise.all([carregarDashboard(), carregarEmpresas(), carregarClientes(), carregarNotas()]);
@@ -199,7 +214,8 @@
     document.querySelectorAll(".fiscal-tab-content").forEach((section) => {
       section.classList.remove("active");
     });
-    $(nome === "empresas" ? "tabFiscalEmpresas" : "tabFiscalNotas").classList.add("active");
+    $(nome === "empresas" ? "tabFiscalEmpresas" : nome === "logs" ? "tabFiscalLogs" : "tabFiscalNotas").classList.add("active");
+    if (nome === "logs") carregarLogs().catch((e) => mostrarErro(e, "Erro ao carregar logs fiscais"));
   }
 
   function atualizarSelectEmpresas() {
@@ -1147,6 +1163,7 @@
     $("filtroTipoFiscal").addEventListener("change", () => carregarNotas().catch((e) => mostrarErro(e)));
     $("filtroStatusFiscal").addEventListener("change", () => carregarNotas().catch((e) => mostrarErro(e)));
     $("btnAtualizarFiscal").addEventListener("click", () => atualizarTudo());
+    $("btnAtualizarLogs").addEventListener("click", () => carregarLogs().catch((e) => mostrarErro(e, "Erro ao carregar logs fiscais")));
 
     document.addEventListener("click", (event) => {
       const editarEmpresaBtn = event.target.closest("[data-editar-empresa]");
@@ -1181,6 +1198,8 @@
       if (excluirBtn) return void excluirNota(excluirBtn.dataset.excluirNota);
       const payloadBtn = event.target.closest("[data-ver-payload]");
       if (payloadBtn) return void verPayload(payloadBtn.dataset.verPayload);
+      const logBtn = event.target.closest("[data-ver-log]");
+      if (logBtn) return void verLog(logBtn.dataset.verLog);
     });
   }
 

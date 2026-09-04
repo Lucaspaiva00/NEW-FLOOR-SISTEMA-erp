@@ -64,6 +64,7 @@
             <div class="fiscal-panel">
                 <div class="fiscal-tabs">
                     <button class="fiscal-tab active" data-fiscal-tab="notas">Notas fiscais</button>
+                    <button class="fiscal-tab" data-fiscal-tab="logs">Logs fiscais</button>
                     <button class="fiscal-tab" data-fiscal-tab="empresas">Empresas emissoras</button>
                 </div>
 
@@ -106,6 +107,12 @@
                         </table>
                     </div>
                     <div class="fiscal-empty d-none" id="emptyNotasFiscal">Nenhuma nota fiscal encontrada.</div>
+                </section>
+
+                <section id="tabFiscalLogs" class="fiscal-tab-content">
+                    <div class="fiscal-filters"><div><strong>Histórico de integrações</strong><small class="d-block text-muted">Retornos de envio, consulta, autorização e rejeição da Focus NFe.</small></div><button class="btn-secondary-fiscal" id="btnAtualizarLogs">Atualizar logs</button></div>
+                    <div class="table-responsive fiscal-table-wrap"><table class="table fiscal-table align-middle mb-0"><thead><tr><th>Data/hora</th><th>Documento</th><th>Cliente</th><th>Evento</th><th>Resultado</th><th></th></tr></thead><tbody id="listaLogsFiscais"></tbody></table></div>
+                    <div class="fiscal-empty d-none" id="emptyLogsFiscal">Nenhum log fiscal registrado.</div>
                 </section>
 
                 <section id="tabFiscalEmpresas" class="fiscal-tab-content">

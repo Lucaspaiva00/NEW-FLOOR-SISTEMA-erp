@@ -458,6 +458,24 @@ export const listarNotas = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
+export const listarLogs = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const eventos = await prisma.eventoNotaFiscal.findMany({
+      include: {
+        notaFiscal: {
+          select: { notafiscalid: true, referencia: true, numero: true, tipo: true, status: true, destinatarioNome: true, valorTotal: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    });
+    res.json(eventos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar logs fiscais." });
+  }
+};
+
 export const buscarNota = async (req: Request, res: Response): Promise<void> => {
   try {
     const nota = await notaCompleta(intOr(req.params.id));

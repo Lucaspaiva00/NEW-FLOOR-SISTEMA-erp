@@ -96,6 +96,7 @@ routes.route("/fiscal/empresas/:id")
   .put(auth, fiscal.atualizarEmpresa)
   .delete(auth, fiscal.removerEmpresa);
 routes.get("/fiscal/propostas/:id/importar", auth, fiscal.importarProposta);
+routes.get("/fiscal/logs", auth, fiscal.listarLogs);
 routes.route("/fiscal/notas")
   .get(auth, fiscal.listarNotas)
   .post(auth, fiscal.criarNota);
