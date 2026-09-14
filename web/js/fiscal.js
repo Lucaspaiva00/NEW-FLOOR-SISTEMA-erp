@@ -295,39 +295,9 @@
       </tr>`).join("");
   }
 
-  function aplicarDefaultsNewFloor(force = false) {
-    const cnpjAtual = soDigitos($("efCnpj").value);
-    const ehNewFloor = !cnpjAtual || cnpjAtual === "46429017000160";
-    if (!ehNewFloor) return;
-
-    const defaults = {
-      efRazaoSocial: "NEW FLOOR COMERCIO E SERVICOS EM REVESTIMENTOS LTDA",
-      efNomeFantasia: "NEW FLOOR PISOS E REVESTIMENTOS",
-      efCnpj: "46.429.017/0001-60",
-      efIe: "276.116.020.110",
-      efIm: "16704",
-      efCnae: "4330405",
-      efCodigoMunicipio: "3512803",
-      efCep: "13152-386",
-      efEndereco: "Rua Lavinio Rebechi",
-      efNumero: "65",
-      efComplemento: "ESCRITÓRIO",
-      efBairro: "Jardim Beto Spana",
-      efCidade: "Cosmópolis",
-      efEstado: "SP",
-      efTelefone: "(19) 3882-2904",
-      efEmail: "adm@newfloorpisos.com.br",
-      efNaturezaNfe: "Venda de mercadoria",
-      efUnidade: "UN",
-      efSerieNfse: "1",
-      efItemLista: "070701",
-    };
-
-    Object.entries(defaults).forEach(([id, value]) => {
-      const el = $(id);
-      if (el && (force || !String(el.value || "").trim())) el.value = value;
-    });
-
+  function aplicarDefaultsGenericos() {
+    // Preenche só o que é um padrão razoável pra QUALQUER empresa nova
+    // (não dado específico de nenhum cliente).
     $("efRegime").value = "1";
     $("efAmbiente").value = "HOMOLOGACAO";
     $("efProvedor").value = "FOCUS_NFE";
@@ -342,7 +312,7 @@
     $("formEmpresaFiscal").reset();
     $("empresaFiscalId").value = "";
     $("tituloModalEmpresa").textContent = "Nova empresa emissora";
-    aplicarDefaultsNewFloor(true);
+    aplicarDefaultsGenericos();
     $("tokenHomologacaoInfo").textContent = "";
     $("tokenProducaoInfo").textContent = "";
     modalEmpresa.show();
@@ -394,8 +364,6 @@
     Object.entries(campos).forEach(([id, value]) => {
       if ($(id)) $(id).value = value ?? "";
     });
-
-    aplicarDefaultsNewFloor(false);
 
     $("efTokenHomologacao").value = "";
     $("efTokenProducao").value = "";
