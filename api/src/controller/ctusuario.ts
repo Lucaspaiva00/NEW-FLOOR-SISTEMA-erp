@@ -243,3 +243,90 @@ export const redefinirSenha = async (
     });
   }
 };
+
+export const read = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const empresaId = req.empresaId as number;
+
+    const usuarios = await prisma.usuario.findMany({
+      where: { empresaId },
+      select: {
+        usuarioid: true,
+        nome: true,
+        email: true,
+        cargo: true,
+        telefone: true,
+        role: true,
+        ativo: true,
+        ultimoLogin: true,
+        createdAt: true,
+      },
+      orderBy: { nome: "asc" },
+    });
+
+    res.status(200).json(usuarios);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      error: "Erro ao buscar usuários",
+    });
+  }
+};
+
+export const update = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const empresaId = req.empresaId as number;
+    const { nome, cargo, telefone, role, ativo } = req.body;
+
+    const resultado = await prisma.usuario.updateMany({
+      where: { usuarioid: Number(id), empresaId },
+      data: {
+        nome,
+        cargo,
+        telefone,
+        ativo,
+        role: role && ["ADMIN", "VENDEDOR", "FINANCEIRO", "PADRAO"].includes(role)
+          ? role
+          : undefined,
+      },
+    });
+
+    if (resultado.count === 0) {
+      res.status(404).json({ error: "Usuário não encontrado" });
+      return;
+    }
+
+    res.status(200).json({ message: "Usuário atualizado" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Erro ao atualizar usuário" });
+  }
+};
+
+export const remove = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const empresaId = req.empresaId as number;
+    const solicitanteId = req.usuario?.id;
+
+    if (Number(id) === solicitanteId) {
+      res.status(400).json({ error: "Você não pode remover seu próprio usuário" });
+      return;
+    }
+
+    const resultado = await prisma.usuario.deleteMany({
+      where: { usuarioid: Number(id), empresaId },
+    });
+
+    if (resultado.count === 0) {
+      res.status(404).json({ error: "Usuário não encontrado" });
+      return;
+    }
+
+    res.status(200).json({ message: "Usuário removido" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Erro ao remover usuário" });
+  }
+};

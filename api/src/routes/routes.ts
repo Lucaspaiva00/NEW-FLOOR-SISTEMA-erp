@@ -35,12 +35,14 @@ routes
   .put(auth, requireRole(["SUPER_ADMIN"]), empresa.update);
 
 // --- Usuários da própria empresa — só ADMIN/SUPER_ADMIN da empresa ---
-routes.post(
-  "/usuarios",
-  auth,
-  requireRole(["ADMIN", "SUPER_ADMIN"]),
-  usuario.create
-);
+routes
+  .route("/usuarios")
+  .get(auth, requireRole(["ADMIN", "SUPER_ADMIN"]), usuario.read)
+  .post(auth, requireRole(["ADMIN", "SUPER_ADMIN"]), usuario.create);
+routes
+  .route("/usuarios/:id")
+  .put(auth, requireRole(["ADMIN", "SUPER_ADMIN"]), usuario.update)
+  .delete(auth, requireRole(["ADMIN", "SUPER_ADMIN"]), usuario.remove);
 
 // --- Tudo abaixo exige login (auth), escopado por empresaId no controller ---
 routes.route("/clientes").get(auth, cliente.read).post(auth, cliente.create);

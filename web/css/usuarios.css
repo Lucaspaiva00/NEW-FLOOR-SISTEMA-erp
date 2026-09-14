@@ -1,0 +1,16 @@
+/* A página de usuários reaproveita os estilos de vendedores.css
+   (cards, kpis, status-badge, modais). Este arquivo existe para
+   ajustes específicos futuros da tela de usuários, se precisar. */
+
+.usuarios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 24px;
+    margin-top: 30px;
+}
+
+@media (max-width: 768px) {
+    .usuarios-grid {
+        grid-template-columns: 1fr;
+    }
+}
