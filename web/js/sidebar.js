@@ -131,6 +131,32 @@ function substituirTextoMarca(nomeEmpresa) {
   });
 }
 
+function aplicarBrandingNaTela(empresa) {
+  if (!empresa) return;
+
+  if (empresa.logo) {
+    document.querySelectorAll(".logo-img").forEach((img) => {
+      img.src = empresa.logo;
+      img.alt = empresa.nome || img.alt;
+    });
+  }
+
+  substituirTextoMarca(empresa.nome);
+}
+
+// Aplica o cache da última empresa carregada IMEDIATAMENTE, sem esperar
+// a chamada de rede — evita o "flash" da logo genérica antes da real
+// aparecer. Roda assim que o script é lido (o sidebar já existe no DOM
+// nesse ponto, já que essa tag <script> vem no fim do body).
+(function aplicarBrandingCacheImediato() {
+  try {
+    const cache = JSON.parse(localStorage.getItem("empresaBranding") || "null");
+    if (cache) aplicarBrandingNaTela(cache);
+  } catch {
+    // cache inválido, ignora — carregarBrandingEmpresa() resolve depois
+  }
+})();
+
 async function carregarBrandingEmpresa() {
   const token = JSON.parse(localStorage.getItem("usuarioLogado") || "null")?.token;
   if (!token || typeof API_URL === "undefined") return;
@@ -145,16 +171,10 @@ async function carregarBrandingEmpresa() {
     const empresa = await response.json();
     window.__empresaAtual = empresa;
 
-    // Só troca a logo se a empresa tiver uma cadastrada — senão mantém
-    // o asset padrão (evita quebrar quem ainda não personalizou).
-    if (empresa.logo) {
-      document.querySelectorAll(".logo-img").forEach((img) => {
-        img.src = empresa.logo;
-        img.alt = empresa.nome || img.alt;
-      });
-    }
+    // Atualiza o cache pra próxima navegação já nascer certa.
+    localStorage.setItem("empresaBranding", JSON.stringify(empresa));
 
-    substituirTextoMarca(empresa.nome);
+    aplicarBrandingNaTela(empresa);
   } catch (error) {
     console.log("Não foi possível carregar o branding da empresa:", error);
   }

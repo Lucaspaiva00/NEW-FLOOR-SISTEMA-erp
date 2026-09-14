@@ -293,6 +293,21 @@ formLogin.addEventListener("submit", async (e) => {
         }
 
         localStorage.setItem("usuarioLogado", JSON.stringify(data));
+
+        // Busca a marca da empresa (logo/nome) ANTES de ir pro dashboard,
+        // pra já cair na tela certa sem o "flash" da logo genérica.
+        try {
+            const brandingResponse = await fetch(`${API_URL}/empresas/me`, {
+                headers: { Authorization: `Bearer ${data.token}` }
+            });
+            if (brandingResponse.ok) {
+                const empresa = await brandingResponse.json();
+                localStorage.setItem("empresaBranding", JSON.stringify(empresa));
+            }
+        } catch {
+            // Se falhar, sem problema — o sidebar.js busca de novo depois.
+        }
+
         window.location.href = "dashboard.html";
     } catch {
         mostrarAlerta(
