@@ -10,6 +10,8 @@ const MENU_ICONS = {
   templates: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>`,
   financeiro: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 4-7"/><circle cx="7" cy="16" r="1"/><circle cx="11" cy="11" r="1"/><circle cx="15" cy="14" r="1"/><circle cx="19" cy="7" r="1"/></svg>`,
   fiscal: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17H6z"/><path d="M14 2v4h4"/><path d="M9 11h6"/><path d="M9 15h6"/><path d="M9 19h4"/></svg>`,
+  usuarios: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  empresas: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1"/><path d="M14 9h1"/><path d="M9 13h1"/><path d="M14 13h1"/><path d="M9 21v-4h6v4"/></svg>`,
 };
 
 function menuKeyFromLink(link) {
@@ -47,6 +49,45 @@ function garantirLinkFiscal() {
   else menu.appendChild(link);
 }
 
+function obterUsuarioLogado() {
+  try {
+    return JSON.parse(localStorage.getItem("usuarioLogado"));
+  } catch {
+    return null;
+  }
+}
+
+function papelUsuarioLogado() {
+  const sessao = obterUsuarioLogado();
+  return sessao?.usuario?.role || sessao?.role || null;
+}
+
+function garantirLinkUsuarios() {
+  const menu = document.querySelector(".menu");
+  if (!menu || menu.querySelector('a[href="usuarios.html"]')) return;
+
+  const role = papelUsuarioLogado();
+  if (role !== "ADMIN" && role !== "SUPER_ADMIN") return;
+
+  const link = document.createElement("a");
+  link.href = "usuarios.html";
+  link.textContent = "Usuários";
+  menu.appendChild(link);
+}
+
+function garantirLinkEmpresas() {
+  const menu = document.querySelector(".menu");
+  if (!menu || menu.querySelector('a[href="empresas.html"]')) return;
+
+  const role = papelUsuarioLogado();
+  if (role !== "SUPER_ADMIN") return;
+
+  const link = document.createElement("a");
+  link.href = "empresas.html";
+  link.textContent = "Empresas";
+  menu.appendChild(link);
+}
+
 function prepararItensMenu() {
   document.querySelectorAll(".menu a").forEach((link) => {
     if (link.querySelector(".menu-icon")) return;
@@ -61,14 +102,6 @@ function prepararItensMenu() {
     `;
     link.setAttribute("title", label);
   });
-}
-
-function obterUsuarioLogado() {
-  try {
-    return JSON.parse(localStorage.getItem("usuarioLogado"));
-  } catch {
-    return null;
-  }
 }
 
 function inicialDoNome(nome) {
@@ -186,6 +219,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   garantirLinkFiscal();
   garantirLinkFinanceiro();
+  garantirLinkUsuarios();
+  garantirLinkEmpresas();
   prepararItensMenu();
   prepararUserBox();
   criarBotaoToggle(sidebar);
