@@ -36,7 +36,8 @@ function nomeCliente(cliente: any) {
 
 export const dashboard = async (req: Request, res: Response): Promise<void> => {
   try {
-    await garantirCategoriasPadrao(req.empresaId as number);
+    const empresaId = req.empresaId as number;
+    await garantirCategoriasPadrao(empresaId);
 
     const hoje = inicioDia();
     const mesInicio = inicioMes();
@@ -44,15 +45,16 @@ export const dashboard = async (req: Request, res: Response): Promise<void> => {
 
     const [abertosEntrada, abertosSaida, pagosMesEntrada, pagosMesSaida, vencidos, contas, ultimos] = await Promise.all([
       prisma.lancamentoFinanceiro.aggregate({
-        where: { tipo: "ENTRADA", status: "ABERTO" },
+        where: { empresaId, tipo: "ENTRADA", status: "ABERTO" },
         _sum: { valor: true },
       }),
       prisma.lancamentoFinanceiro.aggregate({
-        where: { tipo: "SAIDA", status: "ABERTO" },
+        where: { empresaId, tipo: "SAIDA", status: "ABERTO" },
         _sum: { valor: true },
       }),
       prisma.lancamentoFinanceiro.aggregate({
         where: {
+          empresaId,
           tipo: "ENTRADA",
           status: "PAGO",
           dataPagamento: { gte: mesInicio, lt: mesFim },
@@ -61,6 +63,7 @@ export const dashboard = async (req: Request, res: Response): Promise<void> => {
       }),
       prisma.lancamentoFinanceiro.aggregate({
         where: {
+          empresaId,
           tipo: "SAIDA",
           status: "PAGO",
           dataPagamento: { gte: mesInicio, lt: mesFim },
@@ -69,15 +72,16 @@ export const dashboard = async (req: Request, res: Response): Promise<void> => {
       }),
       prisma.lancamentoFinanceiro.aggregate({
         where: {
+          empresaId,
           status: "ABERTO",
           dataVencimento: { lt: hoje },
         },
         _sum: { valor: true },
         _count: true,
       }),
-      prisma.contaFinanceira.findMany({ where: { ativo: true } }),
+      prisma.contaFinanceira.findMany({ where: { empresaId, ativo: true } }),
       prisma.lancamentoFinanceiro.findMany({
-        where: { status: { not: "CANCELADO" } },
+        where: { empresaId, status: { not: "CANCELADO" } },
         include: { cliente: true, categoria: true, conta: true, proposta: true },
         orderBy: [{ dataVencimento: "asc" }, { createdAt: "desc" }],
         take: 8,
@@ -85,7 +89,7 @@ export const dashboard = async (req: Request, res: Response): Promise<void> => {
     ]);
 
     const movimentosPagos = await prisma.lancamentoFinanceiro.findMany({
-      where: { status: "PAGO" },
+      where: { empresaId, status: "PAGO" },
       select: { tipo: true, valorPago: true, contaFinanceiraId: true },
     });
 
@@ -122,6 +126,7 @@ export const dashboard = async (req: Request, res: Response): Promise<void> => {
 
 export const fluxo = async (req: Request, res: Response): Promise<void> => {
   try {
+    const empresaId = req.empresaId as number;
     const meses = Math.min(Math.max(Number(req.query.meses || 6), 3), 12);
     const hoje = new Date();
     const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - (meses - 1), 1);
@@ -129,6 +134,7 @@ export const fluxo = async (req: Request, res: Response): Promise<void> => {
 
     const lancamentos = await prisma.lancamentoFinanceiro.findMany({
       where: {
+        empresaId,
         status: { not: "CANCELADO" },
         OR: [
           { dataPagamento: { gte: inicio, lt: fim } },
@@ -170,7 +176,7 @@ export const listar = async (req: Request, res: Response): Promise<void> => {
   try {
     const { tipo, status, busca, vencimento } = req.query;
     const hoje = inicioDia();
-    const where: any = {};
+    const where: any = { empresaId: req.empresaId as number };
 
     if (tipo === "ENTRADA" || tipo === "SAIDA") where.tipo = tipo;
     if (status === "ABERTO" || status === "PAGO" || status === "CANCELADO") where.status = status;
@@ -222,6 +228,7 @@ export const buscar = async (req: Request, res: Response): Promise<void> => {
 export const criar = async (req: Request, res: Response): Promise<void> => {
   try {
     const b = req.body;
+    const empresaId = req.empresaId as number;
     const tipo = b.tipo === "SAIDA" ? "SAIDA" : "ENTRADA";
     const valor = Number(b.valor || 0);
     if (!b.descricao?.trim() || valor <= 0) {
@@ -273,7 +280,8 @@ export const atualizar = async (req: Request, res: Response): Promise<void> => {
   try {
     const b = req.body;
     const id = idParam(req.params.id);
-    const atual = await prisma.lancamentoFinanceiro.findUnique({ where: { lancamentofinanceiroid: id } });
+    const empresaId = req.empresaId as number;
+    const atual = await prisma.lancamentoFinanceiro.findFirst({ where: { lancamentofinanceiroid: id, empresaId } });
     if (!atual) {
       res.status(404).json({ error: "Lançamento não encontrado" });
       return;
@@ -309,7 +317,7 @@ export const atualizar = async (req: Request, res: Response): Promise<void> => {
 export const baixar = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = idParam(req.params.id);
-    const atual = await prisma.lancamentoFinanceiro.findUnique({ where: { lancamentofinanceiroid: id } });
+    const atual = await prisma.lancamentoFinanceiro.findFirst({ where: { lancamentofinanceiroid: id, empresaId: req.empresaId as number } });
     if (!atual) {
       res.status(404).json({ error: "Lançamento não encontrado" });
       return;
@@ -334,10 +342,15 @@ export const baixar = async (req: Request, res: Response): Promise<void> => {
 
 export const reabrir = async (req: Request, res: Response): Promise<void> => {
   try {
-    const dado = await prisma.lancamentoFinanceiro.update({
-      where: { lancamentofinanceiroid: idParam(req.params.id) },
+    const resultado = await prisma.lancamentoFinanceiro.updateMany({
+      where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number },
       data: { status: "ABERTO", valorPago: 0, dataPagamento: null },
     });
+    if (resultado.count === 0) {
+      res.status(404).json({ error: "Lançamento não encontrado" });
+      return;
+    }
+    const dado = await prisma.lancamentoFinanceiro.findFirst({ where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number } });
     res.json(dado);
   } catch (error) {
     console.error(error);
@@ -347,10 +360,15 @@ export const reabrir = async (req: Request, res: Response): Promise<void> => {
 
 export const cancelar = async (req: Request, res: Response): Promise<void> => {
   try {
-    const dado = await prisma.lancamentoFinanceiro.update({
-      where: { lancamentofinanceiroid: idParam(req.params.id) },
+    const resultado = await prisma.lancamentoFinanceiro.updateMany({
+      where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number },
       data: { status: "CANCELADO" },
     });
+    if (resultado.count === 0) {
+      res.status(404).json({ error: "Lançamento não encontrado" });
+      return;
+    }
+    const dado = await prisma.lancamentoFinanceiro.findFirst({ where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number } });
     res.json(dado);
   } catch (error) {
     console.error(error);
@@ -360,7 +378,7 @@ export const cancelar = async (req: Request, res: Response): Promise<void> => {
 
 export const excluir = async (req: Request, res: Response): Promise<void> => {
   try {
-    const atual = await prisma.lancamentoFinanceiro.findUnique({ where: { lancamentofinanceiroid: idParam(req.params.id) } });
+    const atual = await prisma.lancamentoFinanceiro.findFirst({ where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number } });
     if (!atual) {
       res.status(404).json({ error: "Lançamento não encontrado" });
       return;
@@ -406,12 +424,13 @@ export const criarCategoria = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const contas = async (_req: Request, res: Response): Promise<void> => {
+export const contas = async (req: Request, res: Response): Promise<void> => {
   try {
-    const dados = await prisma.contaFinanceira.findMany({ orderBy: [{ ativo: "desc" }, { nome: "asc" }] });
+    const empresaId = req.empresaId as number;
+    const dados = await prisma.contaFinanceira.findMany({ where: { empresaId }, orderBy: [{ ativo: "desc" }, { nome: "asc" }] });
     const pagos = await prisma.lancamentoFinanceiro.groupBy({
       by: ["contaFinanceiraId", "tipo"],
-      where: { status: "PAGO", contaFinanceiraId: { not: null } },
+      where: { empresaId, status: "PAGO", contaFinanceiraId: { not: null } },
       _sum: { valorPago: true },
     });
     res.json(dados.map((conta) => {
@@ -468,8 +487,9 @@ export const sincronizarFaturadas = async (req: Request, res: Response): Promise
 export const importarProposta = async (req: Request, res: Response): Promise<void> => {
   try {
     const propostaId = idParam(req.params.id);
-    const proposta = await prisma.proposta.findUnique({
-      where: { propostaid: propostaId },
+    const empresaId = req.empresaId as number;
+    const proposta = await prisma.proposta.findFirst({
+      where: { propostaid: propostaId, empresaId },
       include: { cliente: true },
     });
     if (!proposta) {
@@ -480,7 +500,7 @@ export const importarProposta = async (req: Request, res: Response): Promise<voi
       res.status(400).json({ error: "A entrada financeira só é gerada quando a proposta estiver FATURADA." });
       return;
     }
-    const lancamento = await sincronizarPropostaFaturada(propostaId, req.empresaId as number);
+    const lancamento = await sincronizarPropostaFaturada(propostaId, empresaId);
     res.json(lancamento);
   } catch (error) {
     console.error(error);

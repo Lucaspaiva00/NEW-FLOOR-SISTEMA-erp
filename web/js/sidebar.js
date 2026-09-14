@@ -148,7 +148,14 @@ function aplicarBrandingNaTela(empresa) {
 // a chamada de rede — evita o "flash" da logo genérica antes da real
 // aparecer. Roda assim que o script é lido (o sidebar já existe no DOM
 // nesse ponto, já que essa tag <script> vem no fim do body).
+// SUPER_ADMIN nunca usa esse cache — ele não pertence a nenhuma empresa,
+// e mostrar a marca de uma empresa que ele acessou antes (nesse mesmo
+// navegador) seria vazamento visual entre empresas.
 (function aplicarBrandingCacheImediato() {
+  if (papelUsuarioLogado() === "SUPER_ADMIN") {
+    localStorage.removeItem("empresaBranding");
+    return;
+  }
   try {
     const cache = JSON.parse(localStorage.getItem("empresaBranding") || "null");
     if (cache) aplicarBrandingNaTela(cache);
@@ -157,7 +164,25 @@ function aplicarBrandingNaTela(empresa) {
   }
 })();
 
+function restringirMenuSuperAdmin() {
+  if (papelUsuarioLogado() !== "SUPER_ADMIN") return;
+
+  const menu = document.querySelector(".menu");
+  if (!menu) return;
+
+  // SUPER_ADMIN só administra empresas — nada de dado operacional
+  // (clientes, propostas, financeiro etc.) de nenhuma empresa específica.
+  menu.querySelectorAll("a").forEach((link) => {
+    const href = (link.getAttribute("href") || "").toLowerCase();
+    if (!href.includes("empresas.html")) {
+      link.remove();
+    }
+  });
+}
+
 async function carregarBrandingEmpresa() {
+  if (papelUsuarioLogado() === "SUPER_ADMIN") return;
+
   const token = JSON.parse(localStorage.getItem("usuarioLogado") || "null")?.token;
   if (!token || typeof API_URL === "undefined") return;
 
@@ -260,6 +285,7 @@ function prepararUserBox() {
 
   btn.addEventListener("click", () => {
     localStorage.removeItem("usuarioLogado");
+    localStorage.removeItem("empresaBranding");
     window.location.href = "login.html";
   });
 
@@ -314,6 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
   garantirLinkUsuarios();
   garantirLinkEmpresas();
   garantirLinkPerfil();
+  restringirMenuSuperAdmin();
   prepararItensMenu();
   prepararUserBox();
   criarBotaoToggle(sidebar);
