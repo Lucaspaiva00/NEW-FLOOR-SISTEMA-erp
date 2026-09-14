@@ -8,11 +8,11 @@ import * as usuario from "../controller/ctusuario";
 import * as vendedor from "../controller/ctvendedor";
 import * as fiscal from "../controller/ctfiscal";
 import * as financeiro from "../controller/ctfinanceiro";
+import * as empresa from "../controller/ctempresa";
 import auth from "../middlewares/auth";
+import requireRole from "../middlewares/requireRole";
 
 const routes = express.Router();
-
-void auth;
 
 routes.get("/", (_req, res) => {
   return res.json({
@@ -20,72 +20,89 @@ routes.get("/", (_req, res) => {
   });
 });
 
-routes.post("/usuarios", usuario.create);
+// --- Rotas públicas (sem token) ---
 routes.post("/usuarios/login", usuario.login);
 routes.post("/usuarios/esqueci-senha", usuario.solicitarRecuperacao);
-
 routes.post("/usuarios/redefinir-senha", usuario.redefinirSenha);
 
-routes.route("/clientes").get(cliente.read).post(cliente.create);
+// --- Provisionamento de empresas (tenants) — só Paiva Tech (SUPER_ADMIN) ---
+routes
+  .route("/empresas")
+  .get(auth, requireRole(["SUPER_ADMIN"]), empresa.read)
+  .post(auth, requireRole(["SUPER_ADMIN"]), empresa.create);
+routes
+  .route("/empresas/:id")
+  .put(auth, requireRole(["SUPER_ADMIN"]), empresa.update);
+
+// --- Usuários da própria empresa — só ADMIN/SUPER_ADMIN da empresa ---
+routes.post(
+  "/usuarios",
+  auth,
+  requireRole(["ADMIN", "SUPER_ADMIN"]),
+  usuario.create
+);
+
+// --- Tudo abaixo exige login (auth), escopado por empresaId no controller ---
+routes.route("/clientes").get(auth, cliente.read).post(auth, cliente.create);
 
 routes
   .route("/clientes/:id")
-  .get(cliente.readOne)
-  .put(cliente.update)
-  .delete(cliente.remove);
+  .get(auth, cliente.readOne)
+  .put(auth, cliente.update)
+  .delete(auth, cliente.remove);
 
-routes.route("/servicos").get(servico.read).post(servico.create);
+routes.route("/servicos").get(auth, servico.read).post(auth, servico.create);
 
 routes
   .route("/servicos/:id")
-  .get(servico.readOne)
-  .put(servico.update)
-  .delete(servico.remove);
+  .get(auth, servico.readOne)
+  .put(auth, servico.update)
+  .delete(auth, servico.remove);
 
-routes.route("/propostas/kanban").get(proposta.readKanban);
-routes.route("/propostas").get(proposta.read).post(proposta.create);
+routes.route("/propostas/kanban").get(auth, proposta.readKanban);
+routes.route("/propostas").get(auth, proposta.read).post(auth, proposta.create);
 
-routes.route("/propostas/dashboard").get(proposta.dashboard);
+routes.route("/propostas/dashboard").get(auth, proposta.dashboard);
 
-routes.get("/observacoes/observacoes-padrao", proposta.observacoesPadrao);
+routes.get("/observacoes/observacoes-padrao", auth, proposta.observacoesPadrao);
 
-routes.post("/propostas/:id/pdf", proposta.gerarPdf);
-routes.get("/propostas/:id/download", proposta.downloadPdf);
-routes.post("/propostas/:id/email", proposta.enviarEmail);
-routes.get("/propostas/:id/whatsapp", proposta.whatsapp);
-routes.post("/propostas/:id/duplicar", proposta.duplicar);
+routes.post("/propostas/:id/pdf", auth, proposta.gerarPdf);
+routes.get("/propostas/:id/download", auth, proposta.downloadPdf);
+routes.post("/propostas/:id/email", auth, proposta.enviarEmail);
+routes.get("/propostas/:id/whatsapp", auth, proposta.whatsapp);
+routes.post("/propostas/:id/duplicar", auth, proposta.duplicar);
 
 routes
   .route("/propostas/:id")
-  .get(proposta.readOne)
-  .put(proposta.update)
-  .delete(proposta.remove);
+  .get(auth, proposta.readOne)
+  .put(auth, proposta.update)
+  .delete(auth, proposta.remove);
 
-routes.route("/agenda").get(agenda.read).post(agenda.create);
+routes.route("/agenda").get(auth, agenda.read).post(auth, agenda.create);
 
-routes.route("/agenda/dashboard").get(agenda.dashboard);
+routes.route("/agenda/dashboard").get(auth, agenda.dashboard);
 
 routes
   .route("/agenda/:id")
-  .get(agenda.readOne)
-  .put(agenda.update)
-  .delete(agenda.remove);
+  .get(auth, agenda.readOne)
+  .put(auth, agenda.update)
+  .delete(auth, agenda.remove);
 
-routes.route("/templates").get(template.read).post(template.create);
+routes.route("/templates").get(auth, template.read).post(auth, template.create);
 
 routes
   .route("/templates/:id")
-  .get(template.readOne)
-  .put(template.update)
-  .delete(template.remove);
+  .get(auth, template.readOne)
+  .put(auth, template.update)
+  .delete(auth, template.remove);
 
-routes.route("/vendedores").get(vendedor.read).post(vendedor.create);
+routes.route("/vendedores").get(auth, vendedor.read).post(auth, vendedor.create);
 
 routes
   .route("/vendedores/:id")
-  .get(vendedor.readOne)
-  .put(vendedor.update)
-  .delete(vendedor.remove);
+  .get(auth, vendedor.readOne)
+  .put(auth, vendedor.update)
+  .delete(auth, vendedor.remove);
 
 // Módulo fiscal
 routes.get("/fiscal/dashboard", auth, fiscal.dashboard);

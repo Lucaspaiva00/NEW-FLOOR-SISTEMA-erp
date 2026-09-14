@@ -36,8 +36,8 @@ model Empresa {
 
 model Cliente {
   clienteid         Int         @id @default(autoincrement())
-  empresaId         Int
-  empresa           Empresa     @relation(fields: [empresaId], references: [empresaid])
+  empresaId         Int?
+  empresa           Empresa?     @relation(fields: [empresaId], references: [empresaid])
   tipo              TipoCliente @default(PESSOA_JURIDICA)
   nomeFantasia      String?
   razaoSocial       String?
@@ -92,8 +92,8 @@ model Cliente {
 
 model Servico {
   servicoid        Int            @id @default(autoincrement())
-  empresaId        Int
-  empresa          Empresa        @relation(fields: [empresaId], references: [empresaid])
+  empresaId        Int?
+  empresa          Empresa?        @relation(fields: [empresaId], references: [empresaid])
   codigo           String?
   nome             String
   categoria        String?
@@ -118,8 +118,8 @@ model Servico {
 
 model Proposta {
   propostaid                 Int               @id @default(autoincrement())
-  empresaId                  Int
-  empresa                    Empresa           @relation(fields: [empresaId], references: [empresaid])
+  empresaId                  Int?
+  empresa                    Empresa?           @relation(fields: [empresaId], references: [empresaid])
   numero                     String
   titulo                     String
   subtitulo                  String?
@@ -188,8 +188,8 @@ model ItemProposta {
 
 model Agenda {
   agendaid    Int              @id @default(autoincrement())
-  empresaId   Int
-  empresa     Empresa          @relation(fields: [empresaId], references: [empresaid])
+  empresaId   Int?
+  empresa     Empresa?          @relation(fields: [empresaId], references: [empresaid])
   titulo      String
   descricao   String?
   tipo        TipoAgenda
@@ -245,8 +245,8 @@ enum RoleUsuario {
 
 model TemplateProposta {
   templateid        Int        @id @default(autoincrement())
-  empresaId         Int
-  empresa           Empresa    @relation(fields: [empresaId], references: [empresaid])
+  empresaId         Int?
+  empresa           Empresa?    @relation(fields: [empresaId], references: [empresaid])
   nome              String
   descricao         String?
   ativo             Boolean    @default(true)
@@ -277,8 +277,8 @@ model TemplateProposta {
 
 model Vendedor {
   vendedorid Int        @id @default(autoincrement())
-  empresaId  Int
-  empresa    Empresa    @relation(fields: [empresaId], references: [empresaid])
+  empresaId  Int?
+  empresa    Empresa?    @relation(fields: [empresaId], references: [empresaid])
   nome       String
   email      String?
   telefone   String?
@@ -327,8 +327,8 @@ enum TipoCliente {
 
 model EmpresaFiscal {
   empresafiscalid              Int                  @id @default(autoincrement())
-  empresaId                    Int
-  empresa                      Empresa              @relation(fields: [empresaId], references: [empresaid])
+  empresaId                    Int?
+  empresa                      Empresa?              @relation(fields: [empresaId], references: [empresaid])
   razaoSocial                  String
   nomeFantasia                 String?
   cnpj                         String
@@ -381,8 +381,8 @@ model EmpresaFiscal {
 
 model NotaFiscal {
   notafiscalid                  Int                 @id @default(autoincrement())
-  empresaId                     Int
-  empresa                       Empresa             @relation(fields: [empresaId], references: [empresaid])
+  empresaId                     Int?
+  empresa                       Empresa?             @relation(fields: [empresaId], references: [empresaid])
   referencia                    String
   tipo                          TipoDocumentoFiscal
   status                        StatusNotaFiscal    @default(RASCUNHO)
@@ -535,8 +535,8 @@ enum StatusNotaFiscal {
 
 model ContaFinanceira {
   contafinanceiraid Int                    @id @default(autoincrement())
-  empresaId         Int
-  empresa           Empresa                @relation(fields: [empresaId], references: [empresaid])
+  empresaId         Int?
+  empresa           Empresa?                @relation(fields: [empresaId], references: [empresaid])
   nome              String
   tipo              TipoContaFinanceira    @default(BANCO)
   banco             String?
@@ -553,8 +553,8 @@ model ContaFinanceira {
 
 model CategoriaFinanceira {
   categoriafinanceiraid Int                    @id @default(autoincrement())
-  empresaId             Int
-  empresa               Empresa                @relation(fields: [empresaId], references: [empresaid])
+  empresaId             Int?
+  empresa               Empresa?                @relation(fields: [empresaId], references: [empresaid])
   nome                  String
   tipo                  TipoLancamentoFinanceiro
   descricao             String?
@@ -570,8 +570,8 @@ model CategoriaFinanceira {
 
 model LancamentoFinanceiro {
   lancamentofinanceiroid Int                       @id @default(autoincrement())
-  empresaId              Int
-  empresa                Empresa                   @relation(fields: [empresaId], references: [empresaid])
+  empresaId              Int?
+  empresa                Empresa?                   @relation(fields: [empresaId], references: [empresaid])
   tipo                   TipoLancamentoFinanceiro
   status                 StatusLancamentoFinanceiro @default(ABERTO)
   origem                 OrigemLancamentoFinanceiro @default(MANUAL)

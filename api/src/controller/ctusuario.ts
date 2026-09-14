@@ -6,7 +6,19 @@ import { enviarCodigoRecuperacaoSenha } from "../services/email.service";
 
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nome, email, senha } = req.body;
+    const { nome, email, senha, role, cargo, telefone } = req.body;
+
+    // Novo usuário sempre pertence à empresa de quem está criando
+    // (setado pelo middleware auth a partir do token). Isso impede
+    // que um admin da SBA crie usuário dentro da New Floor e vice-versa.
+    const empresaId = req.empresaId;
+
+    if (!empresaId) {
+      res.status(400).json({
+        error: "Não foi possível identificar a empresa do usuário",
+      });
+      return;
+    }
 
     const usuarioExiste = await prisma.usuario.findUnique({
       where: {
@@ -28,6 +40,12 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         nome,
         email,
         senha: senhaHash,
+        cargo,
+        telefone,
+        empresaId,
+        role: role && ["ADMIN", "VENDEDOR", "FINANCEIRO", "PADRAO"].includes(role)
+          ? role
+          : "PADRAO",
       },
     });
 
@@ -67,15 +85,29 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if (!usuario.ativo) {
+      res.status(403).json({
+        error: "Usuário inativo",
+      });
+      return;
+    }
+
     const token = jwt.sign(
       {
         id: usuario.usuarioid,
+        empresaId: usuario.empresaId,
+        role: usuario.role,
       },
       process.env.JWT_SECRET as string,
       {
         expiresIn: "7d",
       },
     );
+
+    await prisma.usuario.update({
+      where: { usuarioid: usuario.usuarioid },
+      data: { ultimoLogin: new Date() },
+    });
 
     res.json({
       usuario,

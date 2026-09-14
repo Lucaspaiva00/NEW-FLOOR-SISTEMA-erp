@@ -4,9 +4,11 @@ import prisma from "../prisma";
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body;
+    const empresaId = req.empresaId as number;
 
     const cliente = await prisma.cliente.create({
       data: {
+        empresaId,
         tipo: body.tipo,
         nomeFantasia: body.nomeFantasia,
         razaoSocial: body.razaoSocial,
@@ -62,9 +64,12 @@ export const create = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const read = async (_req: Request, res: Response): Promise<void> => {
+export const read = async (req: Request, res: Response): Promise<void> => {
   try {
+    const empresaId = req.empresaId as number;
+
     const clientes = await prisma.cliente.findMany({
+      where: { empresaId },
       include: {
         propostas: true,
         agendas: true
@@ -86,10 +91,12 @@ export const read = async (_req: Request, res: Response): Promise<void> => {
 export const readOne = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const empresaId = req.empresaId as number;
 
-    const cliente = await prisma.cliente.findUnique({
+    const cliente = await prisma.cliente.findFirst({
       where: {
-        clienteid: Number(id)
+        clienteid: Number(id),
+        empresaId
       },
       include: {
         propostas: {
@@ -121,10 +128,15 @@ export const update = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const body = req.body;
+    const empresaId = req.empresaId as number;
 
-    const cliente = await prisma.cliente.update({
+    // updateMany com filtro composto (id + empresaId) evita que um
+    // usuário da empresa A edite um registro da empresa B só
+    // manipulando o :id na URL.
+    const resultado = await prisma.cliente.updateMany({
       where: {
-        clienteid: Number(id)
+        clienteid: Number(id),
+        empresaId
       },
       data: {
         tipo: body.tipo,
@@ -173,6 +185,17 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
+    if (resultado.count === 0) {
+      res.status(404).json({
+        error: "Cliente não encontrado"
+      });
+      return;
+    }
+
+    const cliente = await prisma.cliente.findFirst({
+      where: { clienteid: Number(id), empresaId }
+    });
+
     res.status(200).json(cliente);
   } catch (error) {
     console.log(error);
@@ -185,12 +208,21 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 export const remove = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const empresaId = req.empresaId as number;
 
-    await prisma.cliente.delete({
+    const resultado = await prisma.cliente.deleteMany({
       where: {
-        clienteid: Number(id)
+        clienteid: Number(id),
+        empresaId
       }
     });
+
+    if (resultado.count === 0) {
+      res.status(404).json({
+        error: "Cliente não encontrado"
+      });
+      return;
+    }
 
     res.status(200).json({
       message: "Cliente removido"
