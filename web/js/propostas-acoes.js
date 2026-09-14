@@ -35,7 +35,44 @@ async function visualizarPdfProposta(id) {
     return;
   }
 
-  window.open(`${API_URL}/propostas/${id}/download`, "_blank");
+  // Abre a aba ANTES do fetch (ainda dentro do gesto de clique do usuário),
+  // senão o navegador pode bloquear como pop-up depois do await.
+  const novaAba = window.open("", "_blank");
+
+  try {
+    const response = await fetch(`${API_URL}/propostas/${id}/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      let mensagem = "Erro ao gerar PDF da proposta.";
+      try {
+        const erro = await response.json();
+        mensagem = erro?.error || mensagem;
+      } catch {
+        // resposta não veio em JSON, mantém mensagem padrão
+      }
+      if (novaAba) novaAba.close();
+      alert(mensagem);
+      return;
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    if (novaAba) {
+      novaAba.location.href = blobUrl;
+    } else {
+      window.open(blobUrl, "_blank");
+    }
+
+    // Libera a memória depois de um tempo (dá margem pro navegador abrir a aba)
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  } catch (error) {
+    console.log(error);
+    if (novaAba) novaAba.close();
+    alert("Erro de conexão ao gerar PDF da proposta.");
+  }
 }
 
 async function enviarWhatsappProposta(id, btn) {
