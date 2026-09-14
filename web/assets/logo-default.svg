@@ -1,12 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <defs>
-    <radialGradient id="bg" cx="35%" cy="30%" r="75%">
-      <stop offset="0%" stop-color="#2b4a8c"/>
-      <stop offset="55%" stop-color="#152b57"/>
-      <stop offset="100%" stop-color="#0b1a38"/>
-    </radialGradient>
-  </defs>
-  <circle cx="100" cy="100" r="98" fill="url(#bg)"/>
-  <text x="100" y="94" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="34" fill="#ffffff">ERP</text>
-  <text x="100" y="122" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="17" fill="#d4af37" letter-spacing="1">PAIVA TECH</text>
+  <rect x="4" y="4" width="192" height="192" rx="24" fill="#0a0a0a"/>
+  <rect x="4" y="4" width="192" height="192" rx="24" fill="none" stroke="#c81d25" stroke-width="3"/>
+  <text x="100" y="92" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="42" fill="#d4af37">ERP</text>
+  <rect x="55" y="106" width="90" height="4" fill="#c81d25"/>
+  <text x="100" y="138" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="18" fill="#ffffff" letter-spacing="1.5">PAIVA TECH</text>
 </svg>
