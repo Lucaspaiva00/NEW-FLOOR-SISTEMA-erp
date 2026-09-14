@@ -12,6 +12,7 @@ const MENU_ICONS = {
   fiscal: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17H6z"/><path d="M14 2v4h4"/><path d="M9 11h6"/><path d="M9 15h6"/><path d="M9 19h4"/></svg>`,
   usuarios: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   empresas: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1"/><path d="M14 9h1"/><path d="M9 13h1"/><path d="M14 13h1"/><path d="M9 21v-4h6v4"/></svg>`,
+  perfil: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>`,
 };
 
 function menuKeyFromLink(link) {
@@ -86,6 +87,77 @@ function garantirLinkEmpresas() {
   link.href = "empresas.html";
   link.textContent = "Empresas";
   menu.appendChild(link);
+}
+
+function garantirLinkPerfil() {
+  const menu = document.querySelector(".menu");
+  if (!menu || menu.querySelector('a[href="perfil.html"]')) return;
+
+  const role = papelUsuarioLogado();
+  if (role !== "ADMIN" && role !== "SUPER_ADMIN") return;
+
+  const link = document.createElement("a");
+  link.href = "perfil.html";
+  link.textContent = "Perfil da empresa";
+  menu.appendChild(link);
+}
+
+function substituirTextoMarca(nomeEmpresa) {
+  if (!nomeEmpresa) return;
+
+  const nomeMaiusculo = nomeEmpresa.toUpperCase();
+
+  // Título da aba do navegador
+  document.title = document.title
+    .replace(/NEW\s+FLOOR/gi, nomeEmpresa)
+    .replace(/Nexo ERP/gi, `${nomeEmpresa} ERP`);
+
+  // Qualquer texto visível na página (h1, p, span etc.) que mencione
+  // "New Floor" ou "NEW FLOOR" — troca pelo nome real da empresa logada,
+  // pra nenhuma empresa ver o nome de outra dentro do próprio sistema.
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const nos = [];
+  let atual;
+  while ((atual = walker.nextNode())) {
+    if (/new\s+floor/i.test(atual.nodeValue)) {
+      nos.push(atual);
+    }
+  }
+
+  nos.forEach((no) => {
+    no.nodeValue = no.nodeValue
+      .replace(/NEW\s+FLOOR/g, nomeMaiusculo)
+      .replace(/New\s+Floor/g, nomeEmpresa);
+  });
+}
+
+async function carregarBrandingEmpresa() {
+  const token = JSON.parse(localStorage.getItem("usuarioLogado") || "null")?.token;
+  if (!token || typeof API_URL === "undefined") return;
+
+  try {
+    const response = await fetch(`${API_URL}/empresas/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) return;
+
+    const empresa = await response.json();
+    window.__empresaAtual = empresa;
+
+    // Só troca a logo se a empresa tiver uma cadastrada — senão mantém
+    // o asset padrão (evita quebrar quem ainda não personalizou).
+    if (empresa.logo) {
+      document.querySelectorAll(".logo-img").forEach((img) => {
+        img.src = empresa.logo;
+        img.alt = empresa.nome || img.alt;
+      });
+    }
+
+    substituirTextoMarca(empresa.nome);
+  } catch (error) {
+    console.log("Não foi possível carregar o branding da empresa:", error);
+  }
 }
 
 function prepararItensMenu() {
@@ -221,8 +293,10 @@ document.addEventListener("DOMContentLoaded", () => {
   garantirLinkFinanceiro();
   garantirLinkUsuarios();
   garantirLinkEmpresas();
+  garantirLinkPerfil();
   prepararItensMenu();
   prepararUserBox();
   criarBotaoToggle(sidebar);
+  carregarBrandingEmpresa();
   // restaurarEstadoSidebar(sidebar);
 });
