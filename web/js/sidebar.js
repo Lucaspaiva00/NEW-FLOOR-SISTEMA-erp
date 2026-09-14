@@ -110,7 +110,7 @@ function substituirTextoMarca(nomeEmpresa) {
   // Título da aba do navegador
   document.title = document.title
     .replace(/NEW\s+FLOOR/gi, nomeEmpresa)
-    .replace(/Nexo ERP/gi, `${nomeEmpresa} ERP`);
+    .replace(/ERP Paiva Tech/gi, `${nomeEmpresa} ERP`);
 
   // Qualquer texto visível na página (h1, p, span etc.) que mencione
   // "New Floor" ou "NEW FLOOR" — troca pelo nome real da empresa logada,
