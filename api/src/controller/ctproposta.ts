@@ -23,13 +23,15 @@ function paramId(id: string | string[] | number): string {
   return String(id);
 }
 
-async function gerarNumeroAutomaticoProposta(): Promise<string> {
+async function gerarNumeroAutomaticoProposta(empresaId: number): Promise<string> {
   const [ultimaProposta, propostas] = await Promise.all([
     prisma.proposta.findFirst({
+      where: { empresaId },
       orderBy: { propostaid: "desc" },
       select: { propostaid: true },
     }),
     prisma.proposta.findMany({
+      where: { empresaId },
       select: { numero: true },
     }),
   ]);
@@ -49,8 +51,8 @@ async function gerarNumeroAutomaticoProposta(): Promise<string> {
   let proximo = Math.max(sequenciaPorId, maiorNumeroCadastrado + 1);
 
   while (
-    await prisma.proposta.findUnique({
-      where: { numero: String(proximo) },
+    await prisma.proposta.findFirst({
+      where: { numero: String(proximo), empresaId },
       select: { propostaid: true },
     })
   ) {
@@ -60,10 +62,11 @@ async function gerarNumeroAutomaticoProposta(): Promise<string> {
   return String(proximo);
 }
 
-async function buscarPropostaCompleta(id: string) {
-  return prisma.proposta.findUnique({
+async function buscarPropostaCompleta(id: string, empresaId: number) {
+  return prisma.proposta.findFirst({
     where: {
       propostaid: Number(id),
+      empresaId,
     },
     include: {
       cliente: true,
@@ -80,9 +83,10 @@ async function buscarPropostaCompleta(id: string) {
   });
 }
 
-async function buscarTemplatePadrao() {
+async function buscarTemplatePadrao(empresaId: number) {
   const templateAtivo = await prisma.templateProposta.findFirst({
     where: {
+      empresaId,
       ativo: true,
     },
     orderBy: {
@@ -96,21 +100,22 @@ async function buscarTemplatePadrao() {
 
   return await prisma.templateProposta.create({
     data: {
-      nome: "Template Padrão NEW FLOOR",
+      empresaId,
+      nome: "Template Padrão",
       ativo: true,
       corPrimaria: "#111827",
       corSecundaria: "#e5e7eb",
-      cabecalho: "NEW FLOOR PISOS E REVESTIMENTOS",
+      cabecalho: "",
       textoGarantia: "Garantia conforme condições comerciais apresentadas.",
       textoPagamento: "Condições de pagamento conforme negociação.",
       textoObservacao: "Valores sujeitos à aprovação e validade da proposta.",
-      rodape: "Documento gerado automaticamente pelo sistema NEW FLOOR ERP.",
+      rodape: "Documento gerado automaticamente pelo sistema.",
     },
   });
 }
 
-async function gerarPdfInterno(id: string | string[] | number) {
-  const proposta = await buscarPropostaCompleta(paramId(id));
+async function gerarPdfInterno(id: string | string[] | number, empresaId: number) {
+  const proposta = await buscarPropostaCompleta(paramId(id), empresaId);
 
   if (!proposta) {
     throw new Error("Proposta não encontrada");
@@ -119,7 +124,7 @@ async function gerarPdfInterno(id: string | string[] | number) {
   let template = proposta.templateProposta;
 
   if (!template) {
-    template = await buscarTemplatePadrao();
+    template = await buscarTemplatePadrao(empresaId);
   }
 
   const html = await gerarHtmlProposta({
@@ -158,7 +163,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body;
 
-    const numeroAutomatico = await gerarNumeroAutomaticoProposta();
+    const numeroAutomatico = await gerarNumeroAutomaticoProposta(req.empresaId as number);
 
     const subtotal = (body.itens || []).reduce(
       (total: number, item: any) => total + Number(item.subtotal || 0),
@@ -169,6 +174,8 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
     const proposta = await prisma.proposta.create({
       data: {
+        empresaId: req.empresaId as number,
+
         numero: numeroAutomatico,
 
         titulo: body.titulo,
@@ -294,9 +301,10 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const body = req.body;
 
-    const propostaAtual = await prisma.proposta.findUnique({
+    const propostaAtual = await prisma.proposta.findFirst({
       where: {
         propostaid: Number(id),
+        empresaId: req.empresaId as number,
       },
     });
 
@@ -520,11 +528,12 @@ export const observacoesPadrao = async (
 };
 
 export const readKanban = async (
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> => {
   try {
     const propostas = await prisma.proposta.findMany({
+      where: { empresaId: req.empresaId as number },
       select: {
         propostaid: true,
         numero: true,
@@ -562,9 +571,10 @@ export const readKanban = async (
   }
 };
 
-export const read = async (_req: Request, res: Response): Promise<void> => {
+export const read = async (req: Request, res: Response): Promise<void> => {
   try {
     const propostas = await prisma.proposta.findMany({
+      where: { empresaId: req.empresaId as number },
       include: {
         cliente: true,
         vendedor: true,
@@ -594,7 +604,7 @@ export const readOne = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
-    const proposta = await buscarPropostaCompleta(paramId(id));
+    const proposta = await buscarPropostaCompleta(paramId(id), req.empresaId as number);
 
     if (!proposta) {
       res.status(404).json({
@@ -615,12 +625,21 @@ export const readOne = async (req: Request, res: Response): Promise<void> => {
 export const remove = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const empresaId = req.empresaId as number;
 
-    await prisma.proposta.delete({
+    const resultado = await prisma.proposta.deleteMany({
       where: {
         propostaid: Number(id),
+        empresaId,
       },
     });
+
+    if (resultado.count === 0) {
+      res.status(404).json({
+        error: "Proposta não encontrada",
+      });
+      return;
+    }
 
     res.status(200).json({
       message: "Proposta removida",
@@ -637,7 +656,7 @@ export const duplicar = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
-    const original = await buscarPropostaCompleta(paramId(id));
+    const original = await buscarPropostaCompleta(paramId(id), req.empresaId as number);
 
     if (!original) {
       res.status(404).json({
@@ -646,13 +665,14 @@ export const duplicar = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const numero = await gerarNumeroAutomaticoProposta();
+    const numero = await gerarNumeroAutomaticoProposta(req.empresaId as number);
     const titulo = original.titulo.endsWith(" (cópia)")
       ? original.titulo
       : `${original.titulo} (cópia)`;
 
     const proposta = await prisma.proposta.create({
       data: {
+        empresaId: req.empresaId as number,
         numero,
         titulo,
         subtitulo: original.subtitulo,
@@ -761,7 +781,7 @@ export const gerarPdf = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
-    const resultado = await gerarPdfInterno(paramId(id));
+    const resultado = await gerarPdfInterno(paramId(id), req.empresaId as number);
 
     const baseUrl =
       process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
@@ -789,7 +809,7 @@ export const downloadPdf = async (
   try {
     const { id } = req.params;
 
-    const proposta = await buscarPropostaCompleta(paramId(id));
+    const proposta = await buscarPropostaCompleta(paramId(id), req.empresaId as number);
 
     if (!proposta) {
       res.status(404).json({
@@ -799,9 +819,9 @@ export const downloadPdf = async (
       return;
     }
 
-    await gerarPdfInterno(paramId(id));
+    await gerarPdfInterno(paramId(id), req.empresaId as number);
 
-    const propostaAtualizada = await buscarPropostaCompleta(paramId(id));
+    const propostaAtualizada = await buscarPropostaCompleta(paramId(id), req.empresaId as number);
 
     if (!propostaAtualizada?.pdfUrl) {
       res.status(404).json({
@@ -848,7 +868,7 @@ export const enviarEmail = async (
   try {
     const { id } = req.params;
 
-    const proposta = await buscarPropostaCompleta(paramId(id));
+    const proposta = await buscarPropostaCompleta(paramId(id), req.empresaId as number);
 
     if (!proposta) {
       res.status(404).json({
@@ -871,7 +891,7 @@ export const enviarEmail = async (
       return;
     }
 
-    const resultado = await gerarPdfInterno(paramId(id));
+    const resultado = await gerarPdfInterno(paramId(id), req.empresaId as number);
 
     const baseUrl =
       process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
@@ -932,7 +952,7 @@ export const whatsapp = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
-    const proposta = await buscarPropostaCompleta(paramId(id));
+    const proposta = await buscarPropostaCompleta(paramId(id), req.empresaId as number);
 
     if (!proposta) {
       res.status(404).json({
@@ -952,7 +972,7 @@ export const whatsapp = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const resultado = await gerarPdfInterno(paramId(id));
+    const resultado = await gerarPdfInterno(paramId(id), req.empresaId as number);
 
     const baseUrl =
       process.env.BASE_URL || "https://new-floor-sistema-erp.onrender.com";

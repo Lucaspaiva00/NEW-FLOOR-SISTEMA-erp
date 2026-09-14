@@ -204,8 +204,8 @@ export const listar = async (req: Request, res: Response): Promise<void> => {
 
 export const buscar = async (req: Request, res: Response): Promise<void> => {
   try {
-    const dado = await prisma.lancamentoFinanceiro.findUnique({
-      where: { lancamentofinanceiroid: idParam(req.params.id) },
+    const dado = await prisma.lancamentoFinanceiro.findFirst({
+      where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number },
       include: { cliente: true, categoria: true, conta: true, proposta: true },
     });
     if (!dado) {
@@ -242,6 +242,7 @@ export const criar = async (req: Request, res: Response): Promise<void> => {
 
       criados.push(await prisma.lancamentoFinanceiro.create({
         data: {
+          empresaId: req.empresaId as number,
           tipo,
           status: "ABERTO",
           origem: "MANUAL",
@@ -396,7 +397,7 @@ export const criarCategoria = async (req: Request, res: Response): Promise<void>
       return;
     }
     const dado = await prisma.categoriaFinanceira.create({
-      data: { nome, tipo, descricao: req.body.descricao || null, cor: req.body.cor || null },
+      data: { empresaId: req.empresaId as number, nome, tipo, descricao: req.body.descricao || null, cor: req.body.cor || null },
     });
     res.status(201).json(dado);
   } catch (error: any) {
@@ -438,6 +439,7 @@ export const criarConta = async (req: Request, res: Response): Promise<void> => 
     const tipo = tipos.includes(req.body.tipo) ? req.body.tipo : "BANCO";
     const dado = await prisma.contaFinanceira.create({
       data: {
+        empresaId: req.empresaId as number,
         nome,
         tipo,
         banco: req.body.banco || null,

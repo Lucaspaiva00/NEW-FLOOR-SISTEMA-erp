@@ -33,8 +33,10 @@ function montarDadosTemplate(body: Record<string, unknown>) {
 
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
+    const empresaId = req.empresaId as number;
+
     const template = await prisma.templateProposta.create({
-      data: montarDadosTemplate(req.body),
+      data: { empresaId, ...montarDadosTemplate(req.body) },
     });
 
     res.status(201).json(template);
@@ -44,9 +46,12 @@ export const create = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const read = async (_req: Request, res: Response): Promise<void> => {
+export const read = async (req: Request, res: Response): Promise<void> => {
   try {
+    const empresaId = req.empresaId as number;
+
     const templates = await prisma.templateProposta.findMany({
+      where: { empresaId },
       orderBy: { createdAt: "desc" }
     });
 
@@ -60,9 +65,10 @@ export const read = async (_req: Request, res: Response): Promise<void> => {
 export const readOne = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const empresaId = req.empresaId as number;
 
-    const template = await prisma.templateProposta.findUnique({
-      where: { templateid: Number(id) }
+    const template = await prisma.templateProposta.findFirst({
+      where: { templateid: Number(id), empresaId }
     });
 
     if (!template) {
@@ -80,10 +86,20 @@ export const readOne = async (req: Request, res: Response): Promise<void> => {
 export const update = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const empresaId = req.empresaId as number;
 
-    const template = await prisma.templateProposta.update({
-      where: { templateid: Number(id) },
+    const resultado = await prisma.templateProposta.updateMany({
+      where: { templateid: Number(id), empresaId },
       data: montarDadosTemplate(req.body),
+    });
+
+    if (resultado.count === 0) {
+      res.status(404).json({ error: "Template não encontrado" });
+      return;
+    }
+
+    const template = await prisma.templateProposta.findFirst({
+      where: { templateid: Number(id), empresaId }
     });
 
     res.json(template);
@@ -96,10 +112,16 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 export const remove = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const empresaId = req.empresaId as number;
 
-    await prisma.templateProposta.delete({
-      where: { templateid: Number(id) }
+    const resultado = await prisma.templateProposta.deleteMany({
+      where: { templateid: Number(id), empresaId }
     });
+
+    if (resultado.count === 0) {
+      res.status(404).json({ error: "Template não encontrado" });
+      return;
+    }
 
     res.json({ message: "Template removido" });
   } catch (error) {

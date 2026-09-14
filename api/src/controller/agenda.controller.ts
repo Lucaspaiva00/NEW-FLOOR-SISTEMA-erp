@@ -4,9 +4,11 @@ import prisma from "../prisma";
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body;
+    const empresaId = req.empresaId as number;
 
     const agenda = await prisma.agenda.create({
       data: {
+        empresaId,
         titulo: body.titulo,
         descricao: body.descricao,
         tipo: body.tipo,
@@ -39,9 +41,12 @@ export const create = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const read = async (_req: Request, res: Response): Promise<void> => {
+export const read = async (req: Request, res: Response): Promise<void> => {
   try {
+    const empresaId = req.empresaId as number;
+
     const agendas = await prisma.agenda.findMany({
+      where: { empresaId },
       include: {
         cliente: true,
         proposta: true
@@ -63,10 +68,12 @@ export const read = async (_req: Request, res: Response): Promise<void> => {
 export const readOne = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const empresaId = req.empresaId as number;
 
-    const agenda = await prisma.agenda.findUnique({
+    const agenda = await prisma.agenda.findFirst({
       where: {
-        agendaid: Number(id)
+        agendaid: Number(id),
+        empresaId
       },
       include: {
         cliente: true,
@@ -98,10 +105,12 @@ export const update = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const body = req.body;
+    const empresaId = req.empresaId as number;
 
-    const agendaAtual = await prisma.agenda.findUnique({
+    const agendaAtual = await prisma.agenda.findFirst({
       where: {
-        agendaid: Number(id)
+        agendaid: Number(id),
+        empresaId
       }
     });
 
@@ -156,12 +165,21 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 export const remove = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const empresaId = req.empresaId as number;
 
-    await prisma.agenda.delete({
+    const resultado = await prisma.agenda.deleteMany({
       where: {
-        agendaid: Number(id)
+        agendaid: Number(id),
+        empresaId
       }
     });
+
+    if (resultado.count === 0) {
+      res.status(404).json({
+        error: "Agenda não encontrada"
+      });
+      return;
+    }
 
     res.status(200).json({
       message: "Agenda removida"
@@ -174,26 +192,30 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const dashboard = async (_req: Request, res: Response): Promise<void> => {
+export const dashboard = async (req: Request, res: Response): Promise<void> => {
   try {
+    const empresaId = req.empresaId as number;
     const hoje = new Date();
 
-    const totalEventos = await prisma.agenda.count();
+    const totalEventos = await prisma.agenda.count({ where: { empresaId } });
 
     const concluidos = await prisma.agenda.count({
       where: {
+        empresaId,
         concluido: true
       }
     });
 
     const pendentes = await prisma.agenda.count({
       where: {
+        empresaId,
         concluido: false
       }
     });
 
     const eventosHoje = await prisma.agenda.count({
       where: {
+        empresaId,
         dataInicio: {
           gte: new Date(hoje.setHours(0, 0, 0, 0)),
           lte: new Date(hoje.setHours(23, 59, 59, 999))

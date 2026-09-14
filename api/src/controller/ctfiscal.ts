@@ -371,7 +371,7 @@ export const criarEmpresa = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const empresa = await prisma.empresaFiscal.create({ data: empresaData(req.body) });
+    const empresa = await prisma.empresaFiscal.create({ data: { empresaId: req.empresaId as number, ...empresaData(req.body) } });
     res.status(201).json(semTokens(empresa));
   } catch (error: any) {
     console.error(error);
@@ -567,6 +567,7 @@ export const criarNota = async (req: Request, res: Response): Promise<void> => {
 
     const nota = await prisma.notaFiscal.create({
       data: {
+        empresaId: req.empresaId as number,
         referencia,
         ...data,
         itens: { create: itens.map(itemData) },
