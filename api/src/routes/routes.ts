@@ -30,6 +30,15 @@ routes
   .route("/empresas")
   .get(auth, requireRole(["SUPER_ADMIN"]), empresa.read)
   .post(auth, requireRole(["SUPER_ADMIN"]), empresa.create);
+
+// --- Perfil da própria empresa (branding: logo, cores, contato) ---
+// Qualquer usuário autenticado pode VER; só ADMIN da empresa pode EDITAR.
+// Precisa vir ANTES de "/empresas/:id", senão o Express trata "me" como :id.
+routes
+  .route("/empresas/me")
+  .get(auth, empresa.me)
+  .put(auth, requireRole(["ADMIN", "SUPER_ADMIN"]), empresa.updateMe);
+
 routes
   .route("/empresas/:id")
   .put(auth, requireRole(["SUPER_ADMIN"]), empresa.update);

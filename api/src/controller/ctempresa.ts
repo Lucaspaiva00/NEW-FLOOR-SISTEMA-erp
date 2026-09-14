@@ -100,3 +100,81 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: "Erro ao atualizar empresa" });
   }
 };
+
+/**
+ * Retorna os dados da própria empresa do usuário logado — usado
+ * pelo frontend pra carregar logo/cores em toda tela (branding),
+ * e pela tela de "Perfil da empresa".
+ */
+export const me = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const empresaId = req.empresaId;
+
+    if (!empresaId) {
+      res.status(404).json({ error: "Nenhuma empresa associada a este usuário" });
+      return;
+    }
+
+    const empresa = await prisma.empresa.findUnique({
+      where: { empresaid: empresaId },
+      select: {
+        empresaid: true,
+        nome: true,
+        slug: true,
+        logo: true,
+        corPrimaria: true,
+        corSecundaria: true,
+        emailContato: true,
+        telefoneContato: true,
+      },
+    });
+
+    if (!empresa) {
+      res.status(404).json({ error: "Empresa não encontrada" });
+      return;
+    }
+
+    res.json(empresa);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Erro ao buscar dados da empresa" });
+  }
+};
+
+/**
+ * Atualiza a própria empresa (logo, cores, contato). Restrito a
+ * ADMIN na rota — cada empresa só edita a si mesma via req.empresaId,
+ * nunca via :id da URL.
+ */
+export const updateMe = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const empresaId = req.empresaId;
+
+    if (!empresaId) {
+      res.status(404).json({ error: "Nenhuma empresa associada a este usuário" });
+      return;
+    }
+
+    const { nome, logo, corPrimaria, corSecundaria, emailContato, telefoneContato } = req.body;
+
+    const empresa = await prisma.empresa.update({
+      where: { empresaid: empresaId },
+      data: { nome, logo, corPrimaria, corSecundaria, emailContato, telefoneContato },
+      select: {
+        empresaid: true,
+        nome: true,
+        slug: true,
+        logo: true,
+        corPrimaria: true,
+        corSecundaria: true,
+        emailContato: true,
+        telefoneContato: true,
+      },
+    });
+
+    res.json(empresa);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Erro ao atualizar dados da empresa" });
+  }
+};

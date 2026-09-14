@@ -187,10 +187,10 @@ function totalItens(items: any[]) {
   );
 }
 
-async function obterCliente(body: any) {
+async function obterCliente(body: any, empresaId: number) {
   const clienteId = intOr(body.clienteId);
   if (!clienteId) throw new Error("Selecione o cliente/tomador da nota.");
-  const cliente = await prisma.cliente.findUnique({ where: { clienteid: clienteId } });
+  const cliente = await prisma.cliente.findFirst({ where: { clienteid: clienteId, empresaId } });
   if (!cliente) throw new Error("Cliente não encontrado.");
   return cliente;
 }
@@ -263,9 +263,9 @@ function notaData(body: any, cliente: any, itens: any[]) {
   };
 }
 
-async function notaCompleta(id: number) {
-  return prisma.notaFiscal.findUnique({
-    where: { notafiscalid: id },
+async function notaCompleta(id: number, empresaId: number) {
+  return prisma.notaFiscal.findFirst({
+    where: { notafiscalid: id, empresaId },
     include: {
       empresaFiscal: true,
       cliente: true,
@@ -321,18 +321,19 @@ async function aplicarRetorno(notaId: number, baseUrl: string, data: any) {
   });
 }
 
-export const dashboard = async (_req: Request, res: Response): Promise<void> => {
+export const dashboard = async (req: Request, res: Response): Promise<void> => {
   try {
+    const empresaId = req.empresaId as number;
     const [total, rascunhos, processando, autorizadas, rejeitadas, canceladas, soma] =
       await Promise.all([
-        prisma.notaFiscal.count(),
-        prisma.notaFiscal.count({ where: { status: "RASCUNHO" } }),
-        prisma.notaFiscal.count({ where: { status: "PROCESSANDO" } }),
-        prisma.notaFiscal.count({ where: { status: "AUTORIZADA" } }),
-        prisma.notaFiscal.count({ where: { status: { in: ["REJEITADA", "ERRO"] } } }),
-        prisma.notaFiscal.count({ where: { status: "CANCELADA" } }),
+        prisma.notaFiscal.count({ where: { empresaId } }),
+        prisma.notaFiscal.count({ where: { empresaId, status: "RASCUNHO" } }),
+        prisma.notaFiscal.count({ where: { empresaId, status: "PROCESSANDO" } }),
+        prisma.notaFiscal.count({ where: { empresaId, status: "AUTORIZADA" } }),
+        prisma.notaFiscal.count({ where: { empresaId, status: { in: ["REJEITADA", "ERRO"] } } }),
+        prisma.notaFiscal.count({ where: { empresaId, status: "CANCELADA" } }),
         prisma.notaFiscal.aggregate({
-          where: { status: "AUTORIZADA" },
+          where: { empresaId, status: "AUTORIZADA" },
           _sum: { valorTotal: true },
         }),
       ]);
@@ -352,9 +353,10 @@ export const dashboard = async (_req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const listarEmpresas = async (_req: Request, res: Response): Promise<void> => {
+export const listarEmpresas = async (req: Request, res: Response): Promise<void> => {
   try {
     const empresas = await prisma.empresaFiscal.findMany({
+      where: { empresaId: req.empresaId as number },
       orderBy: [{ ativo: "desc" }, { razaoSocial: "asc" }],
     });
     res.json(empresas.map(semTokens));
@@ -382,8 +384,9 @@ export const criarEmpresa = async (req: Request, res: Response): Promise<void> =
 export const atualizarEmpresa = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = intOr(req.params.id);
-    const existente = await prisma.empresaFiscal.findUnique({
-      where: { empresafiscalid: id },
+    const empresaId = req.empresaId as number;
+    const existente = await prisma.empresaFiscal.findFirst({
+      where: { empresafiscalid: id, empresaId },
     });
     if (!existente) {
       res.status(404).json({ error: "Empresa fiscal não encontrada." });
@@ -404,7 +407,17 @@ export const atualizarEmpresa = async (req: Request, res: Response): Promise<voi
 export const removerEmpresa = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = intOr(req.params.id);
-    const notas = await prisma.notaFiscal.count({ where: { empresaFiscalId: id } });
+    const empresaId = req.empresaId as number;
+
+    const existente = await prisma.empresaFiscal.findFirst({
+      where: { empresafiscalid: id, empresaId },
+    });
+    if (!existente) {
+      res.status(404).json({ error: "Empresa fiscal não encontrada." });
+      return;
+    }
+
+    const notas = await prisma.notaFiscal.count({ where: { empresaFiscalId: id, empresaId } });
     if (notas > 0) {
       await prisma.empresaFiscal.update({
         where: { empresafiscalid: id },
@@ -423,12 +436,14 @@ export const removerEmpresa = async (req: Request, res: Response): Promise<void>
 
 export const listarNotas = async (req: Request, res: Response): Promise<void> => {
   try {
+    const empresaId = req.empresaId as number;
     const status = req.query.status ? String(req.query.status) : undefined;
     const tipo = req.query.tipo ? String(req.query.tipo) : undefined;
     const busca = req.query.busca ? String(req.query.busca) : undefined;
 
     const notas = await prisma.notaFiscal.findMany({
       where: {
+        empresaId,
         ...(status ? { status: status as any } : {}),
         ...(tipo ? { tipo: tipo as any } : {}),
         ...(busca
@@ -458,9 +473,10 @@ export const listarNotas = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-export const listarLogs = async (_req: Request, res: Response): Promise<void> => {
+export const listarLogs = async (req: Request, res: Response): Promise<void> => {
   try {
     const eventos = await prisma.eventoNotaFiscal.findMany({
+      where: { notaFiscal: { empresaId: req.empresaId as number } },
       include: {
         notaFiscal: {
           select: { notafiscalid: true, referencia: true, numero: true, tipo: true, status: true, destinatarioNome: true, valorTotal: true },
@@ -478,7 +494,7 @@ export const listarLogs = async (_req: Request, res: Response): Promise<void> =>
 
 export const buscarNota = async (req: Request, res: Response): Promise<void> => {
   try {
-    const nota = await notaCompleta(intOr(req.params.id));
+    const nota = await notaCompleta(intOr(req.params.id), req.empresaId as number);
     if (!nota) {
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
@@ -492,8 +508,8 @@ export const buscarNota = async (req: Request, res: Response): Promise<void> => 
 
 export const importarProposta = async (req: Request, res: Response): Promise<void> => {
   try {
-    const proposta = await prisma.proposta.findUnique({
-      where: { propostaid: intOr(req.params.id) },
+    const proposta = await prisma.proposta.findFirst({
+      where: { propostaid: intOr(req.params.id), empresaId: req.empresaId as number },
       include: {
         cliente: true,
         itens: {
@@ -538,14 +554,15 @@ export const importarProposta = async (req: Request, res: Response): Promise<voi
 
 export const criarNota = async (req: Request, res: Response): Promise<void> => {
   try {
-    const cliente = await obterCliente(req.body);
+    const empresaId = req.empresaId as number;
+    const cliente = await obterCliente(req.body, empresaId);
     const empresaFiscalId = intOr(req.body.empresaFiscalId);
     if (!empresaFiscalId) {
       res.status(400).json({ error: "Selecione a empresa emitente." });
       return;
     }
-    const empresa = await prisma.empresaFiscal.findUnique({
-      where: { empresafiscalid: empresaFiscalId },
+    const empresa = await prisma.empresaFiscal.findFirst({
+      where: { empresafiscalid: empresaFiscalId, empresaId },
     });
     if (!empresa) {
       res.status(404).json({ error: "Empresa emitente não encontrada." });
@@ -567,7 +584,7 @@ export const criarNota = async (req: Request, res: Response): Promise<void> => {
 
     const nota = await prisma.notaFiscal.create({
       data: {
-        empresaId: req.empresaId as number,
+        empresaId,
         referencia,
         ...data,
         itens: { create: itens.map(itemData) },
@@ -592,7 +609,8 @@ export const criarNota = async (req: Request, res: Response): Promise<void> => {
 export const atualizarNota = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = intOr(req.params.id);
-    const atual = await prisma.notaFiscal.findUnique({ where: { notafiscalid: id } });
+    const empresaId = req.empresaId as number;
+    const atual = await prisma.notaFiscal.findFirst({ where: { notafiscalid: id, empresaId } });
     if (!atual) {
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
@@ -602,7 +620,7 @@ export const atualizarNota = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const cliente = await obterCliente(req.body);
+    const cliente = await obterCliente(req.body, empresaId);
     const itens = Array.isArray(req.body.itens) ? req.body.itens : [];
     if (!itens.length) {
       res.status(400).json({ error: "Adicione pelo menos um item à nota." });
@@ -631,7 +649,7 @@ export const atualizarNota = async (req: Request, res: Response): Promise<void> 
       });
     });
 
-    res.json(await notaCompleta(id));
+    res.json(await notaCompleta(id, req.empresaId as number));
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ error: error.message || "Erro ao atualizar nota fiscal." });
@@ -641,7 +659,7 @@ export const atualizarNota = async (req: Request, res: Response): Promise<void> 
 export const removerNota = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = intOr(req.params.id);
-    const atual = await prisma.notaFiscal.findUnique({ where: { notafiscalid: id } });
+    const atual = await prisma.notaFiscal.findFirst({ where: { notafiscalid: id, empresaId: req.empresaId as number } });
     if (!atual) {
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
@@ -660,7 +678,7 @@ export const removerNota = async (req: Request, res: Response): Promise<void> =>
 
 export const visualizarPayload = async (req: Request, res: Response): Promise<void> => {
   try {
-    const nota = await notaCompleta(intOr(req.params.id));
+    const nota = await notaCompleta(intOr(req.params.id), req.empresaId as number);
     if (!nota) {
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
@@ -675,7 +693,7 @@ export const visualizarPayload = async (req: Request, res: Response): Promise<vo
 export const emitirNota = async (req: Request, res: Response): Promise<void> => {
   const id = intOr(req.params.id);
   try {
-    const nota = await notaCompleta(id);
+    const nota = await notaCompleta(id, req.empresaId as number);
     if (!nota) {
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
@@ -700,7 +718,7 @@ export const emitirNota = async (req: Request, res: Response): Promise<void> => 
       atualizada.protocolo || undefined,
     );
 
-    res.json(await notaCompleta(id));
+    res.json(await notaCompleta(id, req.empresaId as number));
   } catch (error: any) {
     console.error(error);
     if (id) {
@@ -732,7 +750,7 @@ export const emitirNota = async (req: Request, res: Response): Promise<void> => 
 export const consultarNota = async (req: Request, res: Response): Promise<void> => {
   const id = intOr(req.params.id);
   try {
-    const nota = await notaCompleta(id);
+    const nota = await notaCompleta(id, req.empresaId as number);
     if (!nota) {
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
@@ -753,7 +771,7 @@ export const consultarNota = async (req: Request, res: Response): Promise<void> 
       atualizada.protocolo || undefined,
     );
 
-    res.json(await notaCompleta(id));
+    res.json(await notaCompleta(id, req.empresaId as number));
   } catch (error: any) {
     console.error(error);
     res.status(error.statusCode || 500).json({
@@ -772,7 +790,7 @@ export const cancelarNota = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const nota = await notaCompleta(id);
+    const nota = await notaCompleta(id, req.empresaId as number);
     if (!nota) {
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
@@ -811,7 +829,7 @@ export const cancelarNota = async (req: Request, res: Response): Promise<void> =
       atualizada.protocolo || undefined,
     );
 
-    res.json(await notaCompleta(id));
+    res.json(await notaCompleta(id, req.empresaId as number));
   } catch (error: any) {
     console.error(error);
     res.status(error.statusCode || 500).json({
@@ -830,7 +848,7 @@ export const cartaCorrecaoNota = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const nota = await notaCompleta(id);
+    const nota = await notaCompleta(id, req.empresaId as number);
     if (!nota) {
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
@@ -854,7 +872,7 @@ export const cartaCorrecaoNota = async (req: Request, res: Response): Promise<vo
       result.data?.protocolo || result.data?.protocolo_evento,
     );
 
-    res.json(await notaCompleta(id));
+    res.json(await notaCompleta(id, req.empresaId as number));
   } catch (error: any) {
     console.error(error);
     if (id) {
