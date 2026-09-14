@@ -34,9 +34,9 @@ function nomeCliente(cliente: any) {
   return cliente?.nomeFantasia || cliente?.razaoSocial || cliente?.responsavel || null;
 }
 
-export const dashboard = async (_req: Request, res: Response): Promise<void> => {
+export const dashboard = async (req: Request, res: Response): Promise<void> => {
   try {
-    await garantirCategoriasPadrao();
+    await garantirCategoriasPadrao(req.empresaId as number);
 
     const hoje = inicioDia();
     const mesInicio = inicioMes();
@@ -376,10 +376,11 @@ export const excluir = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const categorias = async (_req: Request, res: Response): Promise<void> => {
+export const categorias = async (req: Request, res: Response): Promise<void> => {
   try {
-    await garantirCategoriasPadrao();
-    res.json(await prisma.categoriaFinanceira.findMany({ orderBy: [{ tipo: "asc" }, { nome: "asc" }] }));
+    const empresaId = req.empresaId as number;
+    await garantirCategoriasPadrao(empresaId);
+    res.json(await prisma.categoriaFinanceira.findMany({ where: { empresaId }, orderBy: [{ tipo: "asc" }, { nome: "asc" }] }));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao listar categorias" });
@@ -452,9 +453,9 @@ export const criarConta = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const sincronizarFaturadas = async (_req: Request, res: Response): Promise<void> => {
+export const sincronizarFaturadas = async (req: Request, res: Response): Promise<void> => {
   try {
-    const quantidade = await sincronizarTodasPropostasFaturadas();
+    const quantidade = await sincronizarTodasPropostasFaturadas(req.empresaId as number);
     res.json({ success: true, quantidade });
   } catch (error) {
     console.error(error);
@@ -477,7 +478,7 @@ export const importarProposta = async (req: Request, res: Response): Promise<voi
       res.status(400).json({ error: "A entrada financeira só é gerada quando a proposta estiver FATURADA." });
       return;
     }
-    const lancamento = await sincronizarPropostaFaturada(propostaId);
+    const lancamento = await sincronizarPropostaFaturada(propostaId, req.empresaId as number);
     res.json(lancamento);
   } catch (error) {
     console.error(error);

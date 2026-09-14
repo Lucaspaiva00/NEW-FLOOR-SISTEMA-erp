@@ -482,7 +482,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
     try {
       if (proposta.status === "FATURADA") {
-        await sincronizarPropostaFaturada(proposta.propostaid);
+        await sincronizarPropostaFaturada(proposta.propostaid, req.empresaId as number);
       } else if (propostaAtual.status === "FATURADA") {
         await cancelarLancamentoPropostaDesfaturada(proposta.propostaid);
       }

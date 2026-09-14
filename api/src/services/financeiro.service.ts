@@ -1,15 +1,17 @@
 import prisma from "../prisma";
 
-export async function garantirCategoriaReceitaPropostas() {
+export async function garantirCategoriaReceitaPropostas(empresaId: number) {
   return prisma.categoriaFinanceira.upsert({
     where: {
-      nome_tipo: {
+      empresaId_nome_tipo: {
+        empresaId,
         nome: "Receita de propostas",
         tipo: "ENTRADA",
       },
     },
     update: { ativo: true },
     create: {
+      empresaId,
       nome: "Receita de propostas",
       tipo: "ENTRADA",
       descricao: "Receitas geradas automaticamente quando uma proposta é faturada.",
@@ -18,7 +20,7 @@ export async function garantirCategoriaReceitaPropostas() {
   });
 }
 
-export async function garantirCategoriasPadrao() {
+export async function garantirCategoriasPadrao(empresaId: number) {
   const padroes = [
     ["Receita de propostas", "ENTRADA", "Receitas originadas de propostas faturadas", "#198754"],
     ["Outras receitas", "ENTRADA", "Receitas avulsas", "#0d6efd"],
@@ -32,22 +34,22 @@ export async function garantirCategoriasPadrao() {
 
   for (const [nome, tipo, descricao, cor] of padroes) {
     await prisma.categoriaFinanceira.upsert({
-      where: { nome_tipo: { nome, tipo } },
+      where: { empresaId_nome_tipo: { empresaId, nome, tipo } },
       update: {},
-      create: { nome, tipo, descricao, cor },
+      create: { empresaId, nome, tipo, descricao, cor },
     });
   }
 }
 
-export async function sincronizarPropostaFaturada(propostaId: number) {
-  const proposta = await prisma.proposta.findUnique({
-    where: { propostaid: propostaId },
+export async function sincronizarPropostaFaturada(propostaId: number, empresaId: number) {
+  const proposta = await prisma.proposta.findFirst({
+    where: { propostaid: propostaId, empresaId },
     include: { cliente: true },
   });
 
   if (!proposta || proposta.status !== "FATURADA") return null;
 
-  const categoria = await garantirCategoriaReceitaPropostas();
+  const categoria = await garantirCategoriaReceitaPropostas(empresaId);
   const valor = Number(proposta.subtotal || 0) + Number(proposta.frete || 0);
   const nomeCliente =
     proposta.cliente.nomeFantasia ||
@@ -76,6 +78,7 @@ export async function sincronizarPropostaFaturada(propostaId: number) {
         : null,
     },
     create: {
+      empresaId,
       tipo: "ENTRADA",
       status: "ABERTO",
       origem: "PROPOSTA",
@@ -109,16 +112,16 @@ export async function cancelarLancamentoPropostaDesfaturada(propostaId: number) 
   });
 }
 
-export async function sincronizarTodasPropostasFaturadas() {
-  await garantirCategoriasPadrao();
+export async function sincronizarTodasPropostasFaturadas(empresaId: number) {
+  await garantirCategoriasPadrao(empresaId);
   const propostas = await prisma.proposta.findMany({
-    where: { status: "FATURADA" },
+    where: { status: "FATURADA", empresaId },
     select: { propostaid: true },
   });
 
   let criadosOuAtualizados = 0;
   for (const proposta of propostas) {
-    await sincronizarPropostaFaturada(proposta.propostaid);
+    await sincronizarPropostaFaturada(proposta.propostaid, empresaId);
     criadosOuAtualizados += 1;
   }
 
