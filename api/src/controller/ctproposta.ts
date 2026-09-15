@@ -371,6 +371,16 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
         status: body.status ?? propostaAtual.status,
 
+        // "colunaKanbanId" só é atualizado quando vem explicitamente no
+        // body (mesmo que null, pra permitir voltar pra uma coluna de
+        // status normal) — se a chave não vier, mantém o que já estava.
+        colunaKanbanId:
+          "colunaKanbanId" in body
+            ? body.colunaKanbanId
+              ? Number(body.colunaKanbanId)
+              : null
+            : propostaAtual.colunaKanbanId,
+
         prioridade: body.prioridade ?? propostaAtual.prioridade,
 
         subtotal: temItensNoBody ? subtotal : propostaAtual.subtotal,
@@ -541,6 +551,7 @@ export const readKanban = async (
         subtitulo: true,
         descricao: true,
         status: true,
+        colunaKanbanId: true,
         prioridade: true,
         origem: true,
         subtotal: true,

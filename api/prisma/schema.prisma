@@ -32,6 +32,7 @@ model Empresa {
   contasFinanceiras        ContaFinanceira[]
   categoriasFinanceiras    CategoriaFinanceira[]
   lancamentosFinanceiros   LancamentoFinanceiro[]
+  colunasKanban            ColunaKanban[]
 }
 
 model Cliente {
@@ -131,6 +132,8 @@ model Proposta {
   observacoesSistema         String?
   observacoesInternas        String?
   status                     StatusProposta    @default(RASCUNHO)
+  colunaKanbanId             Int?
+  colunaKanban               ColunaKanban?     @relation(fields: [colunaKanbanId], references: [colunakanbanid], onDelete: SetNull)
   prioridade                 String?
   subtotal                   Decimal           @db.Decimal(10, 2)
   frete                      Decimal?          @db.Decimal(10, 2)
@@ -163,6 +166,21 @@ model Proposta {
   lancamentosFinanceiros      LancamentoFinanceiro[]
 
   @@unique([empresaId, numero])
+  @@index([empresaId])
+  @@index([colunaKanbanId])
+}
+
+model ColunaKanban {
+  colunakanbanid Int        @id @default(autoincrement())
+  empresaId      Int
+  empresa        Empresa    @relation(fields: [empresaId], references: [empresaid])
+  nome           String
+  cor            String?
+  ordem          Int        @default(0)
+  createdAt      DateTime   @default(now())
+  propostas      Proposta[]
+
+  @@unique([empresaId, nome])
   @@index([empresaId])
 }
 

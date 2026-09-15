@@ -38,6 +38,7 @@ const btnProximoNovaProposta = document.getElementById(
 let propostas = [];
 let propostasCache = [];
 let clientes = [];
+let colunasPersonalizadas = [];
 let servicos = [];
 let templateAtivo = null;
 const observacoesPadraoCache = {
@@ -410,6 +411,80 @@ function ocultarLoadingKanban() {
   });
 }
 
+async function carregarColunasPersonalizadas() {
+  try {
+    const response = await fetch(`${API_URL}/colunas-kanban`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) return;
+
+    colunasPersonalizadas = await response.json();
+    renderizarColunasPersonalizadas();
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+function renderizarColunasPersonalizadas() {
+  const container = document.getElementById("colunasPersonalizadasContainer");
+  if (!container) return;
+
+  container.innerHTML = colunasPersonalizadas
+    .map(
+      (coluna) => `
+        <div class="kanban-column">
+            <div class="kanban-header">
+                <h3>${textoSeguro(coluna.nome)}</h3>
+                <div class="kanban-count" id="countColuna${coluna.colunakanbanid}">0</div>
+                <button type="button" class="fiscal-icon-button" title="Excluir coluna"
+                    onclick="excluirColunaPersonalizada(${coluna.colunakanbanid})">×</button>
+            </div>
+            <div class="kanban-list"
+                id="colunaPersonalizada${coluna.colunakanbanid}"
+                data-coluna-kanban-id="${coluna.colunakanbanid}"
+            ></div>
+        </div>
+      `,
+    )
+    .join("");
+
+  const selectEdicao = document.getElementById("editarColunaPersonalizada");
+  if (selectEdicao) {
+    const atual = selectEdicao.value;
+    selectEdicao.innerHTML =
+      `<option value="">Usar a do status acima</option>` +
+      colunasPersonalizadas
+        .map((c) => `<option value="${c.colunakanbanid}">${textoSeguro(c.nome)}</option>`)
+        .join("");
+    selectEdicao.value = atual;
+  }
+}
+
+async function excluirColunaPersonalizada(id) {
+  if (!confirm("Excluir esta coluna? As propostas nela voltam a aparecer pela coluna do status normal.")) return;
+
+  try {
+    const response = await fetch(`${API_URL}/colunas-kanban/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      alert("Erro ao excluir coluna.");
+      return;
+    }
+
+    await carregarColunasPersonalizadas();
+    await carregarPropostas();
+  } catch (error) {
+    console.log(error);
+    alert("Erro de conexão ao excluir coluna.");
+  }
+}
+
+window.excluirColunaPersonalizada = excluirColunaPersonalizada;
+
 async function carregarPropostas() {
   mostrarLoadingKanban();
 
@@ -477,6 +552,7 @@ function criarCardProposta(proposta) {
             class="proposal-card ${prioridadeClass}"
             data-id="${proposta.propostaid}"
             data-status="${proposta.status}"
+            data-coluna-kanban-id="${proposta.colunaKanbanId || ""}"
         >
             <div class="proposal-card-top">
                 <span class="proposal-number">Proposta Nº ${textoSeguro(proposta.numero)}</span>
@@ -628,8 +704,25 @@ function renderizarKanban(lista) {
     faturada: "",
   };
 
+  const htmlPorColunaPersonalizada = {};
+  colunasPersonalizadas.forEach((c) => {
+    htmlPorColunaPersonalizada[c.colunakanbanid] = "";
+  });
+
+  const contagemPersonalizada = {};
+
   lista.forEach((proposta) => {
     const card = criarCardProposta(proposta);
+
+    if (
+      proposta.colunaKanbanId &&
+      htmlPorColunaPersonalizada[proposta.colunaKanbanId] !== undefined
+    ) {
+      htmlPorColunaPersonalizada[proposta.colunaKanbanId] += card;
+      contagemPersonalizada[proposta.colunaKanbanId] =
+        (contagemPersonalizada[proposta.colunaKanbanId] || 0) + 1;
+      return;
+    }
 
     if (proposta.status === "PENDENTE" || proposta.status === "RASCUNHO") {
       htmlPorColuna.pendente += card;
@@ -661,6 +754,14 @@ function renderizarKanban(lista) {
   colunaExecutando.innerHTML = htmlPorColuna.executando;
   colunaEspeciais.innerHTML = htmlPorColuna.especiais;
   colunaFaturada.innerHTML = htmlPorColuna.faturada;
+
+  colunasPersonalizadas.forEach((c) => {
+    const el = document.getElementById(`colunaPersonalizada${c.colunakanbanid}`);
+    if (el) el.innerHTML = htmlPorColunaPersonalizada[c.colunakanbanid] || "";
+
+    const contador = document.getElementById(`countColuna${c.colunakanbanid}`);
+    if (contador) contador.innerText = contagemPersonalizada[c.colunakanbanid] || 0;
+  });
 
   iniciarSortableKanban();
 }
@@ -716,16 +817,30 @@ function iniciarSortableKanban() {
 
         const propostaId = evt.item.dataset.id;
         const statusAnterior = evt.item.dataset.status;
+        const colunaAnterior = evt.item.dataset.colunaKanbanId || "";
         const novoStatus = evt.to.dataset.status;
+        const novaColunaId = evt.to.dataset.colunaKanbanId;
 
-        if (!propostaId || !novoStatus) return;
-        if (statusAnterior === novoStatus) return;
+        if (!propostaId) return;
 
-        const ok = await atualizarStatusProposta(propostaId, novoStatus);
+        let ok;
+
+        if (novaColunaId) {
+          // Foi solta numa coluna personalizada.
+          if (colunaAnterior === novaColunaId) return;
+          ok = await atualizarColunaPropostaKanban(propostaId, novaColunaId);
+        } else if (novoStatus) {
+          // Foi solta numa coluna de status normal — limpa qualquer
+          // coluna personalizada que estivesse setada antes.
+          if (!colunaAnterior && statusAnterior === novoStatus) return;
+          ok = await atualizarStatusProposta(propostaId, novoStatus);
+        } else {
+          return;
+        }
 
         if (!ok) {
           renderizarKanban(obterListaFiltrada());
-          alert("Erro ao atualizar status da proposta.");
+          alert("Erro ao atualizar a proposta.");
           return;
         }
 
@@ -734,7 +849,12 @@ function iniciarSortableKanban() {
         );
 
         if (proposta) {
-          proposta.status = novoStatus;
+          if (novaColunaId) {
+            proposta.colunaKanbanId = Number(novaColunaId);
+          } else {
+            proposta.status = novoStatus;
+            proposta.colunaKanbanId = null;
+          }
         }
 
         propostas = propostasCache;
@@ -759,6 +879,24 @@ async function atualizarStatusProposta(id, status) {
 
     body: JSON.stringify({
       status,
+      colunaKanbanId: null,
+    }),
+  });
+
+  return response.ok;
+}
+
+async function atualizarColunaPropostaKanban(id, colunaKanbanId) {
+  const response = await fetch(`${API_URL}/propostas/${id}`, {
+    method: "PUT",
+
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+
+    body: JSON.stringify({
+      colunaKanbanId,
     }),
   });
 
@@ -1598,6 +1736,7 @@ async function abrirModalProposta(id) {
       resolverObservacaoParaTipo("editar", tipoProposta),
     );
     preencherCampo("editarStatus", proposta.status);
+    preencherCampo("editarColunaPersonalizada", proposta.colunaKanbanId || "");
     preencherCampo("editarPrioridade", proposta.prioridade);
     preencherCampo("editarDescricao", proposta.descricao);
     preencherCampo("editarEscopo", proposta.escopo);
@@ -1678,6 +1817,8 @@ function montarBodyEditarProposta() {
     observacoesInternas: pegarValor("editarObservacoesInternas"),
 
     status: pegarValor("editarStatus"),
+
+    colunaKanbanId: pegarValor("editarColunaPersonalizada") || null,
 
     prioridade: pegarValor("editarPrioridade"),
 
@@ -1943,6 +2084,7 @@ async function carregarDadosModal() {
 }
 
 async function iniciarTela() {
+  await carregarColunasPersonalizadas();
   await carregarPropostas();
 
   carregarDadosModal().catch((error) => {
@@ -1992,6 +2134,50 @@ async function iniciarTela() {
   if (responsavel && nomeResponsavel) {
     responsavel.value = nomeResponsavel;
   }
+
+  const modalNovaColunaEl = document.getElementById("modalNovaColuna");
+  const modalNovaColuna = modalNovaColunaEl ? new bootstrap.Modal(modalNovaColunaEl) : null;
+
+  document
+    .getElementById("btnNovaColunaKanban")
+    ?.addEventListener("click", () => {
+      document.getElementById("formNovaColunaKanban")?.reset();
+      modalNovaColuna?.show();
+    });
+
+  document
+    .getElementById("formNovaColunaKanban")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const nome = pegarValor("nomeNovaColuna")?.trim();
+      if (!nome) return;
+
+      try {
+        const response = await fetch(`${API_URL}/colunas-kanban`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ nome }),
+        });
+
+        const resposta = await response.json();
+
+        if (!response.ok) {
+          alert(resposta.error || "Erro ao criar coluna.");
+          return;
+        }
+
+        modalNovaColuna?.hide();
+        await carregarColunasPersonalizadas();
+        renderizarKanban(obterListaFiltrada());
+      } catch (error) {
+        console.log(error);
+        alert("Erro de conexão ao criar coluna.");
+      }
+    });
 }
 
 iniciarTela();

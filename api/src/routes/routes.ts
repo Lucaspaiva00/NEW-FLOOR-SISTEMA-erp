@@ -9,6 +9,7 @@ import * as vendedor from "../controller/ctvendedor";
 import * as fiscal from "../controller/ctfiscal";
 import * as financeiro from "../controller/ctfinanceiro";
 import * as empresa from "../controller/ctempresa";
+import * as colunaKanban from "../controller/ctcolunakanban";
 import auth from "../middlewares/auth";
 import requireRole from "../middlewares/requireRole";
 
@@ -74,6 +75,12 @@ routes.route("/propostas/kanban").get(auth, proposta.readKanban);
 routes.route("/propostas").get(auth, proposta.read).post(auth, proposta.create);
 
 routes.route("/propostas/dashboard").get(auth, proposta.dashboard);
+
+routes.route("/colunas-kanban").get(auth, colunaKanban.read).post(auth, colunaKanban.create);
+routes
+  .route("/colunas-kanban/:id")
+  .put(auth, colunaKanban.update)
+  .delete(auth, colunaKanban.remove);
 
 routes.get("/observacoes/observacoes-padrao", auth, proposta.observacoesPadrao);
 
