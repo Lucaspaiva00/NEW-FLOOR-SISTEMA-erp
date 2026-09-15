@@ -1316,6 +1316,8 @@ Resumo
 ${proposta.titulo}
 </h3>
 
+${proposta.subtitulo ? `<p style="margin:4px 0 0;color:#6b7280;font-size:14px;">${proposta.subtitulo}</p>` : ""}
+
 <br>
 
 <div class="descricao-comercial">

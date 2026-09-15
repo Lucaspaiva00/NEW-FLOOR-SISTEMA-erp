@@ -549,6 +549,8 @@ export const readKanban = async (
           select: {
             nomeFantasia: true,
             razaoSocial: true,
+            email1: true,
+            email2: true,
           },
         },
         vendedor: {
