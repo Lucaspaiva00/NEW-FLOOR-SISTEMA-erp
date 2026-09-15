@@ -49,11 +49,13 @@
 }
 
 .kanban {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr) !important;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     gap: 22px;
     margin-top: 30px;
     align-items: flex-start;
+    padding-bottom: 12px;
 }
 
 .kpis {
@@ -70,7 +72,8 @@
     background: #f4f6f8;
     border-radius: 16px;
     min-height: 650px;
-    width: min(300px, 300px);
+    width: 300px;
+    flex-shrink: 0;
     padding: 0;
 
 }
@@ -455,14 +458,14 @@
 }
 
 @media(max-width: 1400px) {
-    .kanban {
-        grid-template-columns: repeat(2, 1fr);
+    .kanban-column {
+        width: 280px;
     }
 }
 
 @media(max-width: 900px) {
-    .kanban {
-        grid-template-columns: 1fr;
+    .kanban-column {
+        width: 260px;
     }
 }
 
