@@ -674,6 +674,7 @@
       return;
     }
     $("formNotaFiscal").reset();
+    $("avisoRevisaoFiscal").classList.remove("d-none");
     $("notaFiscalId").value = "";
     $("tituloModalNota").textContent = "Nova nota fiscal";
     $("nfPropostaId").value = "";
@@ -852,8 +853,45 @@
     };
   }
 
+  function validarNotaAntesDeSalvar() {
+    const problemas = [];
+
+    if (!$("nfEmpresa").value) problemas.push("Selecione a empresa emitente.");
+    if (!$("nfCliente").value) problemas.push("Selecione o cliente/tomador.");
+
+    const cnpj = $("nfDestCnpj").value.trim();
+    const cpf = $("nfDestCpf").value.trim();
+    if (!cnpj && !cpf) problemas.push("O destinatário precisa ter CNPJ ou CPF preenchido.");
+
+    const itens = coletarItens();
+    if (!itens.length) {
+      problemas.push("Adicione pelo menos um item.");
+    } else {
+      itens.forEach((item, index) => {
+        if (!item.descricao) problemas.push(`Item ${index + 1}: falta descrição.`);
+      });
+    }
+
+    calcularTotais();
+    const total = numero($("nfValorTotal").value);
+    if (!total || total <= 0) problemas.push("O valor total precisa ser maior que zero.");
+
+    return problemas;
+  }
+
   async function salvarNota(event) {
     event.preventDefault();
+
+    const problemas = validarNotaAntesDeSalvar();
+    if (problemas.length) {
+      Swal.fire({
+        icon: "warning",
+        title: "Revise antes de salvar",
+        html: `<ul style="text-align:left;">${problemas.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>`,
+      });
+      return;
+    }
+
     try {
       calcularTotais();
       const body = dadosNotaForm();
@@ -1172,5 +1210,20 @@
   }
 
   ligarEventos();
-  atualizarTudo();
+  atualizarTudo().then(() => {
+    const params = new URLSearchParams(window.location.search);
+    const propostaId = params.get("propostaId");
+
+    if (!propostaId) return;
+
+    // Veio do Kanban de Propostas ao mover um card pra "Faturada" —
+    // já abre a nota nova pré-preenchida com essa proposta.
+    abrirNovaNota();
+    $("nfPropostaNumero").value = propostaId;
+    importarProposta();
+
+    // Limpa o parâmetro da URL pra não reimportar de novo se a página
+    // for recarregada (F5) depois.
+    window.history.replaceState({}, "", window.location.pathname);
+  });
 })();

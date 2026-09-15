@@ -300,7 +300,7 @@ async function aplicarRetorno(notaId: number, baseUrl: string, data: any) {
   const parsed = parseFocusResult(baseUrl, data);
   const now = new Date();
 
-  return prisma.notaFiscal.update({
+  const nota = await prisma.notaFiscal.update({
     where: { notafiscalid: notaId },
     data: {
       status: parsed.status as any,
@@ -319,6 +319,17 @@ async function aplicarRetorno(notaId: number, baseUrl: string, data: any) {
       dataCancelamento: parsed.status === "CANCELADA" ? now : undefined,
     },
   });
+
+  // A proposta só vira "Faturada" de verdade quando a nota fiscal
+  // ligada a ela volta AUTORIZADA pela Focus — nunca antes disso.
+  if (parsed.status === "AUTORIZADA" && nota.propostaId) {
+    await prisma.proposta.updateMany({
+      where: { propostaid: nota.propostaId, empresaId: nota.empresaId },
+      data: { status: "FATURADA", colunaKanbanId: null },
+    });
+  }
+
+  return nota;
 }
 
 export const dashboard = async (req: Request, res: Response): Promise<void> => {

@@ -823,6 +823,24 @@ function iniciarSortableKanban() {
 
         if (!propostaId) return;
 
+        // Mover pra "Faturada" NUNCA salva o status direto — a proposta só
+        // vira Faturada de verdade quando a nota fiscal ligada a ela voltar
+        // AUTORIZADA pela Focus. Em vez de salvar, manda pro módulo Fiscal
+        // já com essa proposta pra emitir, e desfaz o movimento visual.
+        if (novoStatus === "FATURADA" && statusAnterior !== "FATURADA") {
+          renderizarKanban(obterListaFiltrada());
+
+          const ir = confirm(
+            "Faturar exige emitir a nota fiscal dessa proposta. Você será levado ao módulo Fiscal para emitir agora. A proposta só fica marcada como Faturada depois que a nota voltar autorizada.",
+          );
+
+          if (ir) {
+            window.location.href = `fiscal.html?propostaId=${propostaId}`;
+          }
+
+          return;
+        }
+
         let ok;
 
         if (novaColunaId) {
@@ -1885,6 +1903,19 @@ formEditarProposta.addEventListener("submit", async (e) => {
       return;
     }
 
+    // Igual no drag-and-drop: escolher "FATURADA" aqui não fatura na hora.
+    // Salva o resto normalmente, mas o status fica como estava até a nota
+    // fiscal ligada à proposta voltar AUTORIZADA pela Focus.
+    const propostaAtualCache = propostasCache.find(
+      (p) => Number(p.propostaid) === Number(id),
+    );
+    const vaiFaturar =
+      body.status === "FATURADA" && propostaAtualCache?.status !== "FATURADA";
+
+    if (vaiFaturar) {
+      delete body.status;
+    }
+
     setBotoesModalEditarProposta(true);
 
     const response = await fetch(`${API_URL}/propostas/${id}`, {
@@ -1909,6 +1940,16 @@ formEditarProposta.addEventListener("submit", async (e) => {
     bootstrap.Modal.getInstance(
       document.getElementById("modalProposta"),
     ).hide();
+
+    if (vaiFaturar) {
+      const ir = confirm(
+        "As demais alterações foram salvas. Faturar exige emitir a nota fiscal — você será levado ao módulo Fiscal agora. A proposta só fica marcada como Faturada depois que a nota voltar autorizada.",
+      );
+      if (ir) {
+        window.location.href = `fiscal.html?propostaId=${id}`;
+        return;
+      }
+    }
 
     toastSucesso("Proposta atualizada com sucesso");
 
