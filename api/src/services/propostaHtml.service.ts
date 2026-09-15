@@ -924,6 +924,15 @@ border:1px solid #ddd;
 padding:15px;
 }
 
+.card p{
+margin:0 0 10px;
+line-height:1.5;
+}
+
+.card p:last-child{
+margin-bottom:0;
+}
+
 .grid{
 display:grid;
 grid-template-columns:1fr 1fr;
