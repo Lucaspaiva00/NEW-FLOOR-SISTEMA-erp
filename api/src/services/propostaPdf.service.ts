@@ -10,9 +10,11 @@ export interface ResultadoPDF {
 export function nomeDownloadPdfProposta(
   numero: string,
   razaoSocial?: string | null,
+  empresaNome?: string | null,
 ): string {
   const razao = (razaoSocial || "").trim();
-  const nome = `Proposta Técnica Comercial New Floor - ${numero}${razao ? ` - ${razao}` : ""}`;
+  const marca = (empresaNome || "").trim() || "Proposta";
+  const nome = `Proposta Técnica Comercial ${marca} - ${numero}${razao ? ` - ${razao}` : ""}`;
   return nome.replace(/[\\/:*?"<>|]/g, "").trim() + ".pdf";
 }
 

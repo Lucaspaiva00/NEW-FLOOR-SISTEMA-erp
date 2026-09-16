@@ -58,7 +58,17 @@ async function visualizarPdfProposta(id) {
     }
 
     const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
+
+    // Content-Disposition vem do backend com o nome certo do arquivo
+    // (ex: "Proposta Técnica Comercial SBA - 730 - Cliente X.pdf").
+    // Sem isso, o navegador usa o UUID interno do blob como nome ao
+    // salvar — por isso criamos um File nomeado em vez de um Blob puro.
+    const disposicao = response.headers.get("content-disposition") || "";
+    const match = disposicao.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+    const nomeArquivo = match ? decodeURIComponent(match[1]) : `proposta-${id}.pdf`;
+
+    const arquivo = new File([blob], nomeArquivo, { type: "application/pdf" });
+    const blobUrl = URL.createObjectURL(arquivo);
 
     if (novaAba) {
       novaAba.location.href = blobUrl;

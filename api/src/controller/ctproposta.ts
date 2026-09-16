@@ -72,6 +72,9 @@ async function buscarPropostaCompleta(id: string, empresaId: number) {
       cliente: true,
       vendedor: true,
       templateProposta: true,
+      empresa: {
+        select: { nome: true },
+      },
       itens: {
         include: {
           servico: true,
@@ -863,6 +866,7 @@ export const downloadPdf = async (
       nomeDownloadPdfProposta(
         propostaAtualizada.numero,
         propostaAtualizada.cliente?.razaoSocial,
+        propostaAtualizada.empresa?.nome,
       ),
     );
   } catch (error) {
