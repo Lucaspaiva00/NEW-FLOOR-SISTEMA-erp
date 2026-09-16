@@ -10,14 +10,22 @@ interface TokenPayload {
 export default (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader) {
+  // Aceita o token também via query string (?token=...) — só usado pra
+  // downloads diretos (ex: PDF), onde o navegador navega de verdade pra
+  // URL (em vez de um fetch com header), e por isso precisa carregar o
+  // token na própria URL pra manter a autenticação.
+  const token = authHeader
+    ? authHeader.split(" ")[1]
+    : typeof req.query.token === "string"
+      ? req.query.token
+      : null;
+
+  if (!token) {
     res.status(401).json({
       error: "Token não informado"
     });
     return;
   }
-
-  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(

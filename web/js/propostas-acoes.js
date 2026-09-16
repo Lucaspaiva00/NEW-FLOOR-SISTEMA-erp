@@ -29,60 +29,19 @@ async function request(url, options = {}) {
   return data;
 }
 
-async function visualizarPdfProposta(id) {
+function visualizarPdfProposta(id) {
   if (!id) {
     alert("Selecione uma proposta.");
     return;
   }
 
-  // Abre a aba ANTES do fetch (ainda dentro do gesto de clique do usuário),
-  // senão o navegador pode bloquear como pop-up depois do await.
-  const novaAba = window.open("", "_blank");
-
-  try {
-    const response = await fetch(`${API_URL}/propostas/${id}/download`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      let mensagem = "Erro ao gerar PDF da proposta.";
-      try {
-        const erro = await response.json();
-        mensagem = erro?.error || mensagem;
-      } catch {
-        // resposta não veio em JSON, mantém mensagem padrão
-      }
-      if (novaAba) novaAba.close();
-      alert(mensagem);
-      return;
-    }
-
-    const blob = await response.blob();
-
-    // Content-Disposition vem do backend com o nome certo do arquivo
-    // (ex: "Proposta Técnica Comercial SBA - 730 - Cliente X.pdf").
-    // Sem isso, o navegador usa o UUID interno do blob como nome ao
-    // salvar — por isso criamos um File nomeado em vez de um Blob puro.
-    const disposicao = response.headers.get("content-disposition") || "";
-    const match = disposicao.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-    const nomeArquivo = match ? decodeURIComponent(match[1]) : `proposta-${id}.pdf`;
-
-    const arquivo = new File([blob], nomeArquivo, { type: "application/pdf" });
-    const blobUrl = URL.createObjectURL(arquivo);
-
-    if (novaAba) {
-      novaAba.location.href = blobUrl;
-    } else {
-      window.open(blobUrl, "_blank");
-    }
-
-    // Libera a memória depois de um tempo (dá margem pro navegador abrir a aba)
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-  } catch (error) {
-    console.log(error);
-    if (novaAba) novaAba.close();
-    alert("Erro de conexão ao gerar PDF da proposta.");
-  }
+  // Navegação de verdade (não blob) — assim o navegador recebe o
+  // Content-Disposition do servidor e usa o nome certo do arquivo
+  // se o usuário clicar em "Salvar" dentro do próprio visualizador de PDF.
+  window.open(
+    `${API_URL}/propostas/${id}/download?token=${encodeURIComponent(token)}`,
+    "_blank",
+  );
 }
 
 async function enviarWhatsappProposta(id, btn) {
