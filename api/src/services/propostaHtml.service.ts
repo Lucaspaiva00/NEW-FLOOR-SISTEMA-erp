@@ -1332,15 +1332,15 @@ ${cliente.responsavel || "-"}
 </div>
 
 <div class="campo">
-<strong>E-mail</strong>
-<br/>
-${formatarContatosComNomeHtml(contatosCliente(cliente, "email"))}
-</div>
-
-<div class="campo">
 <strong>Telefones</strong>
 <br/>
 ${formatarContatosComNomeHtml(contatosCliente(cliente, "telefone"))}
+</div>
+
+<div class="campo">
+<strong>E-mail</strong>
+<br/>
+${formatarContatosComNomeHtml(contatosCliente(cliente, "email"))}
 </div>
 
 <div class="campo">
