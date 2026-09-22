@@ -922,6 +922,10 @@ flex-shrink:0;
 flex:1;
 }
 
+.cliente-dados.grid{
+align-items:start;
+}
+
 .empresa{
 display:flex;
 align-items:center;
@@ -988,6 +992,10 @@ margin-bottom:8px;
 display:block;
 font-size:11px;
 color:#666;
+}
+
+.campo-email{
+margin-top:-10px;
 }
 
 .contato-item{
@@ -1337,9 +1345,8 @@ ${cliente.responsavel || "-"}
 ${formatarContatosComNomeHtml(contatosCliente(cliente, "telefone"))}
 </div>
 
-<div class="campo">
+<div class="campo campo-email">
 <strong>E-mail</strong>
-<br/>
 ${formatarContatosComNomeHtml(contatosCliente(cliente, "email"))}
 </div>
 
