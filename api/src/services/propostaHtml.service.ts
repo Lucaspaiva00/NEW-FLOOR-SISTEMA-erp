@@ -920,10 +920,16 @@ flex-shrink:0;
 
 .cliente-dados{
 flex:1;
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:0 12px;
+align-items:start;
 }
 
-.cliente-dados.grid{
-align-items:start;
+.cliente-col{
+display:flex;
+flex-direction:column;
+gap:12px;
 }
 
 .empresa{
@@ -994,9 +1000,6 @@ font-size:11px;
 color:#666;
 }
 
-.campo-email{
-margin-top:-10px;
-}
 
 .contato-item{
 margin-bottom:8px;
@@ -1322,16 +1325,13 @@ alt="Logo do cliente"
     : ""
 }
 
-<div class="cliente-dados grid">
+<div class="cliente-dados">
+
+<div class="cliente-col">
 
 <div class="campo">
 <strong>Cliente</strong>
 ${nomeCliente(cliente)}
-</div>
-
-<div class="campo">
-<strong>${docCliente.label}</strong>
-${docCliente.valor}
 </div>
 
 <div class="campo">
@@ -1340,14 +1340,22 @@ ${cliente.responsavel || "-"}
 </div>
 
 <div class="campo">
-<strong>Telefones</strong>
-<br/>
-${formatarContatosComNomeHtml(contatosCliente(cliente, "telefone"))}
-</div>
-
-<div class="campo campo-email">
 <strong>E-mail</strong>
 ${formatarContatosComNomeHtml(contatosCliente(cliente, "email"))}
+</div>
+
+</div>
+
+<div class="cliente-col">
+
+<div class="campo">
+<strong>${docCliente.label}</strong>
+${docCliente.valor}
+</div>
+
+<div class="campo">
+<strong>Telefones</strong>
+${formatarContatosComNomeHtml(contatosCliente(cliente, "telefone"))}
 </div>
 
 <div class="campo">
@@ -1358,6 +1366,8 @@ ${cliente.cidade || "-"}
 <div class="campo">
 <strong>Estado</strong>
 ${cliente.estado || "-"}
+</div>
+
 </div>
 
 </div>
