@@ -48,6 +48,45 @@ function nomeCliente(cliente?: any): string {
   return String(nome);
 }
 
+function apenasDigitos(valor?: string | null): string {
+  return String(valor || "").replace(/\D/g, "");
+}
+
+function formatarCnpjExibicao(digitos: string): string {
+  if (digitos.length !== 14) {
+    return digitos || "-";
+  }
+
+  return digitos.replace(
+    /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+    "$1.$2.$3/$4-$5",
+  );
+}
+
+function formatarCpfExibicao(digitos: string): string {
+  if (digitos.length !== 11) {
+    return digitos || "-";
+  }
+
+  return digitos.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+}
+
+function documentoCliente(cliente?: any): { label: string; valor: string } {
+  const cnpj = apenasDigitos(cliente?.cnpj);
+
+  if (cnpj) {
+    return { label: "CNPJ", valor: formatarCnpjExibicao(cnpj) };
+  }
+
+  const cpf = apenasDigitos(cliente?.cpf);
+
+  if (cpf) {
+    return { label: "CPF", valor: formatarCpfExibicao(cpf) };
+  }
+
+  return { label: "CNPJ", valor: "-" };
+}
+
 function tituloObservacaoPorTipo(proposta?: any): string {
   return proposta?.tipoProposta === "SISTEMA"
     ? "Observações Sistema"
@@ -726,6 +765,8 @@ export async function gerarHtmlProposta({
 
   const totalCalculado = subtotalCalculado + Number(proposta.frete || 0);
 
+  const docCliente = documentoCliente(cliente);
+
   const tabelaItens = itens
     .map(
       (item, index) => `
@@ -1278,6 +1319,11 @@ alt="Logo do cliente"
 <div class="campo">
 <strong>Cliente</strong>
 ${nomeCliente(cliente)}
+</div>
+
+<div class="campo">
+<strong>${docCliente.label}</strong>
+${docCliente.valor}
 </div>
 
 <div class="campo">

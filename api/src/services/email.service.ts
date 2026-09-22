@@ -4,12 +4,26 @@ import {
   textoEmailRecuperacaoSenha,
 } from "../templates/emailLayout";
 
+const CCO_ATENDIMENTO_PADRAO = "atendimento@newfloorpisos.com.br";
+
 interface SendEmailOptions {
   to: string;
   subject: string;
   html?: string;
   text?: string;
   attachments?: nodemailer.SendMailOptions["attachments"];
+}
+
+function ccoAtendimento(destinatario: string): string | undefined {
+  const email = destinatario.trim().toLowerCase();
+
+  if (email === CCO_ATENDIMENTO_PADRAO) {
+    return undefined;
+  }
+
+  return (
+    process.env.EMAIL_CCO_ATENDIMENTO?.trim() || CCO_ATENDIMENTO_PADRAO
+  );
 }
 
 function isErroFilaSmtp(error: unknown) {
@@ -76,7 +90,14 @@ export async function sendEmail({
   const assunto = normalizarAssunto(subject);
   const somenteTexto = usarSomenteTexto();
 
-  const base = { from, to, subject: assunto, attachments };
+  const bcc = ccoAtendimento(to);
+  const base = {
+    from,
+    to,
+    subject: assunto,
+    attachments,
+    ...(bcc ? { bcc } : {}),
+  };
   const mensagens: nodemailer.SendMailOptions[] = [];
 
   if (html && !somenteTexto) {

@@ -13,10 +13,8 @@ interface EmailProposta {
   numeroProposta: string;
   linkDownload: string;
   caminhoPdf: string;
-}
-
-function nomeAnexoSeguro(numeroProposta: string) {
-  return `Proposta-${numeroProposta}.pdf`;
+  nomeArquivoPdf: string;
+  assunto: string;
 }
 
 async function enviarComLink(dados: {
@@ -24,10 +22,11 @@ async function enviarComLink(dados: {
   clienteNome: string;
   numeroProposta: string;
   linkDownload: string;
+  assunto: string;
 }) {
   await sendEmail({
     to: dados.destinatario,
-    subject: `Proposta ${dados.numeroProposta} - NEW FLOOR`,
+    subject: dados.assunto,
     text: textoEmailProposta(dados),
     html: templateEmailProposta(dados),
   });
@@ -39,12 +38,19 @@ export async function enviarPropostaPorEmail({
   numeroProposta,
   linkDownload,
   caminhoPdf,
+  nomeArquivoPdf,
+  assunto,
 }: EmailProposta): Promise<"anexo" | "link"> {
-  const dados = { destinatario, clienteNome, numeroProposta, linkDownload };
-  const assunto = `Proposta ${numeroProposta} - NEW FLOOR`;
+  const dados = {
+    destinatario,
+    clienteNome,
+    numeroProposta,
+    linkDownload,
+    assunto,
+  };
   const pdfBuffer = fs.readFileSync(caminhoPdf);
   const anexo = {
-    filename: nomeAnexoSeguro(numeroProposta),
+    filename: nomeArquivoPdf,
     content: pdfBuffer,
     contentType: "application/pdf",
   };

@@ -6,6 +6,7 @@ import { gerarHtmlProposta } from "../services/propostaHtml.service";
 import {
   gerarPdfProposta,
   nomeDownloadPdfProposta,
+  assuntoEmailProposta,
 } from "../services/propostaPdf.service";
 import { enviarPropostaPorEmail } from "../services/propostaEmail.service";
 import { gerarLinkWhatsapp } from "../services/propostaWhatsapp.service";
@@ -140,9 +141,28 @@ async function gerarPdfInterno(id: string | string[] | number, empresaId: number
     template,
   });
 
-  const nomeArquivo = `proposta-${proposta.numero}-${Date.now()}.pdf`;
+  const nomeArquivo = nomeDownloadPdfProposta(
+    proposta.numero,
+    proposta.cliente?.razaoSocial,
+    proposta.empresa?.nome,
+    proposta.cliente?.nomeFantasia,
+  );
+
+  const pdfUrlAnterior = proposta.pdfUrl;
 
   const pdf = await gerarPdfProposta(html, nomeArquivo);
+
+  if (pdfUrlAnterior && pdfUrlAnterior !== pdf.url) {
+    const caminhoAntigo = path.join(
+      process.cwd(),
+      "public",
+      pdfUrlAnterior.replace(/^\//, ""),
+    );
+
+    if (fs.existsSync(caminhoAntigo)) {
+      fs.unlinkSync(caminhoAntigo);
+    }
+  }
 
   await prisma.proposta.update({
     where: {
@@ -861,14 +881,7 @@ export const downloadPdf = async (
       return;
     }
 
-    res.download(
-      caminhoArquivo,
-      nomeDownloadPdfProposta(
-        propostaAtualizada.numero,
-        propostaAtualizada.cliente?.razaoSocial,
-        propostaAtualizada.empresa?.nome,
-      ),
-    );
+    res.download(caminhoArquivo, path.basename(caminhoArquivo));
   } catch (error) {
     console.error(error);
 
@@ -928,6 +941,15 @@ export const enviarEmail = async (
       linkDownload,
 
       caminhoPdf: resultado.caminho,
+
+      nomeArquivoPdf: path.basename(resultado.caminho),
+
+      assunto: assuntoEmailProposta(
+        proposta.numero,
+        proposta.cliente?.razaoSocial,
+        proposta.empresa?.nome,
+        proposta.cliente?.nomeFantasia,
+      ),
     });
 
     await prisma.proposta.update({

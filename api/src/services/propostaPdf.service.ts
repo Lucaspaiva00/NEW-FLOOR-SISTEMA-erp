@@ -7,15 +7,37 @@ export interface ResultadoPDF {
   url: string;
 }
 
+export function nomeClientePdf(
+  razaoSocial?: string | null,
+  nomeFantasia?: string | null,
+): string {
+  return (razaoSocial || nomeFantasia || "").trim();
+}
+
 export function nomeDownloadPdfProposta(
   numero: string,
   razaoSocial?: string | null,
   empresaNome?: string | null,
+  nomeFantasia?: string | null,
 ): string {
-  const razao = (razaoSocial || "").trim();
+  const razao = nomeClientePdf(razaoSocial, nomeFantasia);
   const marca = (empresaNome || "").trim() || "Proposta";
   const nome = `Proposta Técnica Comercial ${marca} - ${numero}${razao ? ` - ${razao}` : ""}`;
   return nome.replace(/[\\/:*?"<>|]/g, "").trim() + ".pdf";
+}
+
+export function assuntoEmailProposta(
+  numero: string,
+  razaoSocial?: string | null,
+  empresaNome?: string | null,
+  nomeFantasia?: string | null,
+): string {
+  return nomeDownloadPdfProposta(
+    numero,
+    razaoSocial,
+    empresaNome,
+    nomeFantasia,
+  ).replace(/\.pdf$/i, "");
 }
 
 function puppeteerLaunchArgs(): string[] {
