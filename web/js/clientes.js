@@ -936,7 +936,7 @@ document
 */
 
 async function consultarCnpj(campoCnpj, prefixo = "") {
-  if (!campoCnpj) return;
+  if (!campoCnpj || campoCnpj.disabled) return;
 
   const cnpj = campoCnpj.value.replace(/\D/g, "");
 
@@ -954,14 +954,17 @@ async function consultarCnpj(campoCnpj, prefixo = "") {
     campoCnpj.disabled = true;
 
     const response = await fetch(
-      `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`,
+      `${API_URL}/clientes/consulta-cnpj/${cnpj}`,
+      { headers: { Authorization: `Bearer ${token}` } },
     );
 
+    const empresa = await response.json().catch(() => null);
     if (!response.ok) {
-      throw new Error("CNPJ não encontrado");
+      throw new Error(empresa?.error || "Não foi possível consultar o CNPJ. Tente novamente ou preencha os dados manualmente.");
     }
-
-    const empresa = await response.json();
+    if (!empresa?.razao_social) {
+      throw new Error("A consulta retornou dados incompletos. Tente novamente.");
+    }
 
     preencherCampo(campo("razaoSocial"), empresa.razao_social);
     preencherCampo(campo("nomeFantasia"), empresa.nome_fantasia);
@@ -971,6 +974,8 @@ async function consultarCnpj(campoCnpj, prefixo = "") {
     preencherCampo(campo("bairro"), empresa.bairro);
     preencherCampo(campo("cidade"), empresa.municipio);
     preencherCampo(campo("estado"), empresa.uf);
+    preencherCampo(campo("complemento"), empresa.complemento);
+    preencherCampo(campo("pais"), "Brasil");
     preencherCampo(campo("email1"), empresa.email);
     preencherCampoMascarado(
       campo("telefone1"),
@@ -979,7 +984,7 @@ async function consultarCnpj(campoCnpj, prefixo = "") {
     );
   } catch (error) {
     console.log(error);
-    alert("Não foi possível consultar o CNPJ.");
+    alert(error.message || "Não foi possível consultar o CNPJ. Tente novamente ou preencha os dados manualmente.");
   } finally {
     campoCnpj.disabled = false;
   }

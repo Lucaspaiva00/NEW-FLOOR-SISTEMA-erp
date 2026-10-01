@@ -1,6 +1,7 @@
 import express from "express";
 import * as agenda from "../controller/agenda.controller";
 import * as cliente from "../controller/ctcliente";
+import * as cnpj from "../controller/ctcnpj";
 import * as proposta from "../controller/ctproposta";
 import * as servico from "../controller/ctservico";
 import * as template from "../controller/cttemplate";
@@ -56,6 +57,7 @@ routes
 
 // --- Tudo abaixo exige login (auth), escopado por empresaId no controller ---
 routes.route("/clientes").get(auth, cliente.read).post(auth, cliente.create);
+routes.get("/clientes/consulta-cnpj/:cnpj", auth, cnpj.consultar);
 
 routes
   .route("/clientes/:id")
