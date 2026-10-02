@@ -609,6 +609,7 @@ export const readKanban = async (
         descricao: true,
         status: true,
         colunaKanbanId: true,
+        ...(req.configuracaoSistema?.composicaoCustos ? { composicaoCustos: true, contatoDestinatario: true, emailDestinatario: true, prazoEntrega: true } : {}),
         prioridade: true,
         origem: true,
         subtotal: true,

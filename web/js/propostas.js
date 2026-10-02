@@ -685,6 +685,7 @@ function criarCardProposta(proposta) {
                 : ""
             }
 
+            ${window.__configuracaoSistema?.composicaoCustos && proposta.composicaoCustos ? resumoComposicaoProposta(proposta) : ""}
             <div class="proposal-card-bottom">
                 <span class="proposal-value">${moeda(proposta.subtotal)}</span>
                 <time class="proposal-date" datetime="${proposta.createdAt}">
@@ -1718,7 +1719,7 @@ formNovaProposta.addEventListener("submit", async (e) => {
   }
 });
 
-async function abrirModalProposta(id) {
+async function abrirModalProposta(id, gerenciar = false) {
   if (estaArrastando || carregandoModalProposta) return;
 
   carregandoModalProposta = true;
@@ -1739,6 +1740,11 @@ async function abrirModalProposta(id) {
     }
 
     const proposta = await response.json();
+    if (window.__configuracaoSistema?.composicaoCustos && proposta.composicaoCustos && !gerenciar) {
+      await window.abrirOrcamentoNaProposta(proposta);
+      return;
+    }
+    window.__composicaoPropostaEmEdicao = window.__configuracaoSistema?.composicaoCustos ? proposta.composicaoCustos : null;
 
     preencherCampo("editarId", proposta.propostaid);
     preencherCampo("editarNumero", proposta.numero);
@@ -1899,6 +1905,7 @@ formEditarProposta.addEventListener("submit", async (e) => {
     }
 
     const body = montarBodyEditarProposta();
+    if(window.__composicaoPropostaEmEdicao)body.composicaoCustos=window.__composicaoPropostaEmEdicao;
     if (!body.itens || body.itens.length === 0) {
       alert("Adicione pelo menos um item na proposta antes de salvar.");
       return;

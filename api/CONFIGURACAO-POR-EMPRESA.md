@@ -7,7 +7,7 @@ O SUPER_ADMIN usa Empresas > Configurar sistema para escolher PADRAO, SBA ou PER
 ## SBA
 
 - Clientes: códigos da reforma tributária, como registro cadastral sem cálculo fiscal automático.
-- Propostas: contato e e-mail selecionados dentre os contatos do cliente; envio usa o e-mail escolhido como padrão.
+- Propostas: contato e e-mail selecionados dentre os contatos do cliente; envio usa o e-mail escolhido como padrão. Nova proposta usa o mesmo editor de composição de Orçamentos, e propostas com composição são editadas nesse modal. Kanban exibe o resumo de custos, margem, lucro e destinatário. Orçamentos e Propostas atualizam o mesmo registro. Propostas antigas sem composição mantêm o editor anterior; Outras ações preserva o acesso ao gerenciamento e faturamento.
 - Prioridade, origem, frete e validade em dias desabilitados. Data de validade permanece opcional. Escopo vazio omitido no PDF.
 - Orçamentos substitui o acesso a Serviços, com composição interna por materiais e mão de obra. Materiais ganha tela própria, usando o catálogo de serviços da mesma empresa com metadados.
 - Materiais: classificação, especificações, fornecedor, códigos fiscais, unidades, quantidades cadastrais, quatro tabelas de preço e até dez fotos. Não há movimentação automática de estoque.
