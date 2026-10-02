@@ -360,6 +360,10 @@ function aplicarPerfilEmpresa(c) {
   document.querySelectorAll(".tag-"+k).forEach(el=>el.hidden=true);
  }
  if(c.composicaoCustos) {
+ if(!document.getElementById("subjectTabsScript")) {
+ const css=document.createElement("link");css.rel="stylesheet";css.href="css/modal-tabs.css";document.head.append(css);
+ const script=document.createElement("script");script.id="subjectTabsScript";script.src="js/modal-tabs.js";document.body.append(script);
+ }
  const link=document.querySelector('.menu a[href="servicos.html"]');
  if(link){link.href="orcamentos.html";link.textContent="Orçamentos";const material=document.createElement("a");material.href="materiais.html";material.textContent="Materiais";link.after(material);}
  prepararItensMenu();

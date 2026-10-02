@@ -1,0 +1,10 @@
+.subject-tabs-modal .subject-tabs{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:5;background:#fff;padding:10px 0 14px;border-bottom:1px solid #e2e8f0;margin-bottom:20px;scrollbar-width:thin}
+.subject-tabs-modal .subject-tabs [role=tab]{flex-shrink:0;border:1px solid transparent;border-radius:10px;padding:10px 16px;background:#f1f5f9;color:#475569;font:inherit;font-weight:600;cursor:pointer}
+.subject-tabs-modal .subject-tabs [aria-selected=true]{background:#e9f0ff;border-color:#b8cff5;color:#174c9c}
+.subject-tabs-modal .subject-tabs button:focus-visible{outline:3px solid #669cef;outline-offset:2px}
+.subject-tabs-modal .subject-tab-panel[hidden]{display:none!important}
+.subject-tabs-modal .subject-tab-panel>.budget-section,.subject-tabs-modal .subject-tab-panel>.material-section{margin-top:0}
+.subject-tabs-modal .subject-tab-panel>.material-panel{margin-top:18px}
+.subject-tabs-modal .subject-tab-panels{min-width:0;min-height:260px}
+.subject-tabs-modal .modal-footer,.subject-tabs-modal .budget-actions,.subject-tabs-modal .material-actions{position:sticky;bottom:0;background:#fff;z-index:6;border-top:1px solid #e2e8f0}
+@media(max-width:600px){.subject-tabs-modal .subject-tabs [role=tab]{padding:9px 12px;font-size:13px}.subject-tabs-modal .subject-tab-panels{min-height:180px}}
