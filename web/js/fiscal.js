@@ -1242,5 +1242,10 @@ window.addEventListener("configuracao-sistema",({detail:c})=>{
  const role=JSON.parse(localStorage.getItem("usuarioLogado")||"null")?.usuario?.role;
  if(!c.certificadoA1 || !["ADMIN","SUPER_ADMIN"].includes(role))return;
  const form=document.getElementById("formEmpresaFiscal");if(!form)return;
- const div=document.createElement("div");div.className="form-group";div.innerHTML='<label>Certificado fiscal A1 (.pfx / .p12)<input id="certificadoA1" type="file" accept=".pfx,.p12" class="form-control"></label><label>Senha do certificado<input id="senhaCertificadoA1" type="password" autocomplete="new-password" class="form-control"></label><p>Armazenamento criptografado. A configuração do certificado no provedor Focus continua separada.</p>';form.prepend(div);
+ const anchor=form.querySelector("#efTokenProducao")?.closest(".row");
+ if(!anchor||document.getElementById("certificadoA1"))return;
+ const section=document.createElement("section");section.className="fiscal-certificate-section";
+ section.innerHTML='<div class="certificate-heading"><div class="certificate-mark" aria-hidden="true">A1</div><div><h3>Certificado digital</h3><p>Envie o arquivo da empresa emissora e informe a senha.</p></div><span class="certificate-badge">Criptografado</span></div><div class="row g-3"><div class="col-md-7"><label for="certificadoA1">Arquivo do certificado</label><input id="certificadoA1" type="file" accept=".pfx,.p12" class="form-control"><small>Formato PFX ou P12 · máximo 1 MB</small></div><div class="col-md-5"><label for="senhaCertificadoA1">Senha do certificado</label><input id="senhaCertificadoA1" type="password" autocomplete="new-password" placeholder="Informe a senha do arquivo" class="form-control"><small>A senha é armazenada com criptografia.</small></div></div><p class="certificate-note">O envio salva o certificado neste sistema. A configuração no provedor Focus continua separada.</p>';
+ anchor.after(section);
+
 });
