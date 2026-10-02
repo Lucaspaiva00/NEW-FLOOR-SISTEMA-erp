@@ -4,12 +4,20 @@ import prisma from "../prisma";
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body;
+    if(req.configuracaoSistema?.composicaoCustos && body.dadosMaterial != null) {
+      const d=body.dadosMaterial;
+      if(typeof d!=="object" || Array.isArray(d) || JSON.stringify(d).length>3000000 || (d.fotos && (!Array.isArray(d.fotos)||d.fotos.length>10||d.fotos.some((f:any)=>typeof f!=="string"||!/^data:image\/(jpeg|png|webp);base64,/.test(f))))) {
+       res.status(400).json({error:"Cadastro de material inválido ou fotos acima do limite"});return;
+      }
+      for(const key of ["custo","estoqueFisico","estoqueFiscal","preFaturado","disponivel"]){if(d[key]!==undefined && (!Number.isFinite(Number(d[key])) || Number(d[key])<0)){res.status(400).json({error:"Quantidade ou custo inválido"});return;}}
+    }
     const empresaId = req.empresaId as number;
 
     const servico = await prisma.servico.create({
       data: {
         empresaId,
         codigo: body.codigo,
+        dadosMaterial: req.configuracaoSistema?.composicaoCustos ? body.dadosMaterial : undefined,
         nome: body.nome,
         categoria: body.categoria,
         descricao: body.descricao,
@@ -100,6 +108,13 @@ export const update = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const body = req.body;
+    if(req.configuracaoSistema?.composicaoCustos && body.dadosMaterial != null) {
+      const d=body.dadosMaterial;
+      if(typeof d!=="object" || Array.isArray(d) || JSON.stringify(d).length>3000000 || (d.fotos && (!Array.isArray(d.fotos)||d.fotos.length>10||d.fotos.some((f:any)=>typeof f!=="string"||!/^data:image\/(jpeg|png|webp);base64,/.test(f))))) {
+       res.status(400).json({error:"Cadastro de material inválido ou fotos acima do limite"});return;
+      }
+      for(const key of ["custo","estoqueFisico","estoqueFiscal","preFaturado","disponivel"]){if(d[key]!==undefined && (!Number.isFinite(Number(d[key])) || Number(d[key])<0)){res.status(400).json({error:"Quantidade ou custo inválido"});return;}}
+    }
     const empresaId = req.empresaId as number;
 
     const resultado = await prisma.servico.updateMany({
@@ -109,6 +124,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       },
       data: {
         codigo: body.codigo,
+        dadosMaterial: req.configuracaoSistema?.composicaoCustos ? body.dadosMaterial : undefined,
         nome: body.nome,
         categoria: body.categoria,
         descricao: body.descricao,

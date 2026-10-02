@@ -200,6 +200,7 @@ async function carregarBrandingEmpresa() {
     localStorage.setItem("empresaBranding", JSON.stringify(empresa));
 
     aplicarBrandingNaTela(empresa);
+    aplicarPerfilEmpresa(empresa.configuracaoSistema);
   } catch (error) {
     console.log("Não foi possível carregar o branding da empresa:", error);
   }
@@ -347,3 +348,22 @@ document.addEventListener("DOMContentLoaded", () => {
   carregarBrandingEmpresa();
   // restaurarEstadoSidebar(sidebar);
 });
+
+function aplicarPerfilEmpresa(c) {
+ if(!c) return;
+ window.__configuracaoSistema=c;
+ for(const [k,v] of Object.entries(c.modulos||{})) if(!v) document.querySelectorAll(`.menu a[href="${k}.html"]`).forEach(el=>el.hidden=true);
+ for(const [k,v] of Object.entries(c.camposProposta||{})) if(!v) {
+  for(const id of [k,"editar"+k[0].toUpperCase()+k.slice(1)]) {const el=document.getElementById(id); if(el){el.disabled=true;const wrap=el.closest(".form-group")||el.parentElement;wrap.style.setProperty("display","none","important");}}
+  document.querySelectorAll(".tag-"+k).forEach(el=>el.hidden=true);
+ }
+ if(c.composicaoCustos) {
+ const link=document.querySelector('.menu a[href="servicos.html"]');
+ if(link){link.href="orcamentos.html";link.textContent="Orçamentos";const material=document.createElement("a");material.href="materiais.html";material.textContent="Materiais";link.after(material);}
+ if(location.pathname.endsWith("/servicos.html")) location.replace("orcamentos.html");
+ }
+ const pagina=location.pathname.split("/").pop().replace(".html","");
+ const modulo=["orcamentos","materiais"].includes(pagina)?"servicos":pagina;
+ if(c.modulos?.[modulo]===false) location.replace("perfil.html");
+ window.dispatchEvent(new CustomEvent("configuracao-sistema",{detail:c}));
+}

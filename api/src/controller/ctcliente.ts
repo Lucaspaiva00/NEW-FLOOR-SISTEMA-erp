@@ -25,6 +25,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         nomeTelefone3: body.nomeTelefone3,
         nomeTelefone4: body.nomeTelefone4,
 
+        reformaTributaria: req.configuracaoSistema?.reformaTributaria ? body.reformaTributaria : undefined,
         email1: body.email1,
         email2: body.email2,
         email3: body.email3,
@@ -155,6 +156,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
         nomeTelefone3: body.nomeTelefone3,
         nomeTelefone4: body.nomeTelefone4,
 
+        reformaTributaria: req.configuracaoSistema?.reformaTributaria ? body.reformaTributaria : undefined,
         email1: body.email1,
         email2: body.email2,
         email3: body.email3,

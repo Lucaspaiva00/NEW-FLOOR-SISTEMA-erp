@@ -87,6 +87,7 @@ function renderizarEmpresas(empresas) {
                     </div>
 
                     ${renderizarStatus(empresa.ativo)}
+<button type="button" onclick="configurarSistema(${empresa.empresaid})">Configurar sistema</button>
 
                 </div>
 
@@ -163,3 +164,16 @@ formEmpresa.addEventListener("submit", async (e) => {
 });
 
 carregarEmpresas();
+
+function configurarSistema(id) {
+ const empresa=empresasCache.find(e=>e.empresaid===id);if(!empresa)return;
+ const c=empresa.configuracaoSistema||{perfil:"PADRAO"};
+ const dialog=document.createElement("dialog");dialog.style.cssText="max-width:700px;width:95%;border:0;border-radius:16px;padding:24px";
+ dialog.innerHTML='<form method="dialog"><h2>Configuração do sistema</h2><label>Perfil <select id="configPerfil"><option>PADRAO</option><option>SBA</option><option>PERSONALIZADO</option></select></label><p>Cada usuário herda as opções da empresa. As permissões de acesso continuam por função.</p><fieldset id="configModulos"><legend>Módulos</legend></fieldset><fieldset id="configCampos"><legend>Campos do orçamento</legend></fieldset><fieldset id="configFlags"><legend>Recursos</legend></fieldset><label>Escopo padrão<textarea id="configEscopo" rows="5" style="width:100%"></textarea></label><p id="configErro"></p><button type="button" id="salvarConfig">Salvar</button> <button>Cancelar</button></form>';
+ document.body.append(dialog);
+ const defaults=p=>({perfil:p,modulos:Object.fromEntries(["dashboard","clientes","servicos","propostas","vendedores","agenda","templates","financeiro","fiscal"].map(k=>[k,true])),camposProposta:Object.fromEntries(["prioridade","origem","frete","validadeDias"].map(k=>[k,p!=="SBA"])),reformaTributaria:p==="SBA",selecionarDestinatario:p==="SBA",certificadoA1:p==="SBA",composicaoCustos:p==="SBA",ocultarEscopoVazio:p==="SBA",textoEscopo:p==="SBA"?"NAO INCLUI - ART E QUAISQUER OUTRAS PECAS E SERVICOS QUE NAO ESTEJAM RELACIONADOS NESTE ORCAMENTO.\nPRAZO DE ENTREGA - A COMBINAR\nIPI ISENTO":""});
+ function preencher(v){const d=defaults(v.perfil);const cfg={...d,...v,modulos:{...d.modulos,...v.modulos},camposProposta:{...d.camposProposta,...v.camposProposta}};dialog.querySelector("#configPerfil").value=cfg.perfil;for(const [fieldset,values] of [["configModulos",cfg.modulos],["configCampos",cfg.camposProposta],["configFlags",Object.fromEntries(["reformaTributaria","selecionarDestinatario","certificadoA1","composicaoCustos","ocultarEscopoVazio"].map(k=>[k,cfg[k]]))]]){const el=dialog.querySelector("#"+fieldset);el.querySelectorAll("label").forEach(e=>e.remove());for(const [k,v] of Object.entries(values)){const label=document.createElement("label");label.style.cssText="display:inline-block;margin:8px";const input=document.createElement("input");input.type="checkbox";input.checked=v;input.dataset.key=k;label.append(input,document.createTextNode(" "+k));el.append(label);}}dialog.querySelector("#configEscopo").value=cfg.textoEscopo;}
+ preencher(c);dialog.querySelector("#configPerfil").onchange=e=>preencher(defaults(e.target.value));
+ dialog.querySelector("#salvarConfig").onclick=async()=>{const read=id=>Object.fromEntries([...dialog.querySelectorAll("#"+id+" input")].map(i=>[i.dataset.key,i.checked]));const config={perfil:dialog.querySelector("#configPerfil").value,modulos:read("configModulos"),camposProposta:read("configCampos"),...read("configFlags"),textoEscopo:dialog.querySelector("#configEscopo").value};try{const res=await fetch(`${API_URL}/empresas/${id}`,{method:"PUT",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({configuracaoSistema:config})});const data=await res.json();if(!res.ok)throw new Error(data.message||data.error);dialog.close();carregarEmpresas();}catch(e){dialog.querySelector("#configErro").textContent=e.message;}};
+ dialog.onclose=()=>dialog.remove();dialog.showModal();
+}

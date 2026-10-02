@@ -36,9 +36,10 @@ function parseJson(value: any): any {
 }
 
 function semTokens(empresa: any) {
-  const { tokenHomologacao, tokenProducao, ...safe } = empresa;
+  const { tokenHomologacao, tokenProducao, certificadoCriptografado, ...safe } = empresa;
   return {
     ...safe,
+    temCertificado: Boolean(certificadoCriptografado),
     temTokenHomologacao: Boolean(tokenHomologacao),
     temTokenProducao: Boolean(tokenProducao),
   };

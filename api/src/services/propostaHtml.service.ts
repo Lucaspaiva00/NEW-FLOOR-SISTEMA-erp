@@ -1,3 +1,5 @@
+import { gerarHtmlSba } from "./orcamentoSbaHtml.service";
+import { resolverConfiguracao } from "./configuracaoSistema.service";
 import fs from "fs";
 import path from "path";
 import {
@@ -729,6 +731,7 @@ export async function gerarHtmlProposta({
   itens,
   template,
 }: DadosProposta): Promise<string> {
+  if(resolverConfiguracao(proposta.empresa?.configuracaoSistema).perfil === "SBA") return gerarHtmlSba(proposta,cliente,itens);
   const corPrimaria = template?.corPrimaria || "#111827";
 
   const corSecundaria = template?.corSecundaria || "#f3f4f6";

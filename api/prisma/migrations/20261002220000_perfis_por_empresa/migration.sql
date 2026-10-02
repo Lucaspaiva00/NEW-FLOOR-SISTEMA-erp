@@ -1,0 +1,10 @@
+ALTER TABLE "Empresa" ADD COLUMN IF NOT EXISTS "configuracaoSistema" JSONB;
+ALTER TABLE "Cliente" ADD COLUMN IF NOT EXISTS "reformaTributaria" TEXT;
+ALTER TABLE "Servico" ADD COLUMN IF NOT EXISTS "dadosMaterial" JSONB;
+ALTER TABLE "Proposta" ADD COLUMN IF NOT EXISTS "contatoDestinatario" TEXT;
+ALTER TABLE "Proposta" ADD COLUMN IF NOT EXISTS "emailDestinatario" TEXT;
+ALTER TABLE "Proposta" ADD COLUMN IF NOT EXISTS "composicaoCustos" JSONB;
+ALTER TABLE "Proposta" ADD COLUMN IF NOT EXISTS "prazoEntrega" TEXT;
+ALTER TABLE "EmpresaFiscal" ADD COLUMN IF NOT EXISTS "certificadoCriptografado" TEXT;
+ALTER TABLE "EmpresaFiscal" ADD COLUMN IF NOT EXISTS "certificadoNome" TEXT;
+UPDATE "Empresa" SET "configuracaoSistema" = '{"perfil":"SBA"}'::jsonb WHERE "configuracaoSistema" IS NULL AND (lower(trim(slug)) = 'sba' OR lower(trim(nome)) = 'sba');

@@ -219,6 +219,7 @@ function montarBodyCliente(prefixo = "") {
 
     pais: pegarValor(campo("pais")) || "Brasil",
 
+    reformaTributaria: pegarValor(campo("reformaTributaria")),
     observacoes: pegarValor(campo("observacoes")),
 
     origemLead: pegarValor(campo("origemLead")),
@@ -800,6 +801,7 @@ async function abrirModalCliente(id) {
       formatarDataParaInput(cliente.dataNascimento),
     );
 
+    preencherCampo("editarReformaTributaria", cliente.reformaTributaria);
     preencherCampo("editarObservacoes", cliente.observacoes);
 
     preencherCampo("editarLogo", cliente.logo);
@@ -1140,3 +1142,11 @@ const wizardEditarCliente = criarWizardCliente({
 });
 
 carregarClientes();
+
+window.addEventListener("configuracao-sistema",({detail:c})=>{
+ if(!c.reformaTributaria) return;
+ for(const [formId,id] of [["formCliente","reformaTributaria"],["formEditarCliente","editarReformaTributaria"]]) {
+ const form=document.getElementById(formId);if(!form||document.getElementById(id))continue;
+ const div=document.createElement("div");div.className="form-group";div.innerHTML=`<label for="${id}">Reforma tributária — códigos tributários</label><textarea id="${id}" maxlength="2000" placeholder="Informe os códigos definidos pela contabilidade"></textarea><small>Registro cadastral; não altera o cálculo dos tributos.</small>`;form.prepend(div);
+ }
+});

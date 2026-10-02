@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orcamentos - ERP Paiva Tech</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/vendedores.css">
+    <link rel="stylesheet" href="css/menu-mobile.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>.sba-form{background:white;padding:24px;border-radius:12px;margin:20px 0}.sba-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}.sba-form label{display:block;margin:10px 0}.sba-form input,.sba-form select,.sba-form textarea{display:block;width:100%;padding:8px;border:1px solid #ccc;border-radius:5px}.sba-row{display:grid;grid-template-columns:2fr repeat(4,1fr) auto;gap:8px;margin:8px 0;overflow:auto}.sba-form button{padding:9px 15px;margin:6px;border:0;border-radius:5px;background:#18304e;color:white}.sba-card{background:white;padding:16px;margin:12px 0;border-radius:8px}@media(max-width:700px){.sba-row{grid-template-columns:1fr 1fr}.main-content{padding:15px!important}}</style></head>
+
+<body>
+
+    <button class="mobile-menu-btn">☰</button>
+    <div class="mobile-overlay"></div>
+
+    <div class="layout">
+
+        <aside class="sidebar">
+
+            <div>
+
+                <div class="logo">
+                    <img src="assets/logo-default.svg" alt="Logo" class="logo-img">
+                </div>
+
+                <nav class="menu">
+
+                    <a href="dashboard.html">Dashboard</a>
+                    <a href="clientes.html">Clientes</a>
+                    <a href="vendedores.html">Vendedores</a>
+                    <a href="servicos.html">Serviços</a>
+                    <a href="propostas.html">Propostas</a>
+                    <a href="agenda.html">Agenda</a>
+                    <a href="templates.html">Templates</a>
+                    <a href="usuarios.html">Usuários</a>
+                    <a href="perfil.html">Perfil da empresa</a>
+
+                </nav>
+
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">L</div>
+                <div>
+                    <strong>Lucas</strong>
+                    <span>Administrador</span>
+                </div>
+            </div>
+
+        </aside>
+
+        <main class="main-content"><h1>Orçamentos</h1><p>Composição interna de custos. Materiais, mão de obra e margem ficam fora do PDF comercial.</p><form id="formOrcamento" class="sba-form"><input id="orcamentoId" type="hidden"><div class="sba-grid"><label>Cliente<select id="cliente" required></select></label><label>Contato<select id="contato"></select></label><label>E-mail<select id="email"></select></label><label>Título<input id="titulo" required maxlength="500"></label><label>Data de validade<input id="validade" type="date"></label><label>Prazo de entrega<input id="prazo" placeholder="A combinar"></label></div><label>Descrição comercial<textarea id="descricao" rows="4"></textarea></label><h3>Materiais</h3><p>Descrição, especificação, quantidade e custo unitário.</p><div id="materiais"></div><button type="button" id="adicionarMaterial">Adicionar material</button><h3>Mão de obra</h3><p>Atividade, dias, pessoas, horas por dia e valor por hora.</p><div id="maoObra"></div><button type="button" id="adicionarMaoObra">Adicionar mão de obra</button><div class="sba-grid"><label>Margem (%)<input id="margem" type="number" min="0" max="99.99" step="0.01" value="60"></label><label>Imposto estimado (%)<input id="imposto" type="number" min="0" max="100" step="0.01" value="18"></label></div><p>Estimativa de custos; não altera a tributação das notas fiscais.</p><div id="totais"></div><label>Escopo<textarea id="escopo" rows="5"></textarea></label><label>Condições de pagamento<textarea id="pagamento"></textarea></label><button type="submit">Salvar orçamento</button><button type="button" id="novo">Novo</button><p id="mensagem" role="status"></p></form><h2>Orçamentos cadastrados</h2><div id="listaOrcamentos"></div></main>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/orcamentos.js"></script>
+
+    <script src="js/menu-mobile.js"></script>
+    <script src="js/sidebar.js"></script>
+
+</body>
+
+</html>

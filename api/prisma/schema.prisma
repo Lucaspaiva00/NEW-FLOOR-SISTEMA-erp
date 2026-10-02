@@ -8,6 +8,7 @@ datasource db {
 }
 
 model Empresa {
+  configuracaoSistema Json?
   empresaid       Int       @id @default(autoincrement())
   nome            String
   slug            String    @unique
@@ -36,6 +37,7 @@ model Empresa {
 }
 
 model Cliente {
+  reformaTributaria String?
   clienteid         Int         @id @default(autoincrement())
   empresaId         Int
   empresa           Empresa     @relation(fields: [empresaId], references: [empresaid])
@@ -92,6 +94,7 @@ model Cliente {
 }
 
 model Servico {
+  dadosMaterial Json?
   servicoid        Int            @id @default(autoincrement())
   empresaId        Int
   empresa          Empresa        @relation(fields: [empresaId], references: [empresaid])
@@ -118,6 +121,10 @@ model Servico {
 }
 
 model Proposta {
+  contatoDestinatario String?
+  emailDestinatario String?
+  composicaoCustos Json?
+  prazoEntrega String?
   propostaid                 Int               @id @default(autoincrement())
   empresaId                  Int
   empresa                    Empresa           @relation(fields: [empresaId], references: [empresaid])
@@ -344,6 +351,8 @@ enum TipoCliente {
 }
 
 model EmpresaFiscal {
+  certificadoCriptografado String?
+  certificadoNome String?
   empresafiscalid              Int                  @id @default(autoincrement())
   empresaId                    Int
   empresa                      Empresa              @relation(fields: [empresaId], references: [empresaid])

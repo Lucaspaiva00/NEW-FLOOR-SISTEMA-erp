@@ -428,10 +428,20 @@
     try {
       const data = dadosEmpresaForm();
       if (!data.razaoSocial || !data.cnpj) throw new Error("Razão social e CNPJ são obrigatórios.");
-      await api(id ? `/fiscal/empresas/${id}` : "/fiscal/empresas", {
+      const salva = await api(id ? `/fiscal/empresas/${id}` : "/fiscal/empresas", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify(data),
       });
+      $("empresaFiscalId").value = salva.empresafiscalid;
+      const file=$("certificadoA1")?.files?.[0];
+      if(file){
+       const senha=$("senhaCertificadoA1").value;
+       if(!senha)throw new Error("Informe a senha do certificado.");
+       if(file.size>1024*1024)throw new Error("Certificado maior que 1 MB");
+       const arquivo=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=reject;reader.readAsDataURL(file);});
+       await api(`/fiscal/empresas/${salva.empresafiscalid}/certificado`,{method:"POST",body:JSON.stringify({arquivo,senha,nome:file.name})});
+       $("senhaCertificadoA1").value="";$("certificadoA1").value="";
+      }
       modalEmpresa.hide();
       await Promise.all([carregarEmpresas(), carregarDashboard()]);
       selecionarAbaFiscal("empresas");
@@ -1227,3 +1237,10 @@
     window.history.replaceState({}, "", window.location.pathname);
   });
 })();
+
+window.addEventListener("configuracao-sistema",({detail:c})=>{
+ const role=JSON.parse(localStorage.getItem("usuarioLogado")||"null")?.usuario?.role;
+ if(!c.certificadoA1 || !["ADMIN","SUPER_ADMIN"].includes(role))return;
+ const form=document.getElementById("formEmpresaFiscal");if(!form)return;
+ const div=document.createElement("div");div.className="form-group";div.innerHTML='<label>Certificado fiscal A1 (.pfx / .p12)<input id="certificadoA1" type="file" accept=".pfx,.p12" class="form-control"></label><label>Senha do certificado<input id="senhaCertificadoA1" type="password" autocomplete="new-password" class="form-control"></label><p>Armazenamento criptografado. A configuração do certificado no provedor Focus continua separada.</p>';form.prepend(div);
+});

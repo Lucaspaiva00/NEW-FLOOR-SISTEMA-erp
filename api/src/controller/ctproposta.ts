@@ -1,4 +1,30 @@
 import { Request, Response } from "express";
+import { resolverConfiguracao, prepararCampos } from "../services/configuracaoSistema.service";
+import { calcularComposicao } from "../services/orcamentoSba.service";
+async function prepararBody(req: Request, res: Response): Promise<any> {
+ const config=req.configuracaoSistema || resolverConfiguracao(null);
+ const body=prepararCampos(req.body,config);
+ if(!config.selecionarDestinatario) {delete body.contatoDestinatario;delete body.emailDestinatario;}
+ if(!config.composicaoCustos) {delete body.composicaoCustos;delete body.prazoEntrega;}
+ try {
+ if(body.composicaoCustos != null) {
+   body.composicaoCustos=calcularComposicao(body.composicaoCustos);
+   body.itens=[{descricao:body.titulo || "Serviços e materiais",detalhes:body.descricao || "",unidade:"UN",quantidade:1,valorUnitario:body.composicaoCustos.preco,subtotal:body.composicaoCustos.preco,desconto:0,acrescimo:0}];
+ }
+ if(body.clienteId === undefined && (body.emailDestinatario || body.contatoDestinatario) && req.params.id) {
+ const existing=await prisma.proposta.findFirst({where:{propostaid:Number(req.params.id),empresaId:req.empresaId as number},select:{clienteId:true}});
+ if(!existing)throw new Error("Proposta não encontrada");body.clienteId=existing.clienteId;
+ }
+ if(body.clienteId !== undefined) {
+   const cliente=await prisma.cliente.findFirst({where:{clienteid:Number(body.clienteId),empresaId:req.empresaId as number}});
+   if(!cliente) throw new Error("Cliente não pertence à empresa.");
+   if(body.emailDestinatario && ![cliente.email1,cliente.email2,cliente.email3,cliente.email4].includes(body.emailDestinatario)) throw new Error("Selecione um e-mail cadastrado no cliente.");
+   if(body.contatoDestinatario && ![cliente.responsavel,cliente.nomeEmail1,cliente.nomeEmail2,cliente.nomeEmail3,cliente.nomeEmail4,cliente.nomeTelefone1,cliente.nomeTelefone2,cliente.nomeTelefone3,cliente.nomeTelefone4].includes(body.contatoDestinatario)) throw new Error("Selecione um contato cadastrado no cliente.");
+ }
+ return body;
+ } catch(error) {res.status(400).json({error:(error as Error).message}); return null;}
+}
+
 import path from "path";
 import fs from "fs";
 import prisma from "../prisma";
@@ -74,7 +100,7 @@ async function buscarPropostaCompleta(id: string, empresaId: number) {
       vendedor: true,
       templateProposta: true,
       empresa: {
-        select: { nome: true },
+        select: { nome: true, logo: true, configuracaoSistema: true },
       },
       itens: {
         include: {
@@ -184,7 +210,8 @@ async function gerarPdfInterno(id: string | string[] | number, empresaId: number
 }
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
-    const body = req.body;
+    const body = await prepararBody(req, res);
+    if (!body) return;
 
     const numeroAutomatico = await gerarNumeroAutomaticoProposta(req.empresaId as number);
 
@@ -201,6 +228,10 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
         numero: numeroAutomatico,
 
+        contatoDestinatario: body.contatoDestinatario || null,
+        emailDestinatario: body.emailDestinatario || null,
+        composicaoCustos: body.composicaoCustos,
+        prazoEntrega: body.prazoEntrega || null,
         titulo: body.titulo,
 
         subtitulo: body.subtitulo || null,
@@ -209,7 +240,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
         descricao: body.descricao || null,
 
-        escopo: body.escopo || null,
+        escopo: req.configuracaoSistema?.perfil === "SBA" ? body.escopo === undefined ? req.configuracaoSistema.textoEscopo : body.escopo || "" : body.escopo || null,
 
         observacoes: observacoesResolvidas.observacoes,
 
@@ -322,7 +353,8 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 export const update = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const body = req.body;
+    const body = await prepararBody(req, res);
+    if (!body) return;
 
     const propostaAtual = await prisma.proposta.findFirst({
       where: {
@@ -364,6 +396,10 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       data: {
         numero: body.numero ?? propostaAtual.numero,
 
+        contatoDestinatario: body.contatoDestinatario !== undefined ? body.contatoDestinatario || null : body.clienteId && Number(body.clienteId) !== propostaAtual.clienteId ? null : propostaAtual.contatoDestinatario,
+        emailDestinatario: body.emailDestinatario !== undefined ? body.emailDestinatario || null : body.clienteId && Number(body.clienteId) !== propostaAtual.clienteId ? null : propostaAtual.emailDestinatario,
+        composicaoCustos: body.composicaoCustos,
+        prazoEntrega: body.prazoEntrega,
         titulo: body.titulo ?? propostaAtual.titulo,
 
         subtitulo: body.subtitulo ?? propostaAtual.subtitulo,
@@ -372,7 +408,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
         descricao: body.descricao ?? propostaAtual.descricao,
 
-        escopo: body.escopo ?? propostaAtual.escopo,
+        escopo: req.configuracaoSistema?.ocultarEscopoVazio && "escopo" in body ? body.escopo || "" : body.escopo ?? propostaAtual.escopo,
 
         observacoes:
           "observacoes" in body ? body.observacoes : propostaAtual.observacoes,
@@ -404,7 +440,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
               : null
             : propostaAtual.colunaKanbanId,
 
-        prioridade: body.prioridade ?? propostaAtual.prioridade,
+        prioridade: "prioridade" in body ? body.prioridade : propostaAtual.prioridade,
 
         subtotal: temItensNoBody ? subtotal : propostaAtual.subtotal,
 
@@ -418,12 +454,10 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
         validadeDias:
           body.validadeDias !== undefined
-            ? Number(body.validadeDias)
+            ? body.validadeDias == null ? null : Number(body.validadeDias)
             : propostaAtual.validadeDias,
 
-        dataValidade: body.dataValidade
-          ? new Date(body.dataValidade)
-          : propostaAtual.dataValidade,
+        dataValidade: "dataValidade" in body ? body.dataValidade ? new Date(body.dataValidade) : null : propostaAtual.dataValidade,
 
         dataAprovacao: body.dataAprovacao
           ? new Date(body.dataAprovacao)
@@ -446,7 +480,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
         pdfUrl: temItensNoBody ? null : (body.pdfUrl ?? propostaAtual.pdfUrl),
 
-        origem: body.origem ?? propostaAtual.origem,
+        origem: "origem" in body ? body.origem : propostaAtual.origem,
 
         assinaturaCliente:
           body.assinaturaCliente ?? propostaAtual.assinaturaCliente,
@@ -701,6 +735,7 @@ export const duplicar = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const copia = prepararCampos(original, req.configuracaoSistema || resolverConfiguracao(null));
     const numero = await gerarNumeroAutomaticoProposta(req.empresaId as number);
     const titulo = original.titulo.endsWith(" (cópia)")
       ? original.titulo
@@ -714,21 +749,25 @@ export const duplicar = async (req: Request, res: Response): Promise<void> => {
         subtitulo: original.subtitulo,
         tipoProposta: original.tipoProposta,
         descricao: original.descricao,
+        contatoDestinatario: original.contatoDestinatario,
+        emailDestinatario: original.emailDestinatario,
+        composicaoCustos: original.composicaoCustos || undefined,
+        prazoEntrega: original.prazoEntrega,
         escopo: original.escopo,
         observacoes: original.observacoes,
         observacoesServicos: original.observacoesServicos,
         observacoesSistema: original.observacoesSistema,
         observacoesInternas: original.observacoesInternas,
         status: "RASCUNHO",
-        prioridade: original.prioridade,
+        prioridade: copia.prioridade,
         subtotal: original.subtotal,
-        frete: original.frete,
+        frete: copia.frete,
         formaPagamento: original.formaPagamento,
         condicoesPagamento: original.condicoesPagamento,
-        validadeDias: original.validadeDias,
+        validadeDias: copia.validadeDias,
         dataValidade: original.dataValidade,
         responsavel: original.responsavel,
-        origem: original.origem,
+        origem: copia.origem,
         clienteId: original.clienteId,
         vendedorId: original.vendedorId,
         templatePropostaTemplateid: original.templatePropostaTemplateid,
@@ -910,6 +949,7 @@ export const enviarEmail = async (
 
     const destinatario =
       req.body?.destinatario ||
+      proposta.emailDestinatario ||
       proposta.cliente?.email1 ||
       proposta.cliente?.email2;
 

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materiais - ERP Paiva Tech</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/vendedores.css">
+    <link rel="stylesheet" href="css/menu-mobile.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>.sba-form{background:white;padding:24px;border-radius:12px;margin:20px 0}.sba-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}.sba-form label{display:block;margin:10px 0}.sba-form input,.sba-form select,.sba-form textarea{display:block;width:100%;padding:8px;border:1px solid #ccc;border-radius:5px}.sba-row{display:grid;grid-template-columns:2fr repeat(4,1fr) auto;gap:8px;margin:8px 0;overflow:auto}.sba-form button{padding:9px 15px;margin:6px;border:0;border-radius:5px;background:#18304e;color:white}.sba-card{background:white;padding:16px;margin:12px 0;border-radius:8px}@media(max-width:700px){.sba-row{grid-template-columns:1fr 1fr}.main-content{padding:15px!important}}</style></head>
+
+<body>
+
+    <button class="mobile-menu-btn">☰</button>
+    <div class="mobile-overlay"></div>
+
+    <div class="layout">
+
+        <aside class="sidebar">
+
+            <div>
+
+                <div class="logo">
+                    <img src="assets/logo-default.svg" alt="Logo" class="logo-img">
+                </div>
+
+                <nav class="menu">
+
+                    <a href="dashboard.html">Dashboard</a>
+                    <a href="clientes.html">Clientes</a>
+                    <a href="vendedores.html">Vendedores</a>
+                    <a href="servicos.html">Serviços</a>
+                    <a href="propostas.html">Propostas</a>
+                    <a href="agenda.html">Agenda</a>
+                    <a href="templates.html">Templates</a>
+                    <a href="usuarios.html">Usuários</a>
+                    <a href="perfil.html">Perfil da empresa</a>
+
+                </nav>
+
+            </div>
+
+            <div class="user-box">
+                <div class="avatar">L</div>
+                <div>
+                    <strong>Lucas</strong>
+                    <span>Administrador</span>
+                </div>
+            </div>
+
+        </aside>
+
+        <main class="main-content"><h1>Materiais</h1><p>Catálogo da empresa. Quantidades e regras fiscais são cadastrais; não geram movimentações de estoque ou impostos.</p><form id="formMaterial" class="sba-form"><input id="materialId" type="hidden"><div class="sba-grid"><label>Código<input id="codigo" maxlength="1000" ></label><label>Nome<input id="nome" required maxlength="1000" ></label><label>Classificação<input id="classificacao" maxlength="1000" ></label><label>Tipo<input id="tipo" maxlength="1000" ></label><label>Código de barras<input id="codigoBarras" maxlength="1000" ></label><label>Código fabricante<input id="codigoFabricante" maxlength="1000" ></label><label>Fabricante<input id="fabricante" maxlength="1000" ></label><label>Fornecedor<input id="fornecedor" maxlength="1000" ></label><label>Unidade venda<input id="unidade" maxlength="1000" ></label><label>Unidade compra<input id="unidadeCompra" maxlength="1000" ></label><label>Grupo<input id="grupo" maxlength="1000" ></label><label>Seção<input id="secao" maxlength="1000" ></label><label>Centro de custo<input id="centroCusto" maxlength="1000" ></label><label>NCM<input id="ncm" maxlength="1000" ></label><label>CEST<input id="cest" maxlength="1000" ></label><label>NBS<input id="nbs" maxlength="1000" ></label><label>Regra fiscal<input id="regraFiscal" maxlength="1000" ></label><label>Origem<input id="origem" maxlength="1000" ></label><label>Custo unitário<input id="custo" type="number" min="0" step="any" ></label><label>Quantidade física<input id="estoqueFisico" type="number" min="0" step="any" ></label><label>Quantidade fiscal<input id="estoqueFiscal" type="number" min="0" step="any" ></label><label>Pré-faturado<input id="preFaturado" type="number" min="0" step="any" ></label><label>Quantidade disponível<input id="disponivel" type="number" min="0" step="any" ></label><label>Variação / especificação<input id="especificacao" maxlength="1000" ></label></div><label>Ativo<input id="ativo" type="checkbox" checked></label><h3>Tabelas de preço</h3><div class="sba-grid"><label>À vista — margem (%)<input id="margemvista" type="number" min="0" max="99.99" step="any"></label><label>À vista — preço<input id="precovista" type="number" min="0" step="any"></label><label>28 dias — margem (%)<input id="margem28" type="number" min="0" max="99.99" step="any"></label><label>28 dias — preço<input id="preco28" type="number" min="0" step="any"></label><label>35 dias — margem (%)<input id="margem35" type="number" min="0" max="99.99" step="any"></label><label>35 dias — preço<input id="preco35" type="number" min="0" step="any"></label><label>Padrão — margem (%)<input id="margempadrao" type="number" min="0" max="99.99" step="any"></label><label>Padrão — preço<input id="precopadrao" type="number" min="0" step="any"></label></div><label>Observações<textarea id="observacoes"></textarea></label><label>Fotos<input id="fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple></label><div id="previewFotos"></div><button type="submit">Salvar material</button><button type="button" id="novo">Novo</button><p id="mensagem" role="status"></p></form><h2>Materiais cadastrados</h2><div id="listaMateriais"></div></main>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/materiais.js"></script>
+
+    <script src="js/menu-mobile.js"></script>
+    <script src="js/sidebar.js"></script>
+
+</body>
+
+</html>

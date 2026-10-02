@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { resolverConfiguracao, validarConfiguracao } from "../services/configuracaoSistema.service";
 import bcrypt from "bcrypt";
 import prisma from "../prisma";
 
@@ -22,6 +23,8 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       adminSenha,
     } = req.body;
 
+    const configuracaoSistema = resolverConfiguracao(req.body.configuracaoSistema);
+    validarConfiguracao(configuracaoSistema);
     const slugExiste = await prisma.empresa.findUnique({ where: { slug } });
 
     if (slugExiste) {
@@ -42,6 +45,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
     const empresa = await prisma.empresa.create({
       data: {
+        configuracaoSistema,
         nome,
         slug,
         logo,
@@ -89,15 +93,17 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const { nome, logo, corPrimaria, corSecundaria, emailContato, telefoneContato, ativo } = req.body;
 
+    const configuracaoSistema = req.body.configuracaoSistema === undefined ? undefined : resolverConfiguracao(req.body.configuracaoSistema);
+    if(configuracaoSistema) validarConfiguracao(configuracaoSistema);
     const empresa = await prisma.empresa.update({
       where: { empresaid: Number(id) },
-      data: { nome, logo, corPrimaria, corSecundaria, emailContato, telefoneContato, ativo },
+      data: { configuracaoSistema, nome, logo, corPrimaria, corSecundaria, emailContato, telefoneContato, ativo },
     });
 
     res.json(empresa);
   } catch (error) {
     console.log(error);
-    res.status(500).json({ error: "Erro ao atualizar empresa" });
+    res.status(400).json({ error: (error as Error).message });
   }
 };
 
@@ -120,6 +126,7 @@ export const me = async (req: Request, res: Response): Promise<void> => {
       select: {
         empresaid: true,
         nome: true,
+        configuracaoSistema: true,
         slug: true,
         logo: true,
         corPrimaria: true,
@@ -134,7 +141,7 @@ export const me = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.json(empresa);
+    res.json({...empresa, configuracaoSistema: resolverConfiguracao(empresa.configuracaoSistema)});
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: "Erro ao buscar dados da empresa" });
@@ -163,6 +170,7 @@ export const updateMe = async (req: Request, res: Response): Promise<void> => {
       select: {
         empresaid: true,
         nome: true,
+        configuracaoSistema: true,
         slug: true,
         logo: true,
         corPrimaria: true,

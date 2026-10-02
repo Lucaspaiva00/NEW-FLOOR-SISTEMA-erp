@@ -6,6 +6,7 @@ import path from "path";
 import routes from "./routes/routes";
 import { garantirSchemaFinanceiro } from "./services/financeiroSchema.service";
 
+import { garantirSchemaConfiguracao } from "./services/configuracaoSchema.service";
 const app = express();
 
 app.use(cors({ exposedHeaders: ["Content-Disposition"] }));
@@ -26,6 +27,7 @@ app.use(routes);
 const PORT = process.env.PORT || 3000;
 
 async function iniciarServidor() {
+  await garantirSchemaConfiguracao();
   try {
     await garantirSchemaFinanceiro();
     console.log("✅ Estrutura do módulo financeiro verificada.");

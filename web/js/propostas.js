@@ -1600,6 +1600,8 @@ function montarBodyNovaProposta() {
 
     descricao: pegarValor("descricao"),
 
+    contatoDestinatario: pegarValor("contatoDestinatario"),
+    emailDestinatario: pegarValor("emailDestinatario"),
     escopo: pegarValor("escopo"),
 
     ...observacoes,
@@ -1757,6 +1759,7 @@ async function abrirModalProposta(id) {
     preencherCampo("editarColunaPersonalizada", proposta.colunaKanbanId || "");
     preencherCampo("editarPrioridade", proposta.prioridade);
     preencherCampo("editarDescricao", proposta.descricao);
+    await atualizarDestinatarios("editar", proposta.clienteId, proposta);
     preencherCampo("editarEscopo", proposta.escopo);
     preencherCampo("editarResponsavel", proposta.responsavel);
     preencherCampo("editarOrigem", proposta.origem);
@@ -1828,6 +1831,8 @@ function montarBodyEditarProposta() {
 
     descricao: pegarValor("editarDescricao"),
 
+    contatoDestinatario: pegarValor("editarContatoDestinatario"),
+    emailDestinatario: pegarValor("editarEmailDestinatario"),
     escopo: pegarValor("editarEscopo"),
 
     ...observacoes,
@@ -2222,3 +2227,21 @@ async function iniciarTela() {
 }
 
 iniciarTela();
+
+async function atualizarDestinatarios(prefixo,clienteId,proposta={}) {
+ const contato=document.getElementById(prefixo?"editarContatoDestinatario":"contatoDestinatario"), email=document.getElementById(prefixo?"editarEmailDestinatario":"emailDestinatario");
+ if(!contato||!email)return;
+ const response=await fetch(`${API_URL}/clientes/${clienteId}`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok)return;const c=await response.json();
+ for(const [el,values,selected] of [[contato,[c.responsavel,...[1,2,3,4].flatMap(i=>[c["nomeEmail"+i],c["nomeTelefone"+i]])],proposta.contatoDestinatario],[email,[1,2,3,4].map(i=>c["email"+i]),proposta.emailDestinatario]]) {
+ el.replaceChildren(new Option("Selecione",""));for(const v of new Set(values.filter(Boolean)))el.add(new Option(v,v));if(selected){if(![...el.options].some(o=>o.value===selected))el.add(new Option(selected,selected));el.value=selected;}
+ }
+}
+window.addEventListener("configuracao-sistema",({detail:c})=>{
+ if(c.textoEscopo){const el=document.getElementById("escopo");if(el&&!el.value)el.value=c.textoEscopo;}
+ if(!c.selecionarDestinatario)return;
+ for(const prefixo of ["","editar"]) {
+ const cliente=document.getElementById(prefixo?"editarClienteId":"clienteId");if(!cliente)continue;
+ for(const [suffix,label] of [["ContatoDestinatario","Destinatário do orçamento"],["EmailDestinatario","E-mail do destinatário"]]){const id=prefixo?prefixo+suffix:suffix[0].toLowerCase()+suffix.slice(1);const div=document.createElement("div");div.className="form-group";div.innerHTML=`<label for="${id}">${label}</label><select id="${id}"><option value="">Selecione</option></select>`;(cliente.closest(".form-group, .form-field") || cliente.parentElement).after(div);}
+ cliente.addEventListener("change",()=>{if(cliente.value)atualizarDestinatarios(prefixo,cliente.value);});if(cliente.value)atualizarDestinatarios(prefixo,cliente.value);
+ }
+});
