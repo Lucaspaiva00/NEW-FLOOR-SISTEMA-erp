@@ -148,6 +148,7 @@ model Proposta {
   condicoesPagamento         String?
   validadeDias               Int?
   dataValidade               DateTime?
+  dataFaturamento            DateTime?
   dataAprovacao              DateTime?
   dataRecusa                 DateTime?
   motivoRecusa               String?

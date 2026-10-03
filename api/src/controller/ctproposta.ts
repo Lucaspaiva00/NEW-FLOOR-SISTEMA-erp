@@ -251,6 +251,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         observacoesInternas: body.observacoesInternas || null,
 
         status: body.status || "RASCUNHO",
+        dataFaturamento: body.status === "FATURADA" ? new Date() : null,
 
         prioridade: body.prioridade || null,
 
@@ -429,6 +430,8 @@ export const update = async (req: Request, res: Response): Promise<void> => {
             : propostaAtual.observacoesInternas,
 
         status: body.status ?? propostaAtual.status,
+        dataFaturamento: (body.status ?? propostaAtual.status) === "FATURADA"
+          ? (propostaAtual.status === "FATURADA" ? propostaAtual.dataFaturamento : new Date()) : null,
 
         // "colunaKanbanId" só é atualizado quando vem explicitamente no
         // body (mesmo que null, pra permitir voltar pra uma coluna de

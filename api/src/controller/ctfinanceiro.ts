@@ -103,7 +103,22 @@ export const dashboard = async (req: Request, res: Response): Promise<void> => {
     const recebidoMes = Number(pagosMesEntrada._sum.valorPago || 0);
     const pagoMes = Number(pagosMesSaida._sum.valorPago || 0);
 
+    const ano = Number(req.query.ano || new Date().getFullYear());
+    if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) { res.status(400).json({ error: "Ano inválido" }); return; }
+    // Limites e agrupamento no fuso comercial brasileiro, incluindo viradas de ano.
+    const inicioAno = new Date(`${ano}-01-01T00:00:00-03:00`);
+    const fimAno = new Date(`${ano + 1}-01-01T00:00:00-03:00`);
+    const recebimentos = await prisma.lancamentoFinanceiro.findMany({
+      where: { empresaId, tipo: "ENTRADA", status: "PAGO", dataPagamento: { gte: inicioAno, lt: fimAno } },
+      select: { dataPagamento: true, valorPago: true },
+    });
+    const recebidoPorMes = Array(12).fill(0);
+    for (const item of recebimentos) {
+      const mes = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", month: "numeric" }).format(item.dataPagamento!)) - 1;
+      recebidoPorMes[mes] += Number(item.valorPago || 0);
+    }
     res.json({
+      ano, recebidoPorMes,
       saldoDisponivel,
       contasReceber: receber,
       contasPagar: pagar,

@@ -27,6 +27,7 @@
 
     </style>
 
+<style>#dashboardFinanceiro[hidden]{display:none!important}</style>
 </head>
 
 <body>
@@ -225,7 +226,7 @@
                     <div class="stat-card">
 
                         <div class="stat-label">
-                            Faturamento
+                            Faturado no ano
                         </div>
 
                         <div class="stat-value" id="kpiFaturamento">
@@ -237,7 +238,7 @@
                         <div class="stat-footer">
 
                             <div class="stat-growth">
-                                Total faturado
+                                Propostas faturadas
                             </div>
 
                             <div class="stat-icon">
@@ -276,6 +277,13 @@
 
                 </div>
 
+                <div class="stats-row" id="dashboardFinanceiro" hidden style="margin-bottom:24px">
+<div class="stat-card"><div class="stat-label">Recebido no ano</div><div class="stat-value" id="kpiRecebido">—</div><div class="stat-footer"><div class="stat-growth">Pagamentos efetivamente baixados</div></div></div>
+<div class="stat-card"><div class="stat-label">Saldo disponível</div><div class="stat-value" id="kpiSaldo">—</div><div class="stat-footer"><div class="stat-growth">Saldo financeiro atual</div></div></div>
+<div class="stat-card"><div class="stat-label">Contas a receber</div><div class="stat-value" id="kpiReceber">—</div><div class="stat-footer"><div class="stat-growth">Valores em aberto</div></div></div>
+<div class="stat-card"><div class="stat-label">Contas a pagar</div><div class="stat-value" id="kpiPagar">—</div><div class="stat-footer"><div class="stat-growth">Valores em aberto</div></div></div>
+<div class="stat-card"><div class="stat-label">Vencidos</div><div class="stat-value" id="kpiVencidos">—</div><div class="stat-footer"><div class="stat-growth">Entradas e saídas em atraso</div></div></div>
+</div><p id="dashboardAviso" role="status"></p>
                 <div class="content-grid">
 
                     <div class="panel-card">
@@ -289,13 +297,14 @@
                                 </h3>
 
                                 <div class="panel-subtitle">
-                                    Performance mensal das propostas faturadas
+                                    Faturado e recebido por mês no ano selecionado
                                 </div>
 
                             </div>
 
                         </div>
 
+                        <label for="dashboardAno">Ano</label> <select id="dashboardAno" class="form-select" style="width:120px;margin:12px 0"></select>
                         <div class="chart-container">
 
                             <canvas id="graficoFaturamento"></canvas>
