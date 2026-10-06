@@ -12,6 +12,8 @@ type EmpresaConsultada = {
   uf?: string | null;
   email?: string | null;
   ddd_telefone_1?: string | null;
+  ddd_telefone_2?: string | null;
+  inscricao_estadual?: string | null;
 };
 
 const cache = new Map<string, { empresa: EmpresaConsultada; expira: number }>();
@@ -62,6 +64,8 @@ async function buscarEmpresa(cnpj: string): Promise<EmpresaConsultada> {
           uf: estabelecimento.estado?.sigla,
           email: estabelecimento.email,
           ddd_telefone_1: [estabelecimento.ddd1, estabelecimento.telefone1].filter(Boolean).join(""),
+          ddd_telefone_2: [estabelecimento.ddd2, estabelecimento.telefone2].filter(Boolean).join(""),
+          inscricao_estadual: estabelecimento.inscricoes_estaduais?.find((ie:any)=>ie.ativo && ie.estado?.sigla===estabelecimento.estado?.sigla)?.inscricao_estadual,
         };
       } else {
         empresa = dados;

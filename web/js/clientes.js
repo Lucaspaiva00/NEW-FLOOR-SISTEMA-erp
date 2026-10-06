@@ -937,59 +937,40 @@ document
 |--------------------------------------------------------------------------
 */
 
-async function consultarCnpj(campoCnpj, prefixo = "") {
+const consultasCnpj = new WeakMap();
+function estadoConsultaCnpj(campo) {
+  if (!consultasCnpj.has(campo)) consultasCnpj.set(campo, {sequencia:0,ultimo:"",controller:null,pendente:false});
+  return consultasCnpj.get(campo);
+}
+function avisoConsultaCnpj(campo, texto, erro=false) {
+  const id=campo.id+"ConsultaStatus";
+  let aviso=document.getElementById(id);
+  if(!aviso){aviso=document.createElement("small");aviso.id=id;aviso.className="d-block mt-2";aviso.setAttribute("role","status");aviso.setAttribute("aria-live","polite");campo.parentElement.append(aviso);campo.setAttribute("aria-describedby",[campo.getAttribute("aria-describedby"),id].filter(Boolean).join(" "));}
+  aviso.textContent=texto;aviso.classList.toggle("text-danger",erro);aviso.classList.toggle("text-muted",!erro);
+}
+async function consultarCnpj(campoCnpj, prefixo = "", forcar=false) {
   if (!campoCnpj || campoCnpj.disabled) return;
-
-  const cnpj = campoCnpj.value.replace(/\D/g, "");
-
-  if (cnpj.length !== 14) {
-    return;
-  }
-
-  const campo = (nome) => {
-    if (!prefixo) return nome;
-
-    return `${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`;
-  };
-
+  const cnpj=campoCnpj.value.replace(/\D/g, ""),estado=estadoConsultaCnpj(campoCnpj);
+  if(cnpj.length!==14)return;
+  const campo=nome=>prefixo?`${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`:nome;
+  if(estado.pendente&&estado.atual===cnpj)return;
+  if(!forcar&&estado.ultimo===cnpj&&document.getElementById(campo("razaoSocial"))?.value)return;
+  estado.controller?.abort();estado.controller=new AbortController();
+  const sequencia=++estado.sequencia;estado.pendente=true;estado.atual=cnpj;
+  campoCnpj.setAttribute("aria-busy","true");avisoConsultaCnpj(campoCnpj,"Buscando os dados da empresa…");
   try {
-    campoCnpj.disabled = true;
-
-    const response = await fetch(
-      `${API_URL}/clientes/consulta-cnpj/${cnpj}`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-
-    const empresa = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new Error(empresa?.error || "Não foi possível consultar o CNPJ. Tente novamente ou preencha os dados manualmente.");
-    }
-    if (!empresa?.razao_social) {
-      throw new Error("A consulta retornou dados incompletos. Tente novamente.");
-    }
-
-    preencherCampo(campo("razaoSocial"), empresa.razao_social);
-    preencherCampo(campo("nomeFantasia"), empresa.nome_fantasia);
-    preencherCampoMascarado(campo("cep"), empresa.cep, "cep");
-    preencherCampo(campo("endereco"), empresa.logradouro);
-    preencherCampo(campo("numero"), empresa.numero);
-    preencherCampo(campo("bairro"), empresa.bairro);
-    preencherCampo(campo("cidade"), empresa.municipio);
-    preencherCampo(campo("estado"), empresa.uf);
-    preencherCampo(campo("complemento"), empresa.complemento);
-    preencherCampo(campo("pais"), "Brasil");
-    preencherCampo(campo("email1"), empresa.email);
-    preencherCampoMascarado(
-      campo("telefone1"),
-      empresa.ddd_telefone_1,
-      "telefone",
-    );
-  } catch (error) {
-    console.log(error);
-    alert(error.message || "Não foi possível consultar o CNPJ. Tente novamente ou preencha os dados manualmente.");
-  } finally {
-    campoCnpj.disabled = false;
-  }
+    const response=await fetch(`${API_URL}/clientes/consulta-cnpj/${cnpj}`,{headers:{Authorization:`Bearer ${token}`},signal:estado.controller.signal});
+    const empresa=await response.json().catch(()=>null);
+    if(sequencia!==estado.sequencia||campoCnpj.value.replace(/\D/g,"")!==cnpj)return;
+    if(!response.ok)throw new Error(empresa?.error||"Não foi possível consultar o CNPJ. Tente novamente ou preencha manualmente.");
+    if(!empresa?.razao_social)throw new Error("A consulta retornou dados incompletos. Tente novamente.");
+    const dados={razaoSocial:empresa.razao_social,nomeFantasia:empresa.nome_fantasia,endereco:empresa.logradouro,numero:empresa.numero,bairro:empresa.bairro,cidade:empresa.municipio,estado:empresa.uf,complemento:empresa.complemento,pais:"Brasil",email1:empresa.email,inscricaoEstadual:empresa.inscricao_estadual};
+    for(const [nome,valor] of Object.entries(dados))if(valor!==undefined&&valor!==null&&String(valor).trim())preencherCampo(campo(nome),valor);
+    for(const [nome,valor,mascara] of [["cep",empresa.cep,"cep"],["telefone1",empresa.ddd_telefone_1,"telefone"],["telefone2",empresa.ddd_telefone_2,"telefone"]])if(valor)preencherCampoMascarado(campo(nome),valor,mascara);
+    sincronizarVisibilidadeContatos(prefixo);
+    estado.ultimo=cnpj;avisoConsultaCnpj(campoCnpj,"Dados encontrados e preenchidos. Confira os campos antes de salvar; informações não retornadas podem ser preenchidas manualmente.");
+  }catch(error){if(error.name!=="AbortError"&&sequencia===estado.sequencia)avisoConsultaCnpj(campoCnpj,error.message||"Não foi possível consultar o CNPJ. Use Buscar dados para tentar novamente.",true);}
+  finally{if(sequencia===estado.sequencia){estado.pendente=false;campoCnpj.removeAttribute("aria-busy");}}
 }
 
 function preencherClienteMock() {
@@ -1035,11 +1016,18 @@ function preencherClienteMock() {
 }
 
 function configurarConsultaCnpj(idCampo, prefixo = "") {
-  const campo = document.getElementById(idCampo);
-
-  if (!campo) return;
-
-  campo.addEventListener("blur", () => consultarCnpj(campo, prefixo));
+  const campo=document.getElementById(idCampo);if(!campo)return;
+  let timer;
+  campo.addEventListener("input",()=>{
+    clearTimeout(timer);const estado=estadoConsultaCnpj(campo);estado.sequencia++;estado.controller?.abort();estado.pendente=false;campo.removeAttribute("aria-busy");
+    if(campo.value.replace(/\D/g,"").length===14)timer=setTimeout(()=>consultarCnpj(campo,prefixo),450);
+    else avisoConsultaCnpj(campo,"Informe os 14 dígitos do CNPJ para buscar os dados.");
+  });
+  campo.addEventListener("blur",()=>{clearTimeout(timer);consultarCnpj(campo,prefixo);});
+  const botao=document.createElement("button");botao.type="button";botao.className="btn btn-sm btn-outline-primary mt-2";botao.textContent="Buscar dados";
+  botao.addEventListener("click",()=>{clearTimeout(timer);if(campo.value.replace(/\D/g,"").length!==14){avisoConsultaCnpj(campo,"Informe um CNPJ com 14 dígitos.",true);return;}consultarCnpj(campo,prefixo,true);});campo.parentElement.append(botao);
+  campo.form?.addEventListener("submit",event=>{if(estadoConsultaCnpj(campo).pendente){event.preventDefault();event.stopImmediatePropagation();avisoConsultaCnpj(campo,"Aguarde a consulta terminar antes de salvar.");}},true);
+  campo.closest(".modal")?.addEventListener("hidden.bs.modal",()=>{clearTimeout(timer);const estado=estadoConsultaCnpj(campo);estado.sequencia++;estado.controller?.abort();estado.pendente=false;estado.ultimo="";campo.removeAttribute("aria-busy");avisoConsultaCnpj(campo,"");});
 }
 
 async function consultarCep(campoCep, prefixo = "") {
