@@ -25,7 +25,7 @@
           <a href="servicos.html">Serviços</a>
           <a href="propostas.html">Propostas</a>
           <a href="agenda.html">Agenda</a>
-          <a class="active" href="financeiro.html">Financeiro</a>
+          <a class="active" href="financeiro.html">Contas a pagar e receber</a>
           <a href="fiscal.html">Fiscal</a>
           <a href="templates.html">Templates</a>
           <a href="usuarios.html">Usuários</a>
@@ -41,13 +41,13 @@
       <header class="financeiro-header">
         <div>
           <span class="financeiro-eyebrow">GESTÃO FINANCEIRA</span>
-          <h1>Financeiro</h1>
-          <p>Contas a receber, contas a pagar e fluxo de caixa da New Floor em um só lugar.</p>
+          <h1>Contas a pagar e receber</h1>
+          <p>Veja quem precisa pagar você, o que sua empresa precisa pagar e quanto dinheiro está disponível.</p>
         </div>
         <div class="financeiro-actions">
-          <button class="btn btn-light border" id="btnSincronizarFaturadas">↻ Sincronizar faturadas</button>
-          <button class="btn btn-outline-dark" id="btnNovaSaida">− Nova saída</button>
-          <button class="btn btn-dark" id="btnNovaEntrada">+ Nova entrada</button>
+          <button class="btn btn-light border" id="btnSincronizarFaturadas">↻ Buscar contas das propostas</button>
+          <button class="btn btn-outline-dark" id="btnNovaSaida">+ Conta a pagar</button>
+          <button class="btn btn-dark" id="btnNovaEntrada">+ Conta a receber</button>
         </div>
       </header>
 
@@ -82,8 +82,8 @@
       <section class="financeiro-grid-top">
         <article class="finance-card fluxo-card">
           <div class="card-title-row">
-            <div><h2>Fluxo de caixa</h2><p>Entradas e saídas dos últimos 6 meses</p></div>
-            <span class="badge-soft">Realizado + previsto</span>
+            <div><h2>Fluxo de caixa</h2><p>Dinheiro recebido e pago, separado das contas ainda pendentes.</p></div>
+            <span class="badge-soft">Movimentado e pendente separados</span>
           </div>
           <div class="chart-wrap"><canvas id="fluxoChart"></canvas></div>
           <div class="resultado-mes">
@@ -105,8 +105,8 @@
       <section class="finance-card lancamentos-card">
         <div class="lancamentos-head">
           <div>
-            <h2>Movimentações financeiras</h2>
-            <p>Receitas entram automaticamente quando a proposta passa para <strong>Faturada</strong>.</p>
+            <h2>Suas contas</h2>
+            <p>Ao faturar uma proposta, uma conta a receber é criada. Registre o recebimento quando o dinheiro chegar.</p>
           </div>
           <div class="segmented-tabs" id="tabsFinanceiro">
             <button class="active" data-tipo="">Todos</button>
@@ -116,10 +116,10 @@
         </div>
 
         <div class="filtros-financeiro">
-          <div class="search-box"><span>⌕</span><input id="buscaFinanceiro" placeholder="Buscar cliente, descrição ou documento..."></div>
+          <div class="search-box"><span>⌕</span><input id="buscaFinanceiro" placeholder="Buscar cliente, fornecedor ou descrição..."></div>
           <select id="filtroStatus" class="form-select">
             <option value="">Todos os status</option>
-            <option value="ABERTO">Em aberto</option>
+            <option value="ABERTO">Pendentes (inclui pagamentos parciais)</option>
             <option value="PAGO">Pago/Recebido</option>
             <option value="CANCELADO">Cancelado</option>
           </select>
@@ -133,7 +133,7 @@
 
         <div class="table-responsive">
           <table class="table financeiro-table align-middle mb-0">
-            <thead><tr><th>Descrição</th><th>Cliente / Origem</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Descrição</th><th>Cliente / Origem</th><th>Categoria</th><th>Vencimento</th><th>Falta pagar ou receber</th><th>Status</th><th></th></tr></thead>
             <tbody id="listaLancamentos"></tbody>
           </table>
         </div>
@@ -166,17 +166,17 @@
             <div class="row g-3">
               <div class="col-md-3"><label>Tipo *</label><select id="finTipo" class="form-select"><option value="ENTRADA">Entrada</option><option value="SAIDA">Saída</option></select></div>
               <div class="col-md-9"><label>Descrição *</label><input id="finDescricao" class="form-control" required></div>
-              <div class="col-md-4"><label>Valor total *</label><input id="finValor" type="number" step="0.01" min="0.01" class="form-control" required></div>
+              <div class="col-md-4"><label>Valor total da conta *</label><input id="finValor" required type="number" step="0.01" min="0.01" class="form-control" required></div>
               <div class="col-md-4"><label>Competência</label><input id="finCompetencia" type="date" class="form-control"></div>
               <div class="col-md-4"><label>Primeiro vencimento</label><input id="finVencimento" type="date" class="form-control"></div>
               <div class="col-md-6"><label>Cliente</label><select id="finCliente" class="form-select"><option value="">Sem cliente vinculado</option></select></div>
               <div class="col-md-6"><label>Categoria</label><select id="finCategoria" class="form-select"><option value="">Sem categoria</option></select></div>
-              <div class="col-md-6"><label>Conta financeira</label><select id="finConta" class="form-select"><option value="">Definir na baixa</option></select></div>
+              <div class="col-md-6"><label>Onde o dinheiro entrou ou saiu</label><select id="finConta" class="form-select"><option value="">Definir na baixa</option></select></div>
               <div class="col-md-6"><label>Forma de pagamento</label><input id="finFormaPagamento" class="form-control" placeholder="PIX, boleto, transferência..."></div>
               <div class="col-md-4"><label>Documento</label><input id="finDocumento" class="form-control"></div>
               <div class="col-md-4 parcela-only"><label>Parcelas</label><input id="finParcelas" type="number" min="1" max="120" value="1" class="form-control"></div>
               <div class="col-md-4 parcela-only"><label>Intervalo (dias)</label><input id="finIntervalo" type="number" min="1" value="30" class="form-control"></div>
-              <div class="col-12"><label>Observações</label><textarea id="finObservacoes" rows="3" class="form-control"></textarea></div>
+              <div class="col-12"><label>Fornecedor ou pessoa a pagar</label><input id="finFavorecido" class="form-control" placeholder="Ex.: fornecedor, prestador ou funcionário"></div><div class="col-12"><label>Observações</label><textarea id="finObservacoes" rows="3" class="form-control"></textarea></div>
             </div>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-dark" type="submit">Salvar lançamento</button></div>
@@ -187,14 +187,14 @@
 
   <div class="modal fade" id="modalBaixa" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-md"><div class="modal-content financeiro-modal"><form id="formBaixa">
-      <div class="modal-header"><div><h5 class="modal-title">Confirmar baixa</h5><small>Informe como o valor foi recebido ou pago.</small></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body"><input type="hidden" id="baixaId"><div class="row g-3">
-        <div class="col-12"><label>Valor da baixa</label><input id="baixaValor" type="number" step="0.01" class="form-control"></div>
-        <div class="col-12"><label>Data</label><input id="baixaData" type="date" class="form-control"></div>
-        <div class="col-12"><label>Conta financeira</label><select id="baixaConta" class="form-select"></select></div>
+      <div class="modal-header"><div><h5 class="modal-title">Registrar pagamento</h5><small>Você pode registrar o valor total ou apenas uma parte.</small></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body"><p id="baixaResumo" class="text-muted"></p><input type="hidden" id="baixaId"><div class="row g-3">
+        <div class="col-12"><label>Valor recebido ou pago agora</label><input id="baixaValor" required min="0.01" type="number" step="0.01" class="form-control"></div>
+        <div class="col-12"><label>Data</label><input id="baixaData" required type="date" class="form-control"></div>
+        <div class="col-12"><label>Onde o dinheiro entrou ou saiu</label><select id="baixaConta" required class="form-select"></select></div>
         <div class="col-12"><label>Forma de pagamento</label><input id="baixaForma" class="form-control"></div>
       </div></div>
-      <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-success" type="submit">Confirmar baixa</button></div>
+      <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-success" type="submit">Registrar pagamento</button></div>
     </form></div></div>
   </div>
 
@@ -214,6 +214,7 @@
     </div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-dark">Salvar categoria</button></div></form></div></div>
   </div>
 
+<div class="modal fade" id="modalHistorico" tabindex="-1" aria-labelledby="tituloHistorico"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content financeiro-modal"><div class="modal-header"><h5 id="tituloHistorico" class="modal-title">Histórico de pagamentos</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body" id="historicoPagamentos"></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button></div></div></div></div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

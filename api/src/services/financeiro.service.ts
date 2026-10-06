@@ -58,18 +58,20 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
     `Cliente #${proposta.clienteId}`;
 
   const chaveOrigem = `PROPOSTA:${proposta.propostaid}:1`;
-  const existente = await prisma.lancamentoFinanceiro.findUnique({
+  return prisma.$transaction(async tx=>{
+  await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "chaveOrigem"=${chaveOrigem} AND "empresaId"=${empresaId} FOR UPDATE`;
+  const existente = await tx.lancamentoFinanceiro.findUnique({
     where: { chaveOrigem },
-    select: { status: true },
+    select: { status: true, valor: true, valorPago: true },
   });
 
-  return prisma.lancamentoFinanceiro.upsert({
+  return tx.lancamentoFinanceiro.upsert({
     where: { chaveOrigem },
     update: {
       descricao: `Proposta ${proposta.numero} - ${nomeCliente}`,
       documento: proposta.numero,
-      valor,
-      status: existente?.status === "PAGO" ? "PAGO" : "ABERTO",
+      valor: Number(existente?.valorPago)>0 ? existente!.valor : valor,
+      status: existente?.status === "PAGO" ? "PAGO" : existente?.status === "CANCELADO" ? "CANCELADO" : "ABERTO",
       clienteId: proposta.clienteId,
       categoriaFinanceiraId: categoria.categoriafinanceiraid,
       formaPagamento: proposta.formaPagamento,
@@ -99,6 +101,7 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
       categoriaFinanceiraId: categoria.categoriafinanceiraid,
     },
   });
+  });
 }
 
 export async function cancelarLancamentoPropostaDesfaturada(propostaId: number) {
@@ -107,6 +110,7 @@ export async function cancelarLancamentoPropostaDesfaturada(propostaId: number) 
       chaveOrigem: `PROPOSTA:${propostaId}:1`,
       origem: "PROPOSTA",
       status: "ABERTO",
+      valorPago: 0,
     },
     data: { status: "CANCELADO" },
   });

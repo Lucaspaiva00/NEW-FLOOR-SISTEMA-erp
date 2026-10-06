@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../prisma";
+import { centavos, saldoConta, validarVinculos, movimentarConta } from "../services/pagamentos.service";
 import {
   garantirCategoriasPadrao,
   sincronizarPropostaFaturada,
@@ -12,7 +13,7 @@ function idParam(value: string | string[] | undefined) {
 
 function parseDate(value: any): Date | null {
   if (!value) return null;
-  const date = new Date(value);
+  const date = new Date(typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value + "T12:00:00-03:00" : value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -34,157 +35,47 @@ function nomeCliente(cliente: any) {
   return cliente?.nomeFantasia || cliente?.razaoSocial || cliente?.responsavel || null;
 }
 
+function dataLocal(date: Date) {
+ const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
+ const v=(key:string)=>p.find(x=>x.type===key)!.value;
+ return `${v('year')}-${v('month')}-${v('day')}`;
+}
+function vencimentoDia(date:Date){return date.toISOString().endsWith("T00:00:00.000Z")?date.toISOString().slice(0,10):dataLocal(date);}
+function eventos(pagamentos: any[]) {
+ return pagamentos.flatMap(p=>[{tipo:p.lancamento.tipo,valor:Number(p.valor),data:p.dataPagamento},...(p.estornadoEm?[{tipo:p.lancamento.tipo,valor:-Number(p.valor),data:p.estornadoEm}]:[])]);
+}
 export const dashboard = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const empresaId = req.empresaId as number;
-    await garantirCategoriasPadrao(empresaId);
-
-    const hoje = inicioDia();
-    const mesInicio = inicioMes();
-    const mesFim = fimMes();
-
-    const [abertosEntrada, abertosSaida, pagosMesEntrada, pagosMesSaida, vencidos, contas, ultimos] = await Promise.all([
-      prisma.lancamentoFinanceiro.aggregate({
-        where: { empresaId, tipo: "ENTRADA", status: "ABERTO" },
-        _sum: { valor: true },
-      }),
-      prisma.lancamentoFinanceiro.aggregate({
-        where: { empresaId, tipo: "SAIDA", status: "ABERTO" },
-        _sum: { valor: true },
-      }),
-      prisma.lancamentoFinanceiro.aggregate({
-        where: {
-          empresaId,
-          tipo: "ENTRADA",
-          status: "PAGO",
-          dataPagamento: { gte: mesInicio, lt: mesFim },
-        },
-        _sum: { valorPago: true },
-      }),
-      prisma.lancamentoFinanceiro.aggregate({
-        where: {
-          empresaId,
-          tipo: "SAIDA",
-          status: "PAGO",
-          dataPagamento: { gte: mesInicio, lt: mesFim },
-        },
-        _sum: { valorPago: true },
-      }),
-      prisma.lancamentoFinanceiro.aggregate({
-        where: {
-          empresaId,
-          status: "ABERTO",
-          dataVencimento: { lt: hoje },
-        },
-        _sum: { valor: true },
-        _count: true,
-      }),
-      prisma.contaFinanceira.findMany({ where: { empresaId, ativo: true } }),
-      prisma.lancamentoFinanceiro.findMany({
-        where: { empresaId, status: { not: "CANCELADO" } },
-        include: { cliente: true, categoria: true, conta: true, proposta: true },
-        orderBy: [{ dataVencimento: "asc" }, { createdAt: "desc" }],
-        take: 8,
-      }),
-    ]);
-
-    const movimentosPagos = await prisma.lancamentoFinanceiro.findMany({
-      where: { empresaId, status: "PAGO" },
-      select: { tipo: true, valorPago: true, contaFinanceiraId: true },
-    });
-
-    let saldoDisponivel = contas.reduce((total, conta) => total + Number(conta.saldoInicial || 0), 0);
-    for (const mov of movimentosPagos) {
-      saldoDisponivel += mov.tipo === "ENTRADA" ? Number(mov.valorPago || 0) : -Number(mov.valorPago || 0);
-    }
-
-    const receber = Number(abertosEntrada._sum.valor || 0);
-    const pagar = Number(abertosSaida._sum.valor || 0);
-    const recebidoMes = Number(pagosMesEntrada._sum.valorPago || 0);
-    const pagoMes = Number(pagosMesSaida._sum.valorPago || 0);
-
-    const ano = Number(req.query.ano || new Date().getFullYear());
-    if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) { res.status(400).json({ error: "Ano inválido" }); return; }
-    // Limites e agrupamento no fuso comercial brasileiro, incluindo viradas de ano.
-    const inicioAno = new Date(`${ano}-01-01T00:00:00-03:00`);
-    const fimAno = new Date(`${ano + 1}-01-01T00:00:00-03:00`);
-    const recebimentos = await prisma.lancamentoFinanceiro.findMany({
-      where: { empresaId, tipo: "ENTRADA", status: "PAGO", dataPagamento: { gte: inicioAno, lt: fimAno } },
-      select: { dataPagamento: true, valorPago: true },
-    });
-    const recebidoPorMes = Array(12).fill(0);
-    for (const item of recebimentos) {
-      const mes = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", month: "numeric" }).format(item.dataPagamento!)) - 1;
-      recebidoPorMes[mes] += Number(item.valorPago || 0);
-    }
-    res.json({
-      ano, recebidoPorMes,
-      saldoDisponivel,
-      contasReceber: receber,
-      contasPagar: pagar,
-      saldoProjetado: saldoDisponivel + receber - pagar,
-      recebidoMes,
-      pagoMes,
-      resultadoMes: recebidoMes - pagoMes,
-      vencidosValor: Number(vencidos._sum.valor || 0),
-      vencidosQuantidade: vencidos._count || 0,
-      ultimos: ultimos.map((item) => ({
-        ...item,
-        clienteNome: nomeCliente(item.cliente),
-      })),
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao carregar dashboard financeiro" });
-  }
+ try {
+  const empresaId=req.empresaId as number, ano=Number(req.query.ano||dataLocal(new Date()).slice(0,4));
+  if(!Number.isInteger(ano)||ano<2000||ano>2100){res.status(400).json({error:'Ano inválido'});return;}
+  const [abertos,contas,pagamentos]=await Promise.all([
+   prisma.lancamentoFinanceiro.findMany({where:{empresaId,status:'ABERTO'},include:{cliente:true,categoria:true,conta:true,proposta:true},orderBy:{dataVencimento:'asc'}}),
+   prisma.contaFinanceira.findMany({where:{empresaId}}),
+   prisma.pagamentoFinanceiro.findMany({where:{empresaId},include:{lancamento:{select:{tipo:true}}}})
+  ]);
+  const hoje=dataLocal(new Date()),mesAtual=hoje.slice(0,7);
+  const receber=abertos.filter(l=>l.tipo==='ENTRADA').reduce((n,l)=>n+centavos(saldoConta(l.valor,l.valorPago)),0)/100;
+  const pagar=abertos.filter(l=>l.tipo==='SAIDA').reduce((n,l)=>n+centavos(saldoConta(l.valor,l.valorPago)),0)/100;
+  const vencidos=abertos.filter(l=>l.dataVencimento&&vencimentoDia(l.dataVencimento)<hoje);
+  const movimentos=eventos(pagamentos),recebidoPorMes=Array(12).fill(0);
+  let recebidoMes=0,pagoMes=0;
+  for(const e of movimentos){const data=dataLocal(e.data);if(e.tipo==='ENTRADA'&&Number(data.slice(0,4))===ano)recebidoPorMes[Number(data.slice(5,7))-1]+=e.valor;if(data.slice(0,7)===mesAtual){if(e.tipo==='ENTRADA')recebidoMes+=e.valor;else pagoMes+=e.valor;}}
+  const saldoDisponivel=(contas.reduce((n,c)=>n+Math.round(Number(c.saldoInicial)*100),0)+movimentos.reduce((n,e)=>n+Math.round(e.valor*100)*(e.tipo==='ENTRADA'?1:-1),0))/100;
+  res.json({ano,recebidoPorMes:recebidoPorMes.map(v=>Math.round(v*100)/100),saldoDisponivel,contasReceber:receber,contasPagar:pagar,saldoProjetado:saldoDisponivel+receber-pagar,recebidoMes,pagoMes,resultadoMes:recebidoMes-pagoMes,vencidosValor:vencidos.reduce((n,l)=>n+centavos(saldoConta(l.valor,l.valorPago)),0)/100,vencidosQuantidade:vencidos.length,ultimos:abertos.slice(0,8).map(l=>({...l,valorRestante:saldoConta(l.valor,l.valorPago),clienteNome:nomeCliente(l.cliente)}))});
+ }catch(error){console.error(error);res.status(500).json({error:'Não foi possível carregar as contas a pagar e receber.'});}
 };
-
 export const fluxo = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const empresaId = req.empresaId as number;
-    const meses = Math.min(Math.max(Number(req.query.meses || 6), 3), 12);
-    const hoje = new Date();
-    const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - (meses - 1), 1);
-    const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
-
-    const lancamentos = await prisma.lancamentoFinanceiro.findMany({
-      where: {
-        empresaId,
-        status: { not: "CANCELADO" },
-        OR: [
-          { dataPagamento: { gte: inicio, lt: fim } },
-          { dataCompetencia: { gte: inicio, lt: fim } },
-        ],
-      },
-      select: { tipo: true, status: true, valor: true, valorPago: true, dataPagamento: true, dataCompetencia: true },
-    });
-
-    const mapa = new Map<string, { mes: string; entradas: number; saidas: number }>();
-    for (let i = 0; i < meses; i++) {
-      const d = new Date(hoje.getFullYear(), hoje.getMonth() - (meses - 1 - i), 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      mapa.set(key, {
-        mes: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
-        entradas: 0,
-        saidas: 0,
-      });
-    }
-
-    for (const lanc of lancamentos) {
-      const data = lanc.dataPagamento || lanc.dataCompetencia;
-      const key = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`;
-      const alvo = mapa.get(key);
-      if (!alvo) continue;
-      const valor = lanc.status === "PAGO" ? Number(lanc.valorPago || lanc.valor) : Number(lanc.valor);
-      if (lanc.tipo === "ENTRADA") alvo.entradas += valor;
-      else alvo.saidas += valor;
-    }
-
-    res.json([...mapa.values()]);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao gerar fluxo de caixa" });
-  }
+ try {
+  const empresaId=req.empresaId as number,meses=Math.min(Math.max(Number(req.query.meses||6),3),12);
+  if(!Number.isInteger(meses)){res.status(400).json({error:'Período inválido'});return;}
+  const hoje=dataLocal(new Date()),ano=Number(hoje.slice(0,4)),mes=Number(hoje.slice(5,7))-1;
+  const [pagamentos,abertos]=await Promise.all([prisma.pagamentoFinanceiro.findMany({where:{empresaId},include:{lancamento:{select:{tipo:true}}}}),prisma.lancamentoFinanceiro.findMany({where:{empresaId,status:'ABERTO',dataVencimento:{not:null}}})]);
+  const mapa=new Map<string,any>();
+  for(let i=0;i<meses;i++){const d=new Date(Date.UTC(ano,mes-(meses-1-i),15));const key=d.toISOString().slice(0,7);mapa.set(key,{mes:d.toLocaleDateString('pt-BR',{month:'short',year:'numeric',timeZone:'UTC'}),entradas:0,saidas:0,previstoReceber:0,previstoPagar:0});}
+  for(const e of eventos(pagamentos)){const item=mapa.get(dataLocal(e.data).slice(0,7));if(item)item[e.tipo==='ENTRADA'?'entradas':'saidas']+=e.valor;}
+  for(const l of abertos){const item=mapa.get(vencimentoDia(l.dataVencimento!).slice(0,7));if(item)item[l.tipo==='ENTRADA'?'previstoReceber':'previstoPagar']+=saldoConta(l.valor,l.valorPago);}
+  res.json([...mapa.values()]);
+ }catch(error){console.error(error);res.status(500).json({error:'Erro ao carregar movimentações e contas pendentes.'});}
 };
 
 export const listar = async (req: Request, res: Response): Promise<void> => {
@@ -205,6 +96,7 @@ export const listar = async (req: Request, res: Response): Promise<void> => {
       where.OR = [
         { descricao: { contains: String(busca), mode: "insensitive" } },
         { documento: { contains: String(busca), mode: "insensitive" } },
+        { favorecido: { contains: String(busca), mode: "insensitive" } },
         { cliente: { nomeFantasia: { contains: String(busca), mode: "insensitive" } } },
         { cliente: { razaoSocial: { contains: String(busca), mode: "insensitive" } } },
       ];
@@ -212,11 +104,11 @@ export const listar = async (req: Request, res: Response): Promise<void> => {
 
     const dados = await prisma.lancamentoFinanceiro.findMany({
       where,
-      include: { cliente: true, categoria: true, conta: true, proposta: true },
+      include: { cliente: true, categoria: true, conta: true, proposta: true, pagamentos: {orderBy:{createdAt:"desc"}} },
       orderBy: [{ status: "asc" }, { dataVencimento: "asc" }, { createdAt: "desc" }],
     });
 
-    res.json(dados.map((item) => ({ ...item, clienteNome: nomeCliente(item.cliente) })));
+    res.json(dados.map((item) => ({ ...item, valorRestante: saldoConta(item.valor,item.valorPago), clienteNome: nomeCliente(item.cliente) })));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao listar lançamentos financeiros" });
@@ -227,7 +119,7 @@ export const buscar = async (req: Request, res: Response): Promise<void> => {
   try {
     const dado = await prisma.lancamentoFinanceiro.findFirst({
       where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number },
-      include: { cliente: true, categoria: true, conta: true, proposta: true },
+      include: { cliente: true, categoria: true, conta: true, proposta: true, pagamentos: {orderBy:{createdAt:"desc"}} },
     });
     if (!dado) {
       res.status(404).json({ error: "Lançamento não encontrado" });
@@ -244,8 +136,9 @@ export const criar = async (req: Request, res: Response): Promise<void> => {
   try {
     const b = req.body;
     const empresaId = req.empresaId as number;
-    const tipo = b.tipo === "SAIDA" ? "SAIDA" : "ENTRADA";
-    const valor = Number(b.valor || 0);
+    if(!["ENTRADA","SAIDA"].includes(b.tipo))throw new Error("Escolha conta a receber ou a pagar.");
+    const tipo = b.tipo;
+    const valor = centavos(b.valor)/100;
     if (!b.descricao?.trim() || valor <= 0) {
       res.status(400).json({ error: "Informe descrição e valor maior que zero." });
       return;
@@ -254,15 +147,18 @@ export const criar = async (req: Request, res: Response): Promise<void> => {
     const totalParcelas = Math.min(Math.max(Number(b.totalParcelas || 1), 1), 120);
     const intervaloDias = Math.max(Number(b.intervaloDias || 30), 1);
     const primeiraData = parseDate(b.dataVencimento);
-    const criados = [];
+    if(!Number.isInteger(totalParcelas)||!Number.isInteger(intervaloDias)||centavos(valor)<totalParcelas)throw new Error('Parcelas e intervalo devem ser inteiros e cada parcela deve ter ao menos um centavo.');
+    const criados = await prisma.$transaction(async tx=>{
+    await validarVinculos(tx,empresaId,{...b,tipo});
+    const criados=[];
 
     for (let i = 1; i <= totalParcelas; i++) {
       let vencimento = primeiraData ? new Date(primeiraData) : null;
       if (vencimento && i > 1) vencimento.setDate(vencimento.getDate() + intervaloDias * (i - 1));
-      const valorParcela = Math.round((valor / totalParcelas) * 100) / 100;
+      const valorParcela = Math.floor(centavos(valor) / totalParcelas) / 100;
       const ajusteUltima = i === totalParcelas ? Math.round((valor - valorParcela * (totalParcelas - 1)) * 100) / 100 : valorParcela;
 
-      criados.push(await prisma.lancamentoFinanceiro.create({
+      criados.push(await tx.lancamentoFinanceiro.create({
         data: {
           empresaId: req.empresaId as number,
           tipo,
@@ -277,6 +173,7 @@ export const criar = async (req: Request, res: Response): Promise<void> => {
           parcelaNumero: i,
           totalParcelas,
           observacoes: b.observacoes || null,
+          favorecido: b.favorecido || null,
           clienteId: b.clienteId ? Number(b.clienteId) : null,
           categoriaFinanceiraId: b.categoriaFinanceiraId ? Number(b.categoriaFinanceiraId) : null,
           contaFinanceiraId: b.contaFinanceiraId ? Number(b.contaFinanceiraId) : null,
@@ -284,10 +181,12 @@ export const criar = async (req: Request, res: Response): Promise<void> => {
       }));
     }
 
+    return criados;
+    });
     res.status(201).json(criados);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Erro ao criar lançamento financeiro" });
+    res.status(400).json({ error: error instanceof Error ? error.message : "Erro ao cadastrar conta." });
   }
 };
 
@@ -296,17 +195,23 @@ export const atualizar = async (req: Request, res: Response): Promise<void> => {
     const b = req.body;
     const id = idParam(req.params.id);
     const empresaId = req.empresaId as number;
-    const atual = await prisma.lancamentoFinanceiro.findFirst({ where: { lancamentofinanceiroid: id, empresaId } });
+    const dado = await prisma.$transaction(async tx=>{
+    await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "lancamentofinanceiroid"=${id} AND "empresaId"=${empresaId} FOR UPDATE`;
+    const atual = await tx.lancamentoFinanceiro.findFirst({ where: { lancamentofinanceiroid: id, empresaId } });
     if (!atual) {
-      res.status(404).json({ error: "Lançamento não encontrado" });
-      return;
+      throw new Error("Conta não encontrada.");
     }
-    if (atual.status === "CANCELADO") {
-      res.status(400).json({ error: "Lançamento cancelado não pode ser alterado." });
-      return;
+    if (atual.status !== "ABERTO") {
+      throw new Error("Somente contas em aberto podem ser alteradas.");
     }
 
-    const dado = await prisma.lancamentoFinanceiro.update({
+    if(b.tipo && !["ENTRADA","SAIDA"].includes(b.tipo))throw new Error("Escolha conta a receber ou a pagar.");
+    if(b.descricao!==undefined&&!String(b.descricao).trim())throw new Error("Informe a descrição da conta.");
+    await validarVinculos(tx,empresaId,{...b,tipo:b.tipo||atual.tipo});
+    if(b.valor!==undefined && centavos(b.valor)<=0)throw new Error('Informe um valor maior que zero.');
+    const historico=await tx.pagamentoFinanceiro.count({where:{lancamentoId:id,empresaId}});
+    if(historico && ((b.valor!==undefined&&centavos(b.valor)!==centavos(atual.valor))||(b.tipo&&b.tipo!==atual.tipo)))throw new Error('Uma conta com pagamentos não pode ter seu valor ou tipo alterado.');
+    return tx.lancamentoFinanceiro.update({
       where: { lancamentofinanceiroid: id },
       data: {
         tipo: b.tipo === "SAIDA" ? "SAIDA" : b.tipo === "ENTRADA" ? "ENTRADA" : atual.tipo,
@@ -316,67 +221,36 @@ export const atualizar = async (req: Request, res: Response): Promise<void> => {
         dataCompetencia: b.dataCompetencia !== undefined ? parseDate(b.dataCompetencia) || atual.dataCompetencia : atual.dataCompetencia,
         dataVencimento: b.dataVencimento !== undefined ? parseDate(b.dataVencimento) : atual.dataVencimento,
         formaPagamento: b.formaPagamento !== undefined ? b.formaPagamento || null : atual.formaPagamento,
+        favorecido: b.favorecido !== undefined ? b.favorecido || null : atual.favorecido,
         observacoes: b.observacoes !== undefined ? b.observacoes || null : atual.observacoes,
         clienteId: b.clienteId !== undefined ? (b.clienteId ? Number(b.clienteId) : null) : atual.clienteId,
         categoriaFinanceiraId: b.categoriaFinanceiraId !== undefined ? (b.categoriaFinanceiraId ? Number(b.categoriaFinanceiraId) : null) : atual.categoriaFinanceiraId,
         contaFinanceiraId: b.contaFinanceiraId !== undefined ? (b.contaFinanceiraId ? Number(b.contaFinanceiraId) : null) : atual.contaFinanceiraId,
       },
     });
-    res.json(dado);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao atualizar lançamento" });
-  }
-};
-
-export const baixar = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const id = idParam(req.params.id);
-    const atual = await prisma.lancamentoFinanceiro.findFirst({ where: { lancamentofinanceiroid: id, empresaId: req.empresaId as number } });
-    if (!atual) {
-      res.status(404).json({ error: "Lançamento não encontrado" });
-      return;
-    }
-    const valorPago = Number(req.body.valorPago || atual.valor);
-    const dado = await prisma.lancamentoFinanceiro.update({
-      where: { lancamentofinanceiroid: id },
-      data: {
-        status: "PAGO",
-        valorPago,
-        dataPagamento: parseDate(req.body.dataPagamento) || new Date(),
-        contaFinanceiraId: req.body.contaFinanceiraId ? Number(req.body.contaFinanceiraId) : atual.contaFinanceiraId,
-        formaPagamento: req.body.formaPagamento || atual.formaPagamento,
-      },
     });
     res.json(dado);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Erro ao baixar lançamento" });
+    res.status(400).json({ error: error instanceof Error ? error.message : "Erro ao atualizar conta." });
   }
 };
 
-export const reabrir = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const resultado = await prisma.lancamentoFinanceiro.updateMany({
-      where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number },
-      data: { status: "ABERTO", valorPago: 0, dataPagamento: null },
-    });
-    if (resultado.count === 0) {
-      res.status(404).json({ error: "Lançamento não encontrado" });
-      return;
-    }
-    const dado = await prisma.lancamentoFinanceiro.findFirst({ where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number } });
-    res.json(dado);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao reabrir lançamento" });
-  }
+export const baixar = async(req:Request,res:Response):Promise<void>=>{
+ try{res.json(await movimentarConta(idParam(req.params.id),req.empresaId as number,req.body));}
+ catch(error:any){res.status(400).json({error:error.message||'Erro ao registrar pagamento.'});}
+};
+export const reabrir = async(req:Request,res:Response):Promise<void>=>{
+ try{res.json(await movimentarConta(idParam(req.params.id),req.empresaId as number,req.body,true));}
+ catch(error:any){res.status(400).json({error:error.message||'Erro ao estornar pagamento.'});}
 };
 
 export const cancelar = async (req: Request, res: Response): Promise<void> => {
   try {
+    const atual=await prisma.lancamentoFinanceiro.findFirst({where:{lancamentofinanceiroid:idParam(req.params.id),empresaId:req.empresaId as number}});
+    if(!atual || Number(atual.valorPago)>0){res.status(400).json({error:'Estorne os pagamentos antes de cancelar a conta.'});return;}
     const resultado = await prisma.lancamentoFinanceiro.updateMany({
-      where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number },
+      where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number, valorPago: 0 },
       data: { status: "CANCELADO" },
     });
     if (resultado.count === 0) {
@@ -398,7 +272,7 @@ export const excluir = async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({ error: "Lançamento não encontrado" });
       return;
     }
-    if (atual.origem === "PROPOSTA") {
+    if (atual.origem === "PROPOSTA" || Number(atual.valorPago)>0 || await prisma.pagamentoFinanceiro.count({where:{lancamentoId:atual.lancamentofinanceiroid}})) {
       res.status(400).json({ error: "Lançamentos originados de proposta não são excluídos. Cancele o lançamento se necessário." });
       return;
     }
@@ -443,16 +317,12 @@ export const contas = async (req: Request, res: Response): Promise<void> => {
   try {
     const empresaId = req.empresaId as number;
     const dados = await prisma.contaFinanceira.findMany({ where: { empresaId }, orderBy: [{ ativo: "desc" }, { nome: "asc" }] });
-    const pagos = await prisma.lancamentoFinanceiro.groupBy({
-      by: ["contaFinanceiraId", "tipo"],
-      where: { empresaId, status: "PAGO", contaFinanceiraId: { not: null } },
-      _sum: { valorPago: true },
-    });
+    const pagos = await prisma.pagamentoFinanceiro.findMany({where:{empresaId,estornadoEm:null},include:{lancamento:{select:{tipo:true}}}});
     res.json(dados.map((conta) => {
       let saldo = Number(conta.saldoInicial || 0);
       for (const p of pagos) {
         if (p.contaFinanceiraId !== conta.contafinanceiraid) continue;
-        saldo += p.tipo === "ENTRADA" ? Number(p._sum.valorPago || 0) : -Number(p._sum.valorPago || 0);
+        saldo += p.lancamento.tipo === "ENTRADA" ? Number(p.valor) : -Number(p.valor);
       }
       return { ...conta, saldoAtual: saldo };
     }));

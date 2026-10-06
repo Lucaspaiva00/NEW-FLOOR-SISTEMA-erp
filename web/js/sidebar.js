@@ -26,11 +26,13 @@ function menuKeyFromLink(link) {
 
 function garantirLinkFinanceiro() {
   const menu = document.querySelector(".menu");
-  if (!menu || menu.querySelector('a[href="financeiro.html"]')) return;
+  if (!menu) return;
+  const existente=menu.querySelector('a[href="financeiro.html"]');
+  if(existente){existente.textContent="Contas a pagar e receber";return;}
 
   const link = document.createElement("a");
   link.href = "financeiro.html";
-  link.textContent = "Financeiro";
+  link.textContent = "Contas a pagar e receber";
 
   const fiscal = menu.querySelector('a[href="fiscal.html"]');
   const templates = menu.querySelector('a[href="templates.html"]');

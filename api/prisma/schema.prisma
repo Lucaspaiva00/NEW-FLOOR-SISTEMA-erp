@@ -614,6 +614,8 @@ model LancamentoFinanceiro {
   parcelaNumero          Int                        @default(1)
   totalParcelas          Int                        @default(1)
   observacoes            String?
+  favorecido             String?
+  pagamentos             PagamentoFinanceiro[]
   chaveOrigem            String?                    @unique
   propostaId             Int?
   clienteId              Int?
@@ -654,4 +656,21 @@ enum TipoContaFinanceira {
   BANCO
   CAIXA
   CARTEIRA
+}
+
+model PagamentoFinanceiro {
+ pagamentofinanceiroid Int @id @default(autoincrement())
+ empresaId Int
+ lancamentoId Int
+ lancamento LancamentoFinanceiro @relation(fields: [lancamentoId], references: [lancamentofinanceiroid], onDelete: Restrict)
+ valor Decimal @db.Decimal(14,2)
+ dataPagamento DateTime
+ contaFinanceiraId Int?
+ formaPagamento String?
+ estornadoEm DateTime?
+ motivoEstorno String?
+ chaveMigracao String? @unique
+ createdAt DateTime @default(now())
+ @@index([empresaId, dataPagamento])
+ @@index([lancamentoId])
 }
