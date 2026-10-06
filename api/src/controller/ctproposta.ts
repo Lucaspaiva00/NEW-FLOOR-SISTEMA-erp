@@ -222,7 +222,8 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
     const observacoesResolvidas = resolverObservacoesNaCriacao(body);
 
-    const proposta = await prisma.proposta.create({
+    const proposta = await prisma.$transaction(async tx=>{
+    const criada = await tx.proposta.create({
       data: {
         empresaId: req.empresaId as number,
 
@@ -341,6 +342,10 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
+    if(criada.status==="FATURADA")await sincronizarPropostaFaturada(criada.propostaid,req.empresaId as number,tx);
+    return criada;
+    });
+
     res.status(201).json(proposta);
   } catch (error) {
     console.log(error);
@@ -372,10 +377,14 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const proposta = await prisma.$transaction(async tx=>{
+      await tx.$queryRaw`SELECT "propostaid" FROM "Proposta" WHERE "propostaid"=${Number(id)} AND "empresaId"=${req.empresaId as number} FOR UPDATE`;
+      const propostaAtual=await tx.proposta.findFirst({where:{propostaid:Number(id),empresaId:req.empresaId as number}});
+      if(!propostaAtual)throw new Error("Proposta não encontrada");
     const temItensNoBody = Array.isArray(body.itens);
 
     if (temItensNoBody) {
-      await prisma.itemProposta.deleteMany({
+      await tx.itemProposta.deleteMany({
         where: {
           propostaId: Number(id),
         },
@@ -389,7 +398,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
         )
       : Number(propostaAtual.subtotal || 0);
 
-    const proposta = await prisma.proposta.update({
+    const proposta = await tx.proposta.update({
       where: {
         propostaid: Number(id),
       },
@@ -558,22 +567,20 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    try {
       if (proposta.status === "FATURADA") {
-        await sincronizarPropostaFaturada(proposta.propostaid, req.empresaId as number);
+        await sincronizarPropostaFaturada(proposta.propostaid, req.empresaId as number, tx, propostaAtual.status!=="FATURADA");
       } else if (propostaAtual.status === "FATURADA") {
-        await cancelarLancamentoPropostaDesfaturada(proposta.propostaid);
+        await cancelarLancamentoPropostaDesfaturada(proposta.propostaid, req.empresaId as number, tx);
       }
-    } catch (financeiroError) {
-      console.error("Não foi possível sincronizar a proposta com o financeiro:", financeiroError);
-    }
+    return proposta;
+    });
 
     res.status(200).json(proposta);
   } catch (error) {
     console.log(error);
 
-    res.status(500).json({
-      error: "Erro ao atualizar proposta",
+    res.status(400).json({
+      error: error instanceof Error ? error.message : "Erro ao atualizar proposta",
     });
   }
 };

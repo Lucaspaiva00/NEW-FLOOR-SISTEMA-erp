@@ -188,7 +188,7 @@
               <div class="col-md-6"><label>Forma de pagamento</label><input id="finFormaPagamento" class="form-control" placeholder="PIX, boleto, transferência..."></div>
               <div class="col-md-4"><label>Documento</label><input id="finDocumento" class="form-control"></div>
               <div class="col-md-4 parcela-only"><label>Parcelas</label><input id="finParcelas" type="number" min="1" max="120" value="1" class="form-control"></div>
-              <div class="col-md-4 parcela-only"><label>Intervalo (dias)</label><input id="finIntervalo" type="number" min="1" value="30" class="form-control"></div>
+              <div class="col-md-4 parcela-only"><label>Vencimentos</label><select id="finFrequencia" class="form-select"><option value="MENSAL">Mensais (mesmo dia)</option><option value="DIAS">Intervalo em dias</option></select></div><div class="col-md-4 parcela-only d-none" id="finIntervaloGrupo"><label>Intervalo (dias)</label><input id="finIntervalo" type="number" min="1" value="30" class="form-control"></div>
               <div class="col-12"><label>Fornecedor ou pessoa a pagar</label><input id="finFavorecido" class="form-control" placeholder="Ex.: fornecedor, prestador ou funcionário"></div><div class="col-12"><label>Observações</label><textarea id="finObservacoes" rows="3" class="form-control"></textarea></div>
             </div>
           </div>
@@ -234,6 +234,6 @@
   <script src="js/config.js"></script>
   <script src="js/sidebar.js"></script>
   <script src="js/menu-mobile.js"></script>
-  <script src="js/financeiro.js?v=20261006-fluxo-personalizado"></script>
+  <script src="js/financeiro.js?v=20261006-fluxos"></script>
 </body>
 </html>

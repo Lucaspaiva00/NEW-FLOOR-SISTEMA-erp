@@ -62,6 +62,28 @@ test('Parcelamento conserva centavos e reverte a criação inteira quando uma pa
  let code=0,body:any;const res:any={status:(c:number)=>{code=c;return res;},json:(v:any)=>body=v};
  const req:any={empresaId:7,body:{tipo:'SAIDA',descricao:'Compra',valor:0.10,totalParcelas:6,intervaloDias:30,dataVencimento:'2026-01-15'}};
  try{await criar(req,res);assert.equal(code,201);assert.equal(rows.length,6);assert.equal(rows.reduce((sum,r)=>sum+centavos(r.valor),0),10);assert(rows.every(r=>Number(r.valor)>0));
+ rows=[];req.body={...req.body,valor:100,totalParcelas:3,frequenciaParcelas:'MENSAL',dataVencimento:'2028-01-31'};await criar(req,res);assert.equal(code,201);assert.deepEqual(rows.map(r=>r.dataVencimento.toISOString().slice(0,10)),['2028-01-31','2028-02-29','2028-03-31']);
+ rows=[];req.body.dataVencimento='2026-01-31';await criar(req,res);assert.deepEqual(rows.map(r=>r.dataVencimento.toISOString().slice(0,10)),['2026-01-31','2026-02-28','2026-03-31']);
+ rows=[];req.body.totalParcelas=6;
  rows=[];fail=true;const savedLog=console.error;console.error=()=>{};try{await criar(req,res);}finally{console.error=savedLog;}assert.equal(code,400);assert.equal(rows.length,0);
  }finally{client.$transaction=original;}
+});
+
+test('Proposta gera uma única conta por origem, preserva recebimentos e protege o desfaturamento',async()=>{
+ const {sincronizarPropostaFaturada,cancelarLancamentoPropostaDesfaturada}=await import('../src/services/financeiro.service');
+ let proposta:any={propostaid:42,empresaId:7,status:'FATURADA',numero:'42',subtotal:1000,frete:50,clienteId:9,cliente:{razaoSocial:'Cliente'},formaPagamento:'PIX',condicoesPagamento:'À vista'};
+ let conta:any=null;let filtro:any;
+ const db:any={
+  $queryRaw:async()=>[],
+  proposta:{findFirst:async({where}:any)=>where.empresaId===7?proposta:null},
+  categoriaFinanceira:{upsert:async()=>({categoriafinanceiraid:3})},
+  lancamentoFinanceiro:{findUnique:async()=>conta,upsert:async({create,update}:any)=>conta=conta?{...conta,...update}:{...create,valorPago:0},findFirst:async()=>conta?.valorPago>0?conta:null,updateMany:async({where}:any)=>{filtro=where;return {count:1};}}
+ };
+ await sincronizarPropostaFaturada(42,7,db);assert.equal(conta.valor,1050);assert.equal(conta.empresaId,7);assert.equal(conta.formaPagamento,'PIX');assert.equal(conta.chaveOrigem,'PROPOSTA:42:1');
+ await sincronizarPropostaFaturada(42,7,db);assert.equal(conta.chaveOrigem,'PROPOSTA:42:1');
+ conta.valorPago=400;await sincronizarPropostaFaturada(42,7,db);assert.equal(conta.valorPago,400);assert.equal(conta.status,'ABERTO');
+ proposta.subtotal=2000;await assert.rejects(sincronizarPropostaFaturada(42,7,db),/recebimentos/);
+ await assert.rejects(cancelarLancamentoPropostaDesfaturada(42,7,db),/Estorne/);
+ assert.equal(await sincronizarPropostaFaturada(42,8,db),null);
+ conta.valorPago=0;await cancelarLancamentoPropostaDesfaturada(42,7,db);assert.equal(filtro.empresaId,7);assert.equal(filtro.valorPago,0);
 });

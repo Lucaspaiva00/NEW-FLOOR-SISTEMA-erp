@@ -157,6 +157,10 @@ export const criar = async (req: Request, res: Response): Promise<void> => {
     const totalParcelas = Math.min(Math.max(Number(b.totalParcelas || 1), 1), 120);
     const intervaloDias = Math.max(Number(b.intervaloDias || 30), 1);
     const primeiraData = parseDate(b.dataVencimento);
+    const frequencia=b.frequenciaParcelas||"DIAS";
+    if(!["MENSAL","DIAS"].includes(frequencia))throw new Error("Escolha parcelamento mensal ou intervalo em dias.");
+    if(b.dataVencimento&&!primeiraData)throw new Error("Informe um vencimento válido.");
+    if(totalParcelas>1&&!primeiraData)throw new Error("Informe o primeiro vencimento para parcelar.");
     if(!Number.isInteger(totalParcelas)||!Number.isInteger(intervaloDias)||centavos(valor)<totalParcelas)throw new Error('Parcelas e intervalo devem ser inteiros e cada parcela deve ter ao menos um centavo.');
     const criados = await prisma.$transaction(async tx=>{
     await validarVinculos(tx,empresaId,{...b,tipo});
@@ -164,7 +168,13 @@ export const criar = async (req: Request, res: Response): Promise<void> => {
 
     for (let i = 1; i <= totalParcelas; i++) {
       let vencimento = primeiraData ? new Date(primeiraData) : null;
-      if (vencimento && i > 1) vencimento.setDate(vencimento.getDate() + intervaloDias * (i - 1));
+      if(vencimento&&i>1){
+        if(frequencia==="MENSAL"){
+          const dia=primeiraData!.getUTCDate(),mes=primeiraData!.getUTCMonth()+i-1,ano=primeiraData!.getUTCFullYear();
+          const ultimo=new Date(Date.UTC(ano,mes+1,0)).getUTCDate();
+          vencimento=new Date(Date.UTC(ano,mes,Math.min(dia,ultimo),15));
+        }else vencimento.setUTCDate(vencimento.getUTCDate()+intervaloDias*(i-1));
+      }
       const valorParcela = Math.floor(centavos(valor) / totalParcelas) / 100;
       const ajusteUltima = i === totalParcelas ? Math.round((valor - valorParcela * (totalParcelas - 1)) * 100) / 100 : valorParcela;
 
@@ -219,6 +229,7 @@ export const atualizar = async (req: Request, res: Response): Promise<void> => {
     if(b.descricao!==undefined&&!String(b.descricao).trim())throw new Error("Informe a descrição da conta.");
     await validarVinculos(tx,empresaId,{...b,tipo:b.tipo||atual.tipo});
     if(b.valor!==undefined && centavos(b.valor)<=0)throw new Error('Informe um valor maior que zero.');
+    if(atual.origem==="PROPOSTA"&&((b.valor!==undefined&&centavos(b.valor)!==centavos(atual.valor))||(b.tipo&&b.tipo!==atual.tipo)||(b.clienteId!==undefined&&Number(b.clienteId||0)!==Number(atual.clienteId||0))))throw new Error("Altere o valor e o cliente na proposta de origem para manter os registros consistentes.");
     const historico=await tx.pagamentoFinanceiro.count({where:{lancamentoId:id,empresaId}});
     if(historico && ((b.valor!==undefined&&centavos(b.valor)!==centavos(atual.valor))||(b.tipo&&b.tipo!==atual.tipo)))throw new Error('Uma conta com pagamentos não pode ter seu valor ou tipo alterado.');
     return tx.lancamentoFinanceiro.update({

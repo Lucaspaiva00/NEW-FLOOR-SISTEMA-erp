@@ -1,7 +1,8 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../prisma";
 
-export async function garantirCategoriaReceitaPropostas(empresaId: number) {
-  return prisma.categoriaFinanceira.upsert({
+export async function garantirCategoriaReceitaPropostas(empresaId: number, db: Prisma.TransactionClient = prisma) {
+  return db.categoriaFinanceira.upsert({
     where: {
       empresaId_nome_tipo: {
         empresaId,
@@ -41,15 +42,17 @@ export async function garantirCategoriasPadrao(empresaId: number) {
   }
 }
 
-export async function sincronizarPropostaFaturada(propostaId: number, empresaId: number) {
-  const proposta = await prisma.proposta.findFirst({
+export async function sincronizarPropostaFaturada(propostaId: number, empresaId: number, db?: Prisma.TransactionClient, reativar = false) {
+  const sincronizar = async (tx: Prisma.TransactionClient)=>{
+  await tx.$queryRaw`SELECT "propostaid" FROM "Proposta" WHERE "propostaid"=${propostaId} AND "empresaId"=${empresaId} FOR UPDATE`;
+  const proposta = await tx.proposta.findFirst({
     where: { propostaid: propostaId, empresaId },
     include: { cliente: true },
   });
 
   if (!proposta || proposta.status !== "FATURADA") return null;
 
-  const categoria = await garantirCategoriaReceitaPropostas(empresaId);
+  const categoria = await garantirCategoriaReceitaPropostas(empresaId, tx);
   const valor = Number(proposta.subtotal || 0) + Number(proposta.frete || 0);
   const nomeCliente =
     proposta.cliente.nomeFantasia ||
@@ -58,20 +61,21 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
     `Cliente #${proposta.clienteId}`;
 
   const chaveOrigem = `PROPOSTA:${proposta.propostaid}:1`;
-  return prisma.$transaction(async tx=>{
+
   await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "chaveOrigem"=${chaveOrigem} AND "empresaId"=${empresaId} FOR UPDATE`;
   const existente = await tx.lancamentoFinanceiro.findUnique({
     where: { chaveOrigem },
-    select: { status: true, valor: true, valorPago: true },
+    select: { status: true, valor: true, valorPago: true, clienteId: true },
   });
 
+  if(Number(existente?.valorPago)>0 && (Math.round(Number(existente!.valor)*100)!==Math.round(valor*100)||existente!.clienteId!==proposta.clienteId))throw new Error("Uma proposta com recebimentos não pode ter seu valor ou cliente alterado. Estorne os recebimentos antes de ajustar.");
   return tx.lancamentoFinanceiro.upsert({
     where: { chaveOrigem },
     update: {
       descricao: `Proposta ${proposta.numero} - ${nomeCliente}`,
       documento: proposta.numero,
       valor: Number(existente?.valorPago)>0 ? existente!.valor : valor,
-      status: existente?.status === "PAGO" ? "PAGO" : existente?.status === "CANCELADO" ? "CANCELADO" : "ABERTO",
+      status: existente?.status === "PAGO" ? "PAGO" : existente?.status === "CANCELADO" && !reativar ? "CANCELADO" : "ABERTO",
       clienteId: proposta.clienteId,
       categoriaFinanceiraId: categoria.categoriafinanceiraid,
       formaPagamento: proposta.formaPagamento,
@@ -87,7 +91,7 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
       descricao: `Proposta ${proposta.numero} - ${nomeCliente}`,
       documento: proposta.numero,
       valor,
-      dataCompetencia: new Date(),
+      dataCompetencia: proposta.dataFaturamento || new Date(),
       dataVencimento: null,
       formaPagamento: proposta.formaPagamento,
       parcelaNumero: 1,
@@ -101,12 +105,16 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
       categoriaFinanceiraId: categoria.categoriafinanceiraid,
     },
   });
-  });
+  };
+  return db ? sincronizar(db) : prisma.$transaction(sincronizar);
 }
 
-export async function cancelarLancamentoPropostaDesfaturada(propostaId: number) {
-  return prisma.lancamentoFinanceiro.updateMany({
+export async function cancelarLancamentoPropostaDesfaturada(propostaId: number, empresaId: number, db: Prisma.TransactionClient = prisma) {
+  const recebida=await db.lancamentoFinanceiro.findFirst({where:{empresaId,propostaId,origem:"PROPOSTA",valorPago:{gt:0}}});
+  if(recebida)throw new Error("Estorne os recebimentos antes de retirar o faturamento da proposta.");
+  return db.lancamentoFinanceiro.updateMany({
     where: {
+      empresaId,
       chaveOrigem: `PROPOSTA:${propostaId}:1`,
       origem: "PROPOSTA",
       status: "ABERTO",

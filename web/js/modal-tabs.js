@@ -37,7 +37,7 @@
       if (/formTemplate/i.test(form.id)) label=/cor/.test(id)?'Aparência':/cabecalho|rodape|texto/.test(id)?'Textos':'Dados';
       else if (/Usuario/i.test(form.id)) label=/senha|cargo|perfil|role|empresa|ativo/.test(id)?'Acesso':'Dados';
       else if (/Vendedor/i.test(form.id)) label=/email|telefone|celular|endereco/.test(id)?'Contato':'Dados';
-      else if (/Lancamento/i.test(form.id)) label=/parcela|intervalo|forma|conta|vencimento/.test(id)?'Pagamento':/observacoes|documento/.test(id)?'Complementos':'Dados';
+      else if (/Lancamento/i.test(form.id)) label=/parcela|frequencia|intervalo|forma|conta|vencimento/.test(id)?'Pagamento':/observacoes|documento/.test(id)?'Complementos':'Dados';
       else if (/Agenda/i.test(form.id)) label=/descricao|observ|lembrete|notif/.test(id)?'Detalhes':'Dados';
       else continue;
       if (!group.has(label)) group.set(label,[]);
