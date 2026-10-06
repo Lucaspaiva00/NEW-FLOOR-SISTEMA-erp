@@ -66,14 +66,24 @@ export const dashboard = async (req: Request, res: Response): Promise<void> => {
 };
 export const fluxo = async (req: Request, res: Response): Promise<void> => {
  try {
-  const empresaId=req.empresaId as number,meses=Math.min(Math.max(Number(req.query.meses||6),3),12);
+  const empresaId=req.empresaId as number,meses=Math.min(Math.max(Number(req.query.meses||6),1),12);
   if(!Number.isInteger(meses)){res.status(400).json({error:'Período inválido'});return;}
   const hoje=dataLocal(new Date()),ano=Number(hoje.slice(0,4)),mes=Number(hoje.slice(5,7))-1;
   const [pagamentos,abertos]=await Promise.all([prisma.pagamentoFinanceiro.findMany({where:{empresaId},include:{lancamento:{select:{tipo:true}}}}),prisma.lancamentoFinanceiro.findMany({where:{empresaId,status:'ABERTO',dataVencimento:{not:null}}})]);
+  let inicio=new Date(Date.UTC(ano,mes-(meses-1),1)).toISOString().slice(0,10);
+  let fim=new Date(Date.UTC(ano,mes+1,0)).toISOString().slice(0,10);
+  if(req.query.inicio!==undefined||req.query.fim!==undefined){
+    const valido=(v:unknown):v is string=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(new Date(v).getTime())&&new Date(v).toISOString().slice(0,10)===v;
+    if(!valido(req.query.inicio)||!valido(req.query.fim)||req.query.inicio>req.query.fim){res.status(400).json({error:'Informe datas válidas, com início anterior ou igual ao fim.'});return;}
+    inicio=req.query.inicio;fim=req.query.fim;
+  }
+  const primeiro=new Date(inicio+'T12:00:00Z'),ultimo=new Date(fim+'T12:00:00Z');
+  const quantidade=(ultimo.getUTCFullYear()-primeiro.getUTCFullYear())*12+ultimo.getUTCMonth()-primeiro.getUTCMonth()+1;
+  if(quantidade>120){res.status(400).json({error:'Selecione um período de até 10 anos.'});return;}
   const mapa=new Map<string,any>();
-  for(let i=0;i<meses;i++){const d=new Date(Date.UTC(ano,mes-(meses-1-i),15));const key=d.toISOString().slice(0,7);mapa.set(key,{mes:d.toLocaleDateString('pt-BR',{month:'short',year:'numeric',timeZone:'UTC'}),entradas:0,saidas:0,previstoReceber:0,previstoPagar:0});}
-  for(const e of eventos(pagamentos)){const item=mapa.get(dataLocal(e.data).slice(0,7));if(item)item[e.tipo==='ENTRADA'?'entradas':'saidas']+=e.valor;}
-  for(const l of abertos){const item=mapa.get(vencimentoDia(l.dataVencimento!).slice(0,7));if(item)item[l.tipo==='ENTRADA'?'previstoReceber':'previstoPagar']+=saldoConta(l.valor,l.valorPago);}
+  for(let i=0;i<quantidade;i++){const d=new Date(Date.UTC(primeiro.getUTCFullYear(),primeiro.getUTCMonth()+i,15));const key=d.toISOString().slice(0,7);mapa.set(key,{mes:d.toLocaleDateString('pt-BR',{month:'short',year:'numeric',timeZone:'UTC'}),entradas:0,saidas:0,previstoReceber:0,previstoPagar:0});}
+  for(const e of eventos(pagamentos)){const dia=dataLocal(e.data);if(dia<inicio||dia>fim)continue;const item=mapa.get(dia.slice(0,7));if(item)item[e.tipo==='ENTRADA'?'entradas':'saidas']+=e.valor;}
+  for(const l of abertos){const dia=vencimentoDia(l.dataVencimento!);if(dia<inicio||dia>fim)continue;const item=mapa.get(dia.slice(0,7));if(item)item[l.tipo==='ENTRADA'?'previstoReceber':'previstoPagar']+=saldoConta(l.valor,l.valorPago);}
   res.json([...mapa.values()]);
  }catch(error){console.error(error);res.status(500).json({error:'Erro ao carregar movimentações e contas pendentes.'});}
 };

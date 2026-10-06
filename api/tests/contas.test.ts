@@ -47,6 +47,11 @@ test('Dashboard e fluxo contam recebimentos parciais, saldo inicial negativo e p
  let response:any;const res:any={json:(v:any)=>response=v,status:()=>res};
  try{await dashboard({empresaId:7,query:{ano:String(date.getFullYear())}} as any,res);assert.equal(response.saldoDisponivel,300);assert.equal(response.contasReceber,600);assert.equal(response.recebidoPorMes.reduce((a:number,b:number)=>a+b,0),400);assert.equal(response.saldoProjetado,900);
  await fluxo({empresaId:7,query:{meses:12}} as any,res);const mes=response.at(-1);assert.equal(mes.entradas,400);assert.equal(mes.previstoReceber,600);
+ await fluxo({empresaId:7,query:{meses:1}} as any,res);assert.equal(response.length,1);assert.equal(response[0].entradas,400);
+ await fluxo({empresaId:7,query:{inicio:'2020-01-15',fim:'2020-02-05'}} as any,res);assert.equal(response.length,2);assert.equal(response.reduce((sum:number,x:any)=>sum+x.entradas+x.previstoReceber,0),0);
+ await fluxo({empresaId:7,query:{inicio:'2026-02-30',fim:'2026-03-01'}} as any,res);assert(response.error);
+ await fluxo({empresaId:7,query:{inicio:'2026-03-02',fim:'2026-03-01'}} as any,res);assert(response.error);
+
  }finally{[client.lancamentoFinanceiro.findMany,client.contaFinanceira.findMany,client.pagamentoFinanceiro.findMany]=originals;}
 });
 test('Parcelamento conserva centavos e reverte a criação inteira quando uma parcela falha',async()=>{
