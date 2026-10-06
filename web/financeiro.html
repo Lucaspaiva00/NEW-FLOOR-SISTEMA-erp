@@ -85,6 +85,10 @@
             <div><h2>Fluxo de caixa</h2><p>Dinheiro recebido e pago, separado das contas ainda pendentes.</p></div>
             <span class="badge-soft">Movimentado e pendente separados</span>
           </div>
+          <div class="d-flex flex-wrap gap-3 mb-3">
+            <div><label for="fluxoPeriodo" class="small text-muted mb-1">Período</label><select id="fluxoPeriodo" class="form-select form-select-sm"><option value="3">Últimos 3 meses</option><option value="6" selected>Últimos 6 meses</option><option value="12">Últimos 12 meses</option></select></div>
+            <div><label for="fluxoExibicao" class="small text-muted mb-1">Mostrar no gráfico</label><select id="fluxoExibicao" class="form-select form-select-sm"><option value="todos">Todos os valores</option><option value="movimentado">Recebido e pago</option><option value="pendente">A receber e a pagar</option><option value="entradas">Recebido e a receber</option><option value="saidas">Pago e a pagar</option></select></div>
+          </div>
           <div class="chart-wrap"><canvas id="fluxoChart"></canvas></div>
           <div class="resultado-mes">
             <div><span>Recebido no mês</span><strong id="recebidoMes">R$ 0,00</strong></div>
@@ -225,6 +229,6 @@
   <script src="js/config.js"></script>
   <script src="js/sidebar.js"></script>
   <script src="js/menu-mobile.js"></script>
-  <script src="js/financeiro.js?v=20261006-contas-paginacao"></script>
+  <script src="js/financeiro.js?v=20261006-fluxo-filtros"></script>
 </body>
 </html>

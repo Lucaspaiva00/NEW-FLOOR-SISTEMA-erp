@@ -38,9 +38,19 @@
     $("kpiSaldo").textContent=dinheiro(d.saldoDisponivel); $("kpiReceber").textContent=dinheiro(d.contasReceber); $("kpiPagar").textContent=dinheiro(d.contasPagar); $("kpiProjetado").textContent=dinheiro(d.saldoProjetado); $("kpiVencidos").textContent=dinheiro(d.vencidosValor); $("kpiVencidosQtd").textContent=`${d.vencidosQuantidade||0} lançamento${d.vencidosQuantidade===1?"":"s"} vencido${d.vencidosQuantidade===1?"":"s"}`; $("recebidoMes").textContent=dinheiro(d.recebidoMes); $("pagoMes").textContent=dinheiro(d.pagoMes); $("resultadoMes").textContent=dinheiro(d.resultadoMes); renderProximos(d.ultimos||[]);
   }
   async function carregarFluxo(){
-    const dados=await api("/financeiro/fluxo?meses=6"); const ctx=$("fluxoChart"); if(fluxoChart) fluxoChart.destroy();
+    const dados=await api(`/financeiro/fluxo?meses=${$("fluxoPeriodo").value}`); const ctx=$("fluxoChart"); if(fluxoChart) fluxoChart.destroy();
     fluxoChart=new Chart(ctx,{type:"bar",data:{labels:dados.map(x=>x.mes),datasets:[{label:"Recebido",data:dados.map(x=>x.entradas),backgroundColor:"rgba(25,135,84,.72)",borderRadius:6},{label:"Pago",data:dados.map(x=>x.saidas),backgroundColor:"rgba(220,53,69,.62)",borderRadius:6},{label:"A receber (pendente)",data:dados.map(x=>x.previstoReceber),backgroundColor:"rgba(25,135,84,.2)",borderRadius:6},{label:"A pagar (pendente)",data:dados.map(x=>x.previstoPagar),backgroundColor:"rgba(220,53,69,.2)",borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:8,font:{size:10}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>"R$ "+Number(v).toLocaleString("pt-BR")},grid:{color:"#f0f1f3"}}}}});
+    aplicarFiltroFluxo();
   }
+  function aplicarFiltroFluxo(){
+    if(!fluxoChart)return;
+    const grupos={todos:[0,1,2,3],movimentado:[0,1],pendente:[2,3],entradas:[0,2],saidas:[1,3]};
+    const visiveis=grupos[$("fluxoExibicao").value]||grupos.todos;
+    fluxoChart.data.datasets.forEach((_,i)=>fluxoChart.setDatasetVisibility(i,visiveis.includes(i)));
+    fluxoChart.update();
+  }
+  $("fluxoPeriodo").addEventListener("change",()=>carregarFluxo().catch(erro));
+  $("fluxoExibicao").addEventListener("change",aplicarFiltroFluxo);
   async function carregarLancamentos(){
     const q=new URLSearchParams(); if(tipoFiltro)q.set("tipo",tipoFiltro); if($("filtroStatus").value)q.set("status",$("filtroStatus").value); if($("filtroVencimento").value)q.set("vencimento",$("filtroVencimento").value); if($("buscaFinanceiro").value.trim())q.set("busca",$("buscaFinanceiro").value.trim()); lancamentos=await api(`/financeiro/lancamentos${q.toString()?`?${q}`:""}`); paginaLancamentos=1; renderLancamentos();
   }
