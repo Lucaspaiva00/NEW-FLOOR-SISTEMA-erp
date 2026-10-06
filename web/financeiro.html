@@ -137,6 +137,10 @@
             <tbody id="listaLancamentos"></tbody>
           </table>
         </div>
+        <div id="paginacaoLancamentos" class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 d-none">
+          <small id="resumoPaginacao" class="text-muted" role="status" aria-live="polite"></small>
+          <nav id="botoesPaginacao" class="d-flex flex-wrap gap-1" aria-label="Páginas das contas"></nav>
+        </div>
         <div id="emptyLancamentos" class="empty-state d-none">Nenhuma movimentação encontrada.</div>
       </section>
 
@@ -221,6 +225,6 @@
   <script src="js/config.js"></script>
   <script src="js/sidebar.js"></script>
   <script src="js/menu-mobile.js"></script>
-  <script src="js/financeiro.js?v=20261006-contas-modal"></script>
+  <script src="js/financeiro.js?v=20261006-contas-paginacao"></script>
 </body>
 </html>
