@@ -1,3 +1,4 @@
+import { parcelasRecebimento } from "./planoRecebimento.service";
 import { Prisma } from "@prisma/client";
 import prisma from "../prisma";
 
@@ -60,51 +61,26 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
     proposta.cliente.responsavel ||
     `Cliente #${proposta.clienteId}`;
 
-  const chaveOrigem = `PROPOSTA:${proposta.propostaid}:1`;
-
-  await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "chaveOrigem"=${chaveOrigem} AND "empresaId"=${empresaId} FOR UPDATE`;
-  const existente = await tx.lancamentoFinanceiro.findUnique({
-    where: { chaveOrigem },
-    select: { status: true, valor: true, valorPago: true, clienteId: true },
-  });
-
-  if(Number(existente?.valorPago)>0 && (Math.round(Number(existente!.valor)*100)!==Math.round(valor*100)||existente!.clienteId!==proposta.clienteId))throw new Error("Uma proposta com recebimentos não pode ter seu valor ou cliente alterado. Estorne os recebimentos antes de ajustar.");
-  return tx.lancamentoFinanceiro.upsert({
-    where: { chaveOrigem },
-    update: {
-      descricao: `Proposta ${proposta.numero} - ${nomeCliente}`,
-      documento: proposta.numero,
-      valor: Number(existente?.valorPago)>0 ? existente!.valor : valor,
-      status: existente?.status === "PAGO" ? "PAGO" : existente?.status === "CANCELADO" && !reativar ? "CANCELADO" : "ABERTO",
-      clienteId: proposta.clienteId,
-      categoriaFinanceiraId: categoria.categoriafinanceiraid,
-      formaPagamento: proposta.formaPagamento,
-      observacoes: proposta.condicoesPagamento
-        ? `Condições comerciais: ${proposta.condicoesPagamento}`
-        : null,
-    },
-    create: {
-      empresaId,
-      tipo: "ENTRADA",
-      status: "ABERTO",
-      origem: "PROPOSTA",
-      descricao: `Proposta ${proposta.numero} - ${nomeCliente}`,
-      documento: proposta.numero,
-      valor,
-      dataCompetencia: proposta.dataFaturamento || new Date(),
-      dataVencimento: null,
-      formaPagamento: proposta.formaPagamento,
-      parcelaNumero: 1,
-      totalParcelas: 1,
-      observacoes: proposta.condicoesPagamento
-        ? `Condições comerciais: ${proposta.condicoesPagamento}`
-        : "Gerado automaticamente ao faturar a proposta. Defina o vencimento conforme a condição comercial.",
-      chaveOrigem,
-      propostaId: proposta.propostaid,
-      clienteId: proposta.clienteId,
-      categoriaFinanceiraId: categoria.categoriafinanceiraid,
-    },
-  });
+  const parcelas=parcelasRecebimento(valor,proposta.planoRecebimento);
+  await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "propostaId"=${propostaId} AND "empresaId"=${empresaId} FOR UPDATE`;
+  const existentes=await tx.lancamentoFinanceiro.findMany({where:{empresaId,propostaId,origem:"PROPOSTA"}});
+  const chaves=parcelas.map(p=>`PROPOSTA:${propostaId}:${p.numero}`);
+  const temRecebimento=existentes.some(l=>Number(l.valorPago)>0);
+  if(temRecebimento){
+    const ativos=existentes.filter(l=>l.status!=="CANCELADO");
+    if(ativos.length!==parcelas.length||parcelas.some(p=>{
+      const l=ativos.find(l=>l.chaveOrigem===`PROPOSTA:${propostaId}:${p.numero}`);
+      return !l||Math.round(Number(l.valor)*100)!==Math.round(p.valor*100)||l.clienteId!==proposta.clienteId||(proposta.planoRecebimento&&l.dataVencimento?.toISOString().slice(0,10)!==p.vencimento?.toISOString().slice(0,10));
+    }))throw new Error("Estorne os recebimentos antes de alterar valores, cliente ou parcelamento da proposta.");
+  }
+  await tx.lancamentoFinanceiro.updateMany({where:{empresaId,propostaId,origem:"PROPOSTA",chaveOrigem:{notIn:chaves},valorPago:0,status:"ABERTO"},data:{status:"CANCELADO"}});
+  const resultados=[];
+  for(const parcela of parcelas){
+    const chaveOrigem=`PROPOSTA:${propostaId}:${parcela.numero}`,existente=existentes.find(l=>l.chaveOrigem===chaveOrigem);
+    const dados={descricao:`Proposta ${proposta.numero} - ${nomeCliente}${parcelas.length>1?` (${parcela.numero}/${parcelas.length})`:""}`,documento:proposta.numero,valor:parcela.valor,clienteId:proposta.clienteId,categoriaFinanceiraId:categoria.categoriafinanceiraid,formaPagamento:proposta.formaPagamento,parcelaNumero:parcela.numero,totalParcelas:parcelas.length,observacoes:proposta.condicoesPagamento?`Condições comerciais: ${proposta.condicoesPagamento}`:"Gerado ao faturar a proposta.",...(proposta.planoRecebimento?{dataVencimento:parcela.vencimento}:{})};
+    resultados.push(await tx.lancamentoFinanceiro.upsert({where:{chaveOrigem},update:{...dados,status:existente?.status==="PAGO"?"PAGO":existente?.status==="CANCELADO"&&!reativar?"CANCELADO":"ABERTO"},create:{...dados,empresaId,tipo:"ENTRADA",status:"ABERTO",origem:"PROPOSTA",dataCompetencia:proposta.dataFaturamento||new Date(),dataVencimento:parcela.vencimento,chaveOrigem,propostaId}}));
+  }
+  return resultados[0];
   };
   return db ? sincronizar(db) : prisma.$transaction(sincronizar);
 }
@@ -115,7 +91,7 @@ export async function cancelarLancamentoPropostaDesfaturada(propostaId: number, 
   return db.lancamentoFinanceiro.updateMany({
     where: {
       empresaId,
-      chaveOrigem: `PROPOSTA:${propostaId}:1`,
+      propostaId,
       origem: "PROPOSTA",
       status: "ABERTO",
       valorPago: 0,

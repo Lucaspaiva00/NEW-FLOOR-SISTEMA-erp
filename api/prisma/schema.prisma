@@ -146,6 +146,7 @@ model Proposta {
   frete                      Decimal?          @db.Decimal(10, 2)
   formaPagamento             String?
   condicoesPagamento         String?
+  planoRecebimento           Json?
   validadeDias               Int?
   dataValidade               DateTime?
   dataFaturamento            DateTime?

@@ -77,7 +77,7 @@ test('Proposta gera uma única conta por origem, preserva recebimentos e protege
   $queryRaw:async()=>[],
   proposta:{findFirst:async({where}:any)=>where.empresaId===7?proposta:null},
   categoriaFinanceira:{upsert:async()=>({categoriafinanceiraid:3})},
-  lancamentoFinanceiro:{findUnique:async()=>conta,upsert:async({create,update}:any)=>conta=conta?{...conta,...update}:{...create,valorPago:0},findFirst:async()=>conta?.valorPago>0?conta:null,updateMany:async({where}:any)=>{filtro=where;return {count:1};}}
+  lancamentoFinanceiro:{findMany:async()=>conta?[conta]:[],findUnique:async()=>conta,upsert:async({create,update}:any)=>conta=conta?{...conta,...update}:{...create,valorPago:0},findFirst:async()=>conta?.valorPago>0?conta:null,updateMany:async({where}:any)=>{filtro=where;return {count:1};}}
  };
  await sincronizarPropostaFaturada(42,7,db);assert.equal(conta.valor,1050);assert.equal(conta.empresaId,7);assert.equal(conta.formaPagamento,'PIX');assert.equal(conta.chaveOrigem,'PROPOSTA:42:1');
  await sincronizarPropostaFaturada(42,7,db);assert.equal(conta.chaveOrigem,'PROPOSTA:42:1');

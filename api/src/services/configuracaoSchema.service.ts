@@ -1,5 +1,6 @@
 import prisma from "../prisma";
 export async function garantirSchemaConfiguracao() {
+ await prisma.$executeRawUnsafe(`ALTER TABLE "Proposta" ADD COLUMN IF NOT EXISTS "planoRecebimento" JSONB;`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "Proposta" ADD COLUMN IF NOT EXISTS "dataFaturamento" TIMESTAMP(3);`);
  await prisma.$executeRawUnsafe(`DO $$ BEGIN IF to_regclass('"LancamentoFinanceiro"') IS NOT NULL THEN UPDATE "Proposta" p SET "dataFaturamento" = l."dataCompetencia" FROM "LancamentoFinanceiro" l WHERE p."dataFaturamento" IS NULL AND p.status = 'FATURADA' AND l."propostaId" = p.propostaid AND l."empresaId" = p."empresaId" AND l."chaveOrigem" = 'PROPOSTA:' || p.propostaid || ':1'; END IF; END; $$;`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "Empresa" ADD COLUMN IF NOT EXISTS "configuracaoSistema" JSONB;`);

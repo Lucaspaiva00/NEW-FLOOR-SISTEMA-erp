@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+import { validarPlanoRecebimento } from "../services/planoRecebimento.service";
 import { Request, Response } from "express";
 import { resolverConfiguracao, prepararCampos } from "../services/configuracaoSistema.service";
 import { calcularComposicao } from "../services/orcamentoSba.service";
@@ -7,6 +9,7 @@ async function prepararBody(req: Request, res: Response): Promise<any> {
  if(!config.selecionarDestinatario) {delete body.contatoDestinatario;delete body.emailDestinatario;}
  if(!config.composicaoCustos) {delete body.composicaoCustos;delete body.prazoEntrega;}
  try {
+ if("planoRecebimento" in body)body.planoRecebimento=validarPlanoRecebimento(body.planoRecebimento);
  if(body.composicaoCustos != null) {
    body.composicaoCustos=calcularComposicao(body.composicaoCustos);
    body.itens=[{descricao:body.titulo || "Serviços e materiais",detalhes:body.descricao || "",unidade:"UN",quantidade:1,valorUnitario:body.composicaoCustos.preco,subtotal:body.composicaoCustos.preco,desconto:0,acrescimo:0}];
@@ -263,6 +266,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         formaPagamento: body.formaPagamento || null,
 
         condicoesPagamento: body.condicoesPagamento || null,
+        planoRecebimento: body.planoRecebimento || Prisma.DbNull,
 
         validadeDias: body.validadeDias ? Number(body.validadeDias) : null,
 
@@ -463,6 +467,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
         condicoesPagamento:
           body.condicoesPagamento ?? propostaAtual.condicoesPagamento,
+        ...("planoRecebimento" in body ? {planoRecebimento:body.planoRecebimento || Prisma.DbNull}:{}),
 
         validadeDias:
           body.validadeDias !== undefined
@@ -568,7 +573,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     });
 
       if (proposta.status === "FATURADA") {
-        await sincronizarPropostaFaturada(proposta.propostaid, req.empresaId as number, tx, propostaAtual.status!=="FATURADA");
+        await sincronizarPropostaFaturada(proposta.propostaid, req.empresaId as number, tx, propostaAtual.status!=="FATURADA"||("planoRecebimento" in body&&JSON.stringify(body.planoRecebimento)!==JSON.stringify(propostaAtual.planoRecebimento)));
       } else if (propostaAtual.status === "FATURADA") {
         await cancelarLancamentoPropostaDesfaturada(proposta.propostaid, req.empresaId as number, tx);
       }
@@ -775,6 +780,7 @@ export const duplicar = async (req: Request, res: Response): Promise<void> => {
         frete: copia.frete,
         formaPagamento: original.formaPagamento,
         condicoesPagamento: original.condicoesPagamento,
+        planoRecebimento: original.planoRecebimento || Prisma.DbNull,
         validadeDias: copia.validadeDias,
         dataValidade: original.dataValidade,
         responsavel: original.responsavel,

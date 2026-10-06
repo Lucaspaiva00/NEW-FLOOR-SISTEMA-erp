@@ -1618,6 +1618,7 @@ function montarBodyNovaProposta() {
     formaPagamento: pegarValor("formaPagamento"),
 
     condicoesPagamento: pegarValor("condicoesPagamento"),
+    planoRecebimento: planoCriacao.ler(),
 
     validadeDias: pegarInteiro("validadeDias"),
 
@@ -1784,6 +1785,7 @@ async function abrirModalProposta(id, gerenciar = false) {
     preencherCampo("editarFormaPagamento", proposta.formaPagamento);
 
     preencherCampo("editarCondicoesPagamento", proposta.condicoesPagamento);
+    planoEdicao.preencher(proposta.planoRecebimento);
 
     preencherCampo("editarObservacoesInternas", proposta.observacoesInternas);
 
@@ -1858,6 +1860,7 @@ function montarBodyEditarProposta() {
     formaPagamento: pegarValor("editarFormaPagamento"),
 
     condicoesPagamento: pegarValor("editarCondicoesPagamento"),
+    planoRecebimento: planoEdicao.ler(),
 
     validadeDias: pegarInteiro("editarValidadeDias"),
 
@@ -2252,3 +2255,6 @@ window.addEventListener("configuracao-sistema",({detail:c})=>{
  cliente.addEventListener("change",()=>{if(cliente.value)atualizarDestinatarios(prefixo,cliente.value);});if(cliente.value)atualizarDestinatarios(prefixo,cliente.value);
  }
 });
+
+const planoCriacao=window.criarPlanoRecebimento(document.getElementById("condicoesPagamento"));
+const planoEdicao=window.criarPlanoRecebimento(document.getElementById("editarCondicoesPagamento"));
