@@ -330,6 +330,7 @@
       efIm: e.inscricaoMunicipal,
       efRegime: e.regimeTributario,
       efCnae: e.cnae,
+      ...( $("efCnaesSecundarios") ? {efCnaesSecundarios:e.cnaesSecundarios} : {}),
       efCodigoMunicipio: e.codigoMunicipioIbge,
       efCep: e.cep,
       efEndereco: e.endereco,
@@ -384,6 +385,7 @@
       inscricaoMunicipal: vazioParaNull($("efIm").value),
       regimeTributario: numero($("efRegime").value, 1),
       cnae: vazioParaNull($("efCnae").value),
+      ...($("efCnaesSecundarios")?{cnaesSecundarios:$("efCnaesSecundarios").value}:{}),
       codigoMunicipioIbge: vazioParaNull($("efCodigoMunicipio").value),
       cep: vazioParaNull($("efCep").value),
       endereco: vazioParaNull($("efEndereco").value),
@@ -1236,6 +1238,14 @@
     // for recarregada (F5) depois.
     window.history.replaceState({}, "", window.location.pathname);
   });
+window.addEventListener('configuracao-sistema',({detail:c})=>{
+ if(c.perfil!=='SBA')return;
+ const campo=$('efCnpj'),status=document.createElement('small'),botao=document.createElement('button');status.className='d-block text-muted';status.setAttribute('role','status');botao.type='button';botao.className='btn btn-sm btn-outline-secondary mt-2';botao.textContent='Buscar dados do CNPJ';campo.after(botao,status);
+ const label=document.createElement('label');label.className='col-12 mt-2';label.textContent='CNAEs secundários (cadastro)';const secundarios=document.createElement('textarea');secundarios.id='efCnaesSecundarios';secundarios.className='form-control';secundarios.rows=3;secundarios.maxLength=10000;label.append(secundarios);$('efCnae').parentElement.after(label);
+ let seq=0,timer;
+ async function consultar(){const cnpj=campo.value.replace(/\D/g,''),atual=++seq;if(cnpj.length!==14){status.textContent='Informe os 14 dígitos do CNPJ.';return;}status.textContent='Consultando…';try{const d=await api('/clientes/consulta-cnpj/'+cnpj);if(atual!==seq||cnpj!==campo.value.replace(/\D/g,''))return;const dados={efRazaoSocial:d.razao_social,efNomeFantasia:d.nome_fantasia,efIe:d.inscricao_estadual,efCep:d.cep,efEndereco:d.logradouro,efNumero:d.numero,efComplemento:d.complemento,efBairro:d.bairro,efCidade:d.municipio,efEstado:d.uf,efTelefone:d.ddd_telefone_1,efEmail:d.email,efCodigoMunicipio:d.codigo_municipio_ibge,efCnae:d.cnae_fiscal};for(const [id,v]of Object.entries(dados))if(v!=null&&String(v).trim())$(id).value=v;secundarios.value=(d.cnaes_secundarios||[]).map(a=>[a.codigo,a.descricao].filter(Boolean).join(' — ')).join('\n');status.textContent='Dados encontrados. Confira o regime e os códigos com a contabilidade.';}catch(e){if(atual===seq)status.textContent=e.message;}}
+ botao.onclick=consultar;campo.addEventListener('input',()=>{seq++;clearTimeout(timer);if(campo.value.replace(/\D/g,'').length===14)timer=setTimeout(consultar,450);});$('formEmpresaFiscal').addEventListener('reset',()=>{seq++;clearTimeout(timer);status.textContent='';});$('modalEmpresaFiscal').addEventListener('hidden.bs.modal',()=>{seq++;clearTimeout(timer);});
+});
 })();
 
 window.addEventListener("configuracao-sistema",({detail:c})=>{

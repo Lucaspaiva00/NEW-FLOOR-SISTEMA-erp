@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import prisma from "../prisma";
 
+function dadosPagamentoCliente(body: any) {
+ const prazo=body.prazoPagamentoDias == null || body.prazoPagamentoDias === "" ? null : Number(body.prazoPagamentoDias);
+ if(prazo!==null && (!Number.isInteger(prazo)||prazo<0||prazo>3650))throw new Error("Prazo de pagamento deve ser de 0 a 3650 dias.");
+ return {formaPagamento:body.formaPagamento === undefined ? undefined : String(body.formaPagamento||"").slice(0,100),condicoesPagamento:body.condicoesPagamento === undefined ? undefined : String(body.condicoesPagamento||"").slice(0,2000),prazoPagamentoDias:body.prazoPagamentoDias === undefined ? undefined : prazo};
+}
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body;
@@ -25,6 +30,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         nomeTelefone3: body.nomeTelefone3,
         nomeTelefone4: body.nomeTelefone4,
 
+        ...(req.configuracaoSistema?.perfil === "SBA" ? dadosPagamentoCliente(body) : {}),
         reformaTributaria: req.configuracaoSistema?.reformaTributaria ? body.reformaTributaria : undefined,
         email1: body.email1,
         email2: body.email2,
@@ -59,8 +65,8 @@ export const create = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json(cliente);
   } catch (error) {
     console.log(error);
-    res.status(500).json({
-      error: "Erro ao cadastrar cliente"
+    res.status(error instanceof Error && error.message.startsWith("Prazo de pagamento") ? 400 : 500).json({
+      error: error instanceof Error && error.message.startsWith("Prazo de pagamento") ? error.message : "Erro ao cadastrar cliente"
     });
   }
 };
@@ -156,6 +162,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
         nomeTelefone3: body.nomeTelefone3,
         nomeTelefone4: body.nomeTelefone4,
 
+        ...(req.configuracaoSistema?.perfil === "SBA" ? dadosPagamentoCliente(body) : {}),
         reformaTributaria: req.configuracaoSistema?.reformaTributaria ? body.reformaTributaria : undefined,
         email1: body.email1,
         email2: body.email2,
@@ -201,8 +208,8 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json(cliente);
   } catch (error) {
     console.log(error);
-    res.status(500).json({
-      error: "Erro ao atualizar cliente"
+    res.status(error instanceof Error && error.message.startsWith("Prazo de pagamento") ? 400 : 500).json({
+      error: error instanceof Error && error.message.startsWith("Prazo de pagamento") ? error.message : "Erro ao atualizar cliente"
     });
   }
 };

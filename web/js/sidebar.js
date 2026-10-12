@@ -355,6 +355,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function aplicarPerfilEmpresa(c) {
  if(!c) return;
+ if(c.perfil==='SBA'){
+ document.body.classList.add('perfil-sba');
+ if(['/propostas.html','/orcamentos.html'].some(p=>location.pathname.endsWith(p))&&!document.getElementById('sbaMobileStyles')){const css=document.createElement('link');css.id='sbaMobileStyles';css.rel='stylesheet';css.href='css/sba-mobile.css?v=20261012';document.head.append(css);}
+ const menu=document.querySelector('.menu');if(menu&&!menu.querySelector('a[href="fornecedores.html"]')){const link=document.createElement('a');link.href='fornecedores.html';link.textContent='Fornecedores';menu.querySelector('a[href="clientes.html"]')?.after(link);MENU_ICONS.fornecedores=MENU_ICONS.empresas;prepararItensMenu();}
+ }
+
  window.__configuracaoSistema=c;
  for(const [k,v] of Object.entries(c.modulos||{})) if(!v) document.querySelectorAll(`.menu a[href="${k}.html"]`).forEach(el=>el.hidden=true);
  for(const [k,v] of Object.entries(c.camposProposta||{})) if(!v) {
@@ -373,6 +379,7 @@ function aplicarPerfilEmpresa(c) {
  }
  const pagina=location.pathname.split("/").pop().replace(".html","");
  const modulo=["orcamentos","materiais"].includes(pagina)?"servicos":pagina;
+ if(pagina==="fornecedores"&&c.perfil!=="SBA")location.replace("perfil.html");
  if(c.modulos?.[modulo]===false) location.replace("perfil.html");
  window.dispatchEvent(new CustomEvent("configuracao-sistema",{detail:c}));
 }

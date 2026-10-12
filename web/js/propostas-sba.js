@@ -52,6 +52,7 @@
   };
   window.addEventListener("configuracao-sistema", ({detail:c}) => {
     if (!c.composicaoCustos) return;
+    if(c.perfil==='SBA'&&!document.getElementById('sbaMobileStyles')){const css=document.createElement('link');css.id='sbaMobileStyles';css.rel='stylesheet';css.href='css/sba-mobile.css?v=20261012';document.head.append(css);}
     const css = document.createElement("link");
     css.rel = "stylesheet";css.href = "css/orcamentos.css";document.head.append(css);
     const button = document.querySelector('[data-bs-target="#modalNovaProposta"]');

@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 
 type EmpresaConsultada = {
+  cnae_fiscal?: number | string;
+  cnaes_secundarios?: {codigo: number | string; descricao?: string}[];
+  codigo_municipio_ibge?: number | string;
   razao_social: string;
   nome_fantasia?: string | null;
   cep?: string | null;
@@ -53,6 +56,9 @@ async function buscarEmpresa(cnpj: string): Promise<EmpresaConsultada> {
           continue;
         }
         empresa = {
+          cnae_fiscal: estabelecimento.atividade_principal?.id,
+          cnaes_secundarios: estabelecimento.atividades_secundarias?.map((a:any)=>({codigo:a.id,descricao:a.descricao})),
+          codigo_municipio_ibge: estabelecimento.cidade?.ibge_id,
           razao_social: dados.razao_social,
           nome_fantasia: estabelecimento.nome_fantasia,
           cep: estabelecimento.cep,

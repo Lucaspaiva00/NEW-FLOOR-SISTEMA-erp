@@ -573,6 +573,7 @@ function criarCardProposta(proposta) {
                         </svg>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end proposal-card-dropdown">
+                        ${window.__configuracaoSistema?.perfil==='SBA'?`<li><button type="button" class="dropdown-item proposal-card-dropdown-item" data-sba-mover="${proposta.propostaid}">Alterar etapa</button></li>`:''}
                         <li>
                             <button type="button" class="dropdown-item proposal-card-dropdown-item" data-proposta-acao="editar">
                                 <span class="proposal-card-dropdown-icon" aria-hidden="true">
@@ -776,6 +777,7 @@ function iniciarSortableKanban() {
   listas.forEach((lista) => {
     const sortable = new Sortable(lista, {
       group: "propostas-kanban",
+      disabled: window.__configuracaoSistema?.perfil==='SBA' && window.matchMedia('(max-width: 700px)').matches,
       animation: 150,
       easing: "cubic-bezier(0.2, 0, 0, 1)",
       forceFallback: true,
@@ -2256,5 +2258,21 @@ window.addEventListener("configuracao-sistema",({detail:c})=>{
  }
 });
 
-const planoCriacao=window.criarPlanoRecebimento(document.getElementById("condicoesPagamento"));
-const planoEdicao=window.criarPlanoRecebimento(document.getElementById("editarCondicoesPagamento"));
+let planoCriacao=window.criarPlanoRecebimento(document.getElementById("condicoesPagamento"));
+let planoEdicao=window.criarPlanoRecebimento(document.getElementById("editarCondicoesPagamento"));
+
+document.addEventListener('click',async event=>{
+ const btn=event.target.closest('[data-sba-mover]');if(!btn||window.__configuracaoSistema?.perfil!=='SBA')return;event.stopPropagation();
+ const id=Number(btn.dataset.sbaMover),p=propostasCache.find(x=>Number(x.propostaid)===id);if(!p)return;
+ const result=await Swal.fire({title:'Alterar etapa da proposta',input:'select',inputOptions:{PENDENTE:'Pendente',APROVADA:'Aprovada',EXECUTANDO:'Executando',ESPECIAIS:'Especial',RECUSADA:'Recusada',CANCELADA:'Cancelada',FATURADA:'Faturar no módulo fiscal'},inputValue:p.status,showCancelButton:true,confirmButtonText:'Continuar',cancelButtonText:'Cancelar'});
+ if(!result.isConfirmed)return;
+ if(result.value==='FATURADA'){location.href='fiscal.html?propostaId='+id;return;}
+ btn.disabled=true;try{if(!await atualizarStatusProposta(id,result.value))throw Error('Não foi possível alterar a etapa. Confira se existem recebimentos vinculados.');await carregarPropostas();}catch(e){toastErro(e.message);}finally{btn.disabled=false;}
+});
+
+window.addEventListener('configuracao-sistema',({detail:c})=>{
+ if(c.perfil!=='SBA')return;
+ planoCriacao.destruir();planoEdicao.destruir();
+ planoCriacao=window.criarPlanoRecebimento(document.getElementById('condicoesPagamento'),{sba:true});
+ planoEdicao=window.criarPlanoRecebimento(document.getElementById('editarCondicoesPagamento'),{sba:true});
+});

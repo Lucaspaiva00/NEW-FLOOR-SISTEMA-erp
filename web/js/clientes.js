@@ -219,6 +219,7 @@ function montarBodyCliente(prefixo = "") {
 
     pais: pegarValor(campo("pais")) || "Brasil",
 
+    ...(window.__configuracaoSistema?.perfil==='SBA'?{formaPagamento:pegarValor(campo('formaPagamento')),condicoesPagamento:pegarValor(campo('condicoesPagamento')),prazoPagamentoDias:pegarValor(campo('prazoPagamentoDias'))}:{}),
     reformaTributaria: pegarValor(campo("reformaTributaria")),
     observacoes: pegarValor(campo("observacoes")),
 
@@ -802,6 +803,7 @@ async function abrirModalCliente(id) {
     );
 
     preencherCampo("editarReformaTributaria", cliente.reformaTributaria);
+    if(window.__configuracaoSistema?.perfil==='SBA')for(const k of ['formaPagamento','condicoesPagamento','prazoPagamentoDias'])preencherCampo('editar'+k[0].toUpperCase()+k.slice(1),cliente[k]);
     preencherCampo("editarObservacoes", cliente.observacoes);
 
     preencherCampo("editarLogo", cliente.logo);
@@ -1136,5 +1138,17 @@ window.addEventListener("configuracao-sistema",({detail:c})=>{
  for(const [formId,id] of [["formCliente","reformaTributaria"],["formEditarCliente","editarReformaTributaria"]]) {
  const form=document.getElementById(formId);if(!form||document.getElementById(id))continue;
  const div=document.createElement("div");div.className="form-group";div.innerHTML=`<label for="${id}">Reforma tributária — códigos tributários</label><textarea id="${id}" maxlength="2000" placeholder="Informe os códigos definidos pela contabilidade"></textarea><small>Registro cadastral; não altera o cálculo dos tributos.</small>`;form.prepend(div);
+ }
+});
+
+window.addEventListener('configuracao-sistema',({detail:c})=>{
+ if(c.perfil!=='SBA')return;
+ for(const [formId,prefix]of [['formCliente',''],['formEditarCliente','editar']]){
+  const form=document.getElementById(formId),step=form.querySelector('.form-step:last-of-type')||form;
+  const section=document.createElement('div');section.className='form-section';
+  const h=document.createElement('h3');h.textContent='Condições de pagamento';section.append(h);
+  for(const [key,label,type]of [['formaPagamento','Forma de pagamento','text'],['condicoesPagamento','Condições comerciais de pagamento','text'],['prazoPagamentoDias','Prazo padrão (dias corridos)','number']]){
+   const wrap=document.createElement('div');wrap.className='form-group';const caption=document.createElement('label');caption.textContent=label;const input=document.createElement('input');input.id=prefix?prefix+key[0].toUpperCase()+key.slice(1):key;input.type=type;input.maxLength=2000;if(type==='number'){input.min=0;input.max=3650;input.step=1;}caption.htmlFor=input.id;wrap.append(caption,input);section.append(wrap);
+  }step.append(section);
  }
 });

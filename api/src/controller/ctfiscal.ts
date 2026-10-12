@@ -1,3 +1,5 @@
+import {resolverConfiguracao} from "../services/configuracaoSistema.service";
+import {sincronizarPropostaFaturada} from "../services/financeiro.service";
 import { randomUUID } from "crypto";
 import { Request, Response } from "express";
 import { TipoDocumentoFiscal } from "@prisma/client";
@@ -56,6 +58,7 @@ function empresaData(body: any, existente?: any) {
     inscricaoEstadual: nullable(body.inscricaoEstadual),
     inscricaoMunicipal: nullable(body.inscricaoMunicipal),
     regimeTributario: intOr(body.regimeTributario, 1),
+    ...(body.cnaesSecundarios !== undefined ? {cnaesSecundarios: String(body.cnaesSecundarios||"").slice(0,10000)} : {}),
     cnae: nullable(body.cnae),
     cep: nullable(body.cep),
     endereco: nullable(body.endereco),
@@ -297,7 +300,7 @@ async function registrarEvento(
   });
 }
 
-async function aplicarRetorno(notaId: number, baseUrl: string, data: any) {
+export async function aplicarRetorno(notaId: number, baseUrl: string, data: any) {
   const parsed = parseFocusResult(baseUrl, data);
   const now = new Date();
 
@@ -324,7 +327,16 @@ async function aplicarRetorno(notaId: number, baseUrl: string, data: any) {
   // A proposta só vira "Faturada" de verdade quando a nota fiscal
   // ligada a ela volta AUTORIZADA pela Focus — nunca antes disso.
   if (parsed.status === "AUTORIZADA" && nota.propostaId) {
-    await prisma.proposta.updateMany({
+    const empresa=await prisma.empresa.findUnique({where:{empresaid:nota.empresaId},select:{configuracaoSistema:true}});
+    if(resolverConfiguracao(empresa?.configuracaoSistema).perfil==='SBA'){
+      await prisma.$transaction(async tx=>{
+        await tx.$queryRaw`SELECT propostaid FROM "Proposta" WHERE propostaid=${nota.propostaId!} AND "empresaId"=${nota.empresaId} FOR UPDATE`;
+        const proposta=await tx.proposta.findFirst({where:{propostaid:nota.propostaId!,empresaId:nota.empresaId}});
+        if(!proposta)throw Error('Proposta vinculada à nota não encontrada.');
+        await tx.proposta.update({where:{propostaid:proposta.propostaid},data:{status:'FATURADA',colunaKanbanId:null,dataFaturamento:proposta.dataFaturamento||now}});
+        await sincronizarPropostaFaturada(proposta.propostaid,nota.empresaId,tx,proposta.status!=='FATURADA');
+      });
+    }else await prisma.proposta.updateMany({
       where: { propostaid: nota.propostaId, empresaId: nota.empresaId },
       data: { status: "FATURADA", colunaKanbanId: null },
     });

@@ -5,8 +5,8 @@
   const fieldId = node => node.querySelector('input,select,textarea')?.id.toLowerCase() || '';
   function groupsFor(form, body) {
     if (form.querySelector('.form-step')) return []; // Clientes já possuem abas e validação próprias.
-    const budgets = [...form.querySelectorAll(':scope > .budget-section')];
-    if (budgets.length) return budgets.map((node, i) => ({label:['Dados','Materiais','Mão de obra','Valores','Condições'][i], nodes:[node]}));
+    const budgets = [...form.querySelectorAll(':scope > .budget-section')].filter(node=>!node.hidden);
+    if (budgets.length) return budgets.map((node, i) => ({label:({'Dados do orçamento':'Dados','Materiais':'Materiais','Fornecedores':'Fornecedores','Mão de obra':'Mão de obra','Preço e resultado':'Valores','Condições comerciais':'Condições'})[title(node)]||title(node)||'Dados', nodes:[node]}));
     if (form.id === 'formMaterial') {
       const sections = ['identificacao','organizacao','fiscal','quantidades'].map(id => form.querySelector('#'+id));
       const side = [...form.querySelectorAll('.material-side > section')];

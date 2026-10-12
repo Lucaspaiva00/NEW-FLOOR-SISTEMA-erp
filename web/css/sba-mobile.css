@@ -1,0 +1,10 @@
+body.perfil-sba.modal-open .mobile-menu-btn{display:none}
+body.perfil-sba .kanban{overflow-x:auto!important;overflow-y:visible;max-width:100%;padding:0 0 16px;scroll-snap-type:x proximity}
+body.perfil-sba .kanban-header{width:auto;height:auto;min-height:48px}
+@media(max-width:700px){
+ body.perfil-sba .main-content{min-width:0;width:100%;padding:72px 14px 24px!important}
+ body.perfil-sba .topbar{flex-wrap:wrap;gap:14px}body.perfil-sba .top-actions{width:100%;display:flex;flex-wrap:wrap;gap:10px}body.perfil-sba .search-wrap{width:100%;min-width:0}body.perfil-sba .search{width:100%!important}
+ body.perfil-sba .kanban{gap:12px;margin-top:20px}body.perfil-sba .kanban-column{width:min(84vw,340px);flex:0 0 min(84vw,340px);scroll-snap-align:start;min-height:260px}body.perfil-sba .kanban-list{max-width:none;min-height:200px}
+ body.perfil-sba .proposal-card{touch-action:pan-x pan-y;user-select:auto;cursor:pointer}body.perfil-sba .proposal-card-menu-btn{min-width:44px;min-height:44px}body.perfil-sba .proposal-card-dropdown-item{min-height:44px}
+ body.perfil-sba .modal-dialog{margin:8px;max-width:calc(100vw - 16px)}body.perfil-sba .budget-editor-modal .modal-header{padding:16px}body.perfil-sba .budget-editor-modal .modal-title{font-size:18px}body.perfil-sba .sba-grid{grid-template-columns:1fr}body.perfil-sba .sba-row.materiais,body.perfil-sba .sba-row.maoObra{grid-template-columns:repeat(2,minmax(0,1fr))}body.perfil-sba .sba-row label:first-child{grid-column:1/-1}body.perfil-sba .sba-form input,body.perfil-sba .sba-form select,body.perfil-sba .sba-form textarea{font-size:16px}body.perfil-sba .sba-form input[type=checkbox]{width:18px;min-height:18px;display:inline-block;margin:0;flex-shrink:0}body.perfil-sba .budget-actions>div{width:100%;display:flex;flex-wrap:wrap}body.perfil-sba .budget-actions button{flex:1;min-height:44px}body.perfil-sba .subject-tabs{max-width:100%;overflow-x:auto}
+}

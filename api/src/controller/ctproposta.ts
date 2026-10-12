@@ -9,9 +9,14 @@ async function prepararBody(req: Request, res: Response): Promise<any> {
  if(!config.selecionarDestinatario) {delete body.contatoDestinatario;delete body.emailDestinatario;}
  if(!config.composicaoCustos) {delete body.composicaoCustos;delete body.prazoEntrega;}
  try {
- if("planoRecebimento" in body)body.planoRecebimento=validarPlanoRecebimento(body.planoRecebimento);
+ if("planoRecebimento" in body){
+  if(config.perfil!=="SBA" && body.planoRecebimento){delete body.planoRecebimento.prazoDias;delete body.planoRecebimento.dataBase;}
+  body.planoRecebimento=validarPlanoRecebimento(body.planoRecebimento);
+ }
  if(body.composicaoCustos != null) {
    body.composicaoCustos=calcularComposicao(body.composicaoCustos);
+   if(config.perfil==='SBA')for(const m of body.composicaoCustos.materiais){if(m.servicoId&&!await prisma.servico.findFirst({where:{servicoid:m.servicoId,empresaId:req.empresaId!},select:{servicoid:true}}))throw Error('Material não encontrado nesta empresa.');}
+   else for(const m of body.composicaoCustos.materiais)delete m.servicoId;
    body.itens=[{descricao:body.titulo || "Serviços e materiais",detalhes:body.descricao || "",unidade:"UN",quantidade:1,valorUnitario:body.composicaoCustos.preco,subtotal:body.composicaoCustos.preco,desconto:0,acrescimo:0}];
  }
  if(body.clienteId === undefined && (body.emailDestinatario || body.contatoDestinatario) && req.params.id) {
@@ -173,7 +178,7 @@ async function gerarPdfInterno(id: string | string[] | number, empresaId: number
   const nomeArquivo = nomeDownloadPdfProposta(
     proposta.numero,
     proposta.cliente?.razaoSocial,
-    proposta.empresa?.nome,
+    resolverConfiguracao(proposta.empresa?.configuracaoSistema).perfil==="SBA" ? "SBA" : proposta.empresa?.nome,
     proposta.cliente?.nomeFantasia,
   );
 

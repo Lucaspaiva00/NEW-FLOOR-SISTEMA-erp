@@ -13,7 +13,23 @@ export const create = async (req: Request, res: Response): Promise<void> => {
     }
     const empresaId = req.empresaId as number;
 
-    const servico = await prisma.servico.create({
+    const fornecedorId=Number(body.dadosMaterial?.fornecedorId||0);
+    if(req.configuracaoSistema?.perfil==='SBA' && fornecedorId){
+      const fornecedor=await prisma.fornecedor.findFirst({where:{fornecedorid:fornecedorId,empresaId}});
+      if(!fornecedor){res.status(400).json({error:'Fornecedor não encontrado nesta empresa.'});return;}
+      body.dadosMaterial.fornecedor=fornecedor.nome;
+    }
+    const servico = await prisma.$transaction(async tx=>{
+     if(req.configuracaoSistema?.perfil==='SBA' && body.dadosMaterial){
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(${empresaId}::int, 721::int)`;
+      if(body.codigoAutomatico!==false){
+       const existentes=await tx.servico.findMany({where:{empresaId},select:{codigo:true}});
+       const maior=existentes.reduce((max,s)=>{const m=s.codigo?.match(/^MAT-(\d+)$/);return m?Math.max(max,Number(m[1])):max;},0);
+       body.codigo='MAT-'+String(maior+1).padStart(6,'0');
+       body.dadosMaterial.codigo=body.codigo;
+      }else if(!String(body.codigo||'').trim()){throw Error('Informe o código manual do material.');}
+     }
+     return tx.servico.create({
       data: {
         empresaId,
         codigo: body.codigo,
@@ -33,11 +49,12 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
+    });
     res.status(201).json(servico);
-  } catch (error) {
+  } catch (error:any) {
     console.log(error);
-    res.status(500).json({
-      error: "Erro ao cadastrar serviço"
+    res.status(error.code==="P2002"?409:error.message==="Informe o código manual do material."?400:500).json({
+      error: error.code==="P2002"?"Código de material já cadastrado.":error.message==="Informe o código manual do material."?error.message:"Erro ao cadastrar serviço"
     });
   }
 };
@@ -61,7 +78,7 @@ export const read = async (req: Request, res: Response): Promise<void> => {
     });
 
     res.status(200).json(servicos);
-  } catch (error) {
+  } catch (error:any) {
     console.log(error);
     res.status(500).json({
       error: "Erro ao buscar serviços"
@@ -96,7 +113,7 @@ export const readOne = async (req: Request, res: Response): Promise<void> => {
     }
 
     res.status(200).json(servico);
-  } catch (error) {
+  } catch (error:any) {
     console.log(error);
     res.status(500).json({
       error: "Erro ao buscar serviço"
@@ -117,6 +134,12 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     }
     const empresaId = req.empresaId as number;
 
+    const fornecedorId=Number(body.dadosMaterial?.fornecedorId||0);
+    if(req.configuracaoSistema?.perfil==='SBA' && fornecedorId){
+      const fornecedor=await prisma.fornecedor.findFirst({where:{fornecedorid:fornecedorId,empresaId}});
+      if(!fornecedor){res.status(400).json({error:'Fornecedor não encontrado nesta empresa.'});return;}
+      body.dadosMaterial.fornecedor=fornecedor.nome;
+    }
     const resultado = await prisma.servico.updateMany({
       where: {
         servicoid: Number(id),
@@ -152,10 +175,10 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     });
 
     res.status(200).json(servico);
-  } catch (error) {
+  } catch (error:any) {
     console.log(error);
-    res.status(500).json({
-      error: "Erro ao atualizar serviço"
+    res.status(error.code==="P2002"?409:error.message==="Informe o código manual do material."?400:500).json({
+      error: error.code==="P2002"?"Código de material já cadastrado.":"Erro ao atualizar serviço"
     });
   }
 };
@@ -182,7 +205,7 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       message: "Serviço removido"
     });
-  } catch (error) {
+  } catch (error:any) {
     console.log(error);
     res.status(500).json({
       error: "Erro ao remover serviço"

@@ -21,6 +21,8 @@ model Empresa {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  arquivosFiscais        ArquivoFiscal[]
+  fornecedores           Fornecedor[]
   usuarios               Usuario[]
   clientes               Cliente[]
   servicos                Servico[]
@@ -36,7 +38,29 @@ model Empresa {
   colunasKanban            ColunaKanban[]
 }
 
+model Fornecedor {
+  fornecedorid Int @id @default(autoincrement())
+  empresaId Int
+  empresa Empresa @relation(fields: [empresaId], references: [empresaid])
+  nome String
+  cnpj String?
+  email String?
+  telefone String?
+  endereco String?
+  formaPagamento String?
+  condicoesPagamento String?
+  prazoPagamentoDias Int?
+  ativo Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([empresaId, cnpj])
+  @@index([empresaId])
+}
+
 model Cliente {
+  formaPagamento String?
+  condicoesPagamento String?
+  prazoPagamentoDias Int?
   reformaTributaria String?
   clienteid         Int         @id @default(autoincrement())
   empresaId         Int
@@ -364,6 +388,7 @@ model EmpresaFiscal {
   inscricaoEstadual            String?
   inscricaoMunicipal           String?
   regimeTributario             Int                  @default(1)
+  cnaesSecundarios              String?
   cnae                         String?
   cep                          String?
   endereco                     String?
@@ -674,4 +699,17 @@ model PagamentoFinanceiro {
  createdAt DateTime @default(now())
  @@index([empresaId, dataPagamento])
  @@index([lancamentoId])
+}
+
+model ArquivoFiscal {
+ arquivofiscalid Int @id @default(autoincrement())
+ empresaId Int
+ empresa Empresa @relation(fields: [empresaId], references: [empresaid])
+ titulo String
+ numero String?
+ temXml Boolean @default(false)
+ temPdf Boolean @default(false)
+ arquivos Json
+ createdAt DateTime @default(now())
+ @@index([empresaId, createdAt])
 }

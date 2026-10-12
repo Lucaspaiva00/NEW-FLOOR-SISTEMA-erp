@@ -1,5 +1,6 @@
 import express from "express";
 import * as agenda from "../controller/agenda.controller";
+import * as fornecedor from "../controller/ctfornecedor";
 import * as cliente from "../controller/ctcliente";
 import * as cnpj from "../controller/ctcnpj";
 import * as proposta from "../controller/ctproposta";
@@ -11,6 +12,7 @@ import * as fiscal from "../controller/ctfiscal";
 import * as financeiro from "../controller/ctfinanceiro";
 import * as empresa from "../controller/ctempresa";
 import * as colunaKanban from "../controller/ctcolunakanban";
+import * as arquivoFiscal from "../controller/ctarquivoFiscal";
 import * as certificado from "../controller/ctcertificado";
 import auth from "../middlewares/auth";
 import requireRole from "../middlewares/requireRole";
@@ -55,6 +57,10 @@ routes
   .route("/usuarios/:id")
   .put(auth, requireRole(["ADMIN", "SUPER_ADMIN"]), usuario.update)
   .delete(auth, requireRole(["ADMIN", "SUPER_ADMIN"]), usuario.remove);
+
+routes.get("/fornecedores", auth, fornecedor.apenasSba, fornecedor.listar);
+routes.post("/fornecedores", auth, fornecedor.apenasSba, fornecedor.salvar);
+routes.put("/fornecedores/:id", auth, fornecedor.apenasSba, fornecedor.salvar);
 
 // --- Tudo abaixo exige login (auth), escopado por empresaId no controller ---
 routes.route("/clientes").get(auth, cliente.read).post(auth, cliente.create);
@@ -127,6 +133,9 @@ routes
 
 routes.use("/fiscal", (_req,res,next)=>{const json=res.json.bind(res);res.json=((body:any)=>json(JSON.parse(JSON.stringify(body,(key,value)=>key==="certificadoCriptografado"?undefined:value)))) as typeof res.json;next();});
 routes.post("/fiscal/empresas/:id/certificado",auth,requireRole(["ADMIN","SUPER_ADMIN"]),certificado.upload);
+routes.get("/fiscal/arquivos",auth,fornecedor.apenasSba,arquivoFiscal.listar);
+routes.post("/fiscal/arquivos",auth,fornecedor.apenasSba,arquivoFiscal.criar);
+routes.get("/fiscal/arquivos/:id/:tipo",auth,fornecedor.apenasSba,arquivoFiscal.baixar);
 // Módulo fiscal
 routes.get("/fiscal/dashboard", auth, fiscal.dashboard);
 routes.route("/fiscal/empresas")

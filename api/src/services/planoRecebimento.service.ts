@@ -2,11 +2,17 @@ import { centavos } from './pagamentos.service';
 export function validarPlanoRecebimento(plano:any){
  if(plano==null)return null;
  const parcelas=Number(plano.parcelas),intervaloDias=Number(plano.intervaloDias||30);
- const data=String(plano.primeiroVencimento||'');
+ const prazoDias=plano.prazoDias==null ? null : Number(plano.prazoDias);
+ const dataBase=String(plano.dataBase||'');
+ let data=String(plano.primeiroVencimento||'');
+ if(prazoDias!==null){
+  if(!Number.isInteger(prazoDias)||prazoDias<0||prazoDias>3650||!/^\d{4}-\d{2}-\d{2}$/.test(dataBase)||Number.isNaN(new Date(dataBase).getTime())||new Date(dataBase).toISOString().slice(0,10)!==dataBase)throw Error('Informe uma data-base válida e prazo de 0 a 3650 dias corridos.');
+  const vencimento=new Date(dataBase+'T15:00:00Z');vencimento.setUTCDate(vencimento.getUTCDate()+prazoDias);data=vencimento.toISOString().slice(0,10);
+ }
  if(!Number.isInteger(parcelas)||parcelas<1||parcelas>120)throw new Error('Informe de 1 a 120 parcelas.');
  if(!/^\d{4}-\d{2}-\d{2}$/.test(data)||Number.isNaN(new Date(data).getTime())||new Date(data).toISOString().slice(0,10)!==data)throw new Error('Informe um primeiro vencimento válido.');
  if(!['MENSAL','DIAS'].includes(plano.frequencia)||!Number.isInteger(intervaloDias)||intervaloDias<1||intervaloDias>3650)throw new Error('Informe uma frequência e intervalo válidos.');
- return {parcelas,primeiroVencimento:data,frequencia:plano.frequencia,intervaloDias};
+ return {parcelas,primeiroVencimento:data,frequencia:plano.frequencia,intervaloDias,...(prazoDias!==null?{prazoDias,dataBase}:{})};
 }
 export function parcelasRecebimento(valor:number,plano:any){
  const p=validarPlanoRecebimento(plano),total=centavos(valor),quantidade=p?.parcelas||1;
