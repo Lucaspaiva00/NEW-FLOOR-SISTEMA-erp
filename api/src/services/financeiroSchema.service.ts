@@ -150,4 +150,8 @@ export async function garantirSchemaFinanceiro() {
  await exec(`ALTER TYPE "OrigemLancamentoFinanceiro" ADD VALUE IF NOT EXISTS 'NOTA_FISCAL';`);
  await exec(`ALTER TABLE "LancamentoFinanceiro" ADD COLUMN IF NOT EXISTS "notaFiscalId" INTEGER REFERENCES "NotaFiscal"("notafiscalid") ON DELETE RESTRICT;`);
 
+ await exec(`ALTER TYPE "OrigemLancamentoFinanceiro" ADD VALUE IF NOT EXISTS 'COMPRA';`);
+ await exec(`ALTER TABLE "LancamentoFinanceiro" ADD COLUMN IF NOT EXISTS "compraId" INTEGER REFERENCES "Compra"("compraid") ON DELETE RESTRICT;`);
+ await exec(`CREATE INDEX IF NOT EXISTS "LancamentoFinanceiro_compraId_idx" ON "LancamentoFinanceiro"("compraId");`);
+
 }

@@ -1,5 +1,6 @@
 import {Request, Response, NextFunction} from 'express';
 import prisma from '../prisma';
+export function empresaObrigatoria(req:Request,res:Response,next:NextFunction){if(!req.empresaId){res.status(403).json({error:'Selecione uma empresa para trabalhar.'});return;}next();}
 export function apenasSba(req:Request,res:Response,next:NextFunction){
  if(!req.empresaId || req.configuracaoSistema?.perfil!=='SBA'){res.status(403).json({error:'Recurso disponível apenas para o perfil SBA.'});return;}next();
 }

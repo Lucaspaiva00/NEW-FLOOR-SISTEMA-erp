@@ -8,6 +8,8 @@ datasource db {
 }
 
 model Empresa {
+  sequenciaCompras Int @default(0)
+  compras Compra[]
   configuracaoSistema Json?
   empresaid       Int       @id @default(autoincrement())
   nome            String
@@ -39,6 +41,7 @@ model Empresa {
 }
 
 model Fornecedor {
+  compras Compra[]
   fornecedorid Int @id @default(autoincrement())
   empresaId Int
   empresa Empresa @relation(fields: [empresaId], references: [empresaid])
@@ -630,6 +633,8 @@ model CategoriaFinanceira {
 }
 
 model LancamentoFinanceiro {
+  compraId Int?
+  compra Compra? @relation(fields: [compraId], references: [compraid], onDelete: Restrict)
   notaFiscalId Int?
   notaFiscal NotaFiscal? @relation(fields: [notaFiscalId], references: [notafiscalid], onDelete: Restrict)
   lancamentofinanceiroid Int                       @id @default(autoincrement())
@@ -683,6 +688,7 @@ enum StatusLancamentoFinanceiro {
 }
 
 enum OrigemLancamentoFinanceiro {
+  COMPRA
   NOTA_FISCAL
   MANUAL
   PROPOSTA
@@ -722,4 +728,31 @@ model ArquivoFiscal {
  arquivos Json
  createdAt DateTime @default(now())
  @@index([empresaId, createdAt])
+}
+
+model Compra {
+ compraid Int @id @default(autoincrement())
+ empresaId Int
+ empresa Empresa @relation(fields: [empresaId], references: [empresaid])
+ fornecedorId Int
+ fornecedor Fornecedor @relation(fields: [fornecedorId], references: [fornecedorid])
+ numero String
+ status String @default("RASCUNHO")
+ dataCompra DateTime
+ documento String?
+ itens Json
+ subtotal Decimal @db.Decimal(14,2)
+ frete Decimal @default(0) @db.Decimal(14,2)
+ desconto Decimal @default(0) @db.Decimal(14,2)
+ total Decimal @db.Decimal(14,2)
+ formaPagamento String?
+ condicoesPagamento String?
+ planoPagamento Json?
+ observacoes String?
+ lancamentos LancamentoFinanceiro[]
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([empresaId, numero])
+ @@index([empresaId, dataCompra])
+ @@index([fornecedorId])
 }

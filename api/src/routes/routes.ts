@@ -1,5 +1,6 @@
 import express from "express";
 import * as agenda from "../controller/agenda.controller";
+import * as compra from "../controller/ctcompra";
 import * as fornecedor from "../controller/ctfornecedor";
 import * as cliente from "../controller/ctcliente";
 import * as cnpj from "../controller/ctcnpj";
@@ -58,13 +59,20 @@ routes
   .put(auth, requireRole(["ADMIN", "SUPER_ADMIN"]), usuario.update)
   .delete(auth, requireRole(["ADMIN", "SUPER_ADMIN"]), usuario.remove);
 
-routes.get("/fornecedores", auth, fornecedor.apenasSba, fornecedor.listar);
-routes.post("/fornecedores", auth, fornecedor.apenasSba, fornecedor.salvar);
-routes.put("/fornecedores/:id", auth, fornecedor.apenasSba, fornecedor.salvar);
+routes.get("/fornecedores", auth, fornecedor.empresaObrigatoria, fornecedor.listar);
+routes.post("/fornecedores", auth, fornecedor.empresaObrigatoria, fornecedor.salvar);
+routes.put("/fornecedores/:id", auth, fornecedor.empresaObrigatoria, fornecedor.salvar);
 
+routes.get('/compras',auth,fornecedor.empresaObrigatoria,compra.listar);
+routes.post('/compras',auth,fornecedor.empresaObrigatoria,compra.salvar);
+routes.get('/compras/:id',auth,fornecedor.empresaObrigatoria,compra.buscar);
+routes.put('/compras/:id',auth,fornecedor.empresaObrigatoria,compra.salvar);
+routes.post('/compras/:id/confirmar',auth,fornecedor.empresaObrigatoria,compra.confirmar);
+routes.post('/compras/:id/cancelar',auth,fornecedor.empresaObrigatoria,compra.cancelar);
 // --- Tudo abaixo exige login (auth), escopado por empresaId no controller ---
 routes.route("/clientes").get(auth, cliente.read).post(auth, cliente.create);
 routes.get("/clientes/consulta-cnpj/:cnpj", auth, cnpj.consultar);
+routes.get("/fornecedores/consulta-cnpj/:cnpj", auth, fornecedor.empresaObrigatoria, cnpj.consultar);
 
 routes
   .route("/clientes/:id")

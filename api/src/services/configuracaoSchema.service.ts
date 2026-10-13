@@ -39,4 +39,17 @@ export async function garantirSchemaConfiguracao() {
  await prisma.$executeRawUnsafe(`ALTER TABLE "EmpresaFiscal" ADD COLUMN IF NOT EXISTS "certificadoCriptografado" TEXT;`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "EmpresaFiscal" ADD COLUMN IF NOT EXISTS "certificadoNome" TEXT;`);
  await prisma.$executeRawUnsafe(`UPDATE "Empresa" SET "configuracaoSistema" = '{"perfil":"SBA"}'::jsonb WHERE "configuracaoSistema" IS NULL AND (lower(trim(slug)) = 'sba' OR lower(trim(nome)) = 'sba');`);
+ await prisma.$executeRawUnsafe(`ALTER TABLE "Empresa" ADD COLUMN IF NOT EXISTS "sequenciaCompras" INTEGER NOT NULL DEFAULT 0;`);
+ await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "Compra" (
+ "compraid" SERIAL PRIMARY KEY,"empresaId" INTEGER NOT NULL REFERENCES "Empresa"("empresaid"),
+ "fornecedorId" INTEGER NOT NULL REFERENCES "Fornecedor"("fornecedorid"),"numero" TEXT NOT NULL,
+ "status" TEXT NOT NULL DEFAULT 'RASCUNHO',"dataCompra" TIMESTAMP(3) NOT NULL,"documento" TEXT,
+ "itens" JSONB NOT NULL,"subtotal" DECIMAL(14,2) NOT NULL,"frete" DECIMAL(14,2) NOT NULL DEFAULT 0,
+ "desconto" DECIMAL(14,2) NOT NULL DEFAULT 0,"total" DECIMAL(14,2) NOT NULL,"formaPagamento" TEXT,
+ "condicoesPagamento" TEXT,"planoPagamento" JSONB,"observacoes" TEXT,
+ "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);`);
+ await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Compra_empresaId_numero_key" ON "Compra"("empresaId","numero");`);
+ await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Compra_empresaId_dataCompra_idx" ON "Compra"("empresaId","dataCompra");`);
+ await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Compra_fornecedorId_idx" ON "Compra"("fornecedorId");`);
 }
