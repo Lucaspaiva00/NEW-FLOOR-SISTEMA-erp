@@ -368,6 +368,7 @@ function aplicarPerfilEmpresa(c) {
  }
  prepararItensMenu();
 
+ if(c.modulos?.obras===true&&menu&&!menu.querySelector('a[href="obras.html"]')){const link=document.createElement("a");link.href="obras.html";link.textContent="Gestão de obras";menu.append(link);MENU_ICONS.obras=MENU_ICONS.empresas;prepararItensMenu();}
  window.__configuracaoSistema=c;
  for(const [k,v] of Object.entries(c.modulos||{})) if(!v) document.querySelectorAll(`.menu a[href="${k}.html"]`).forEach(el=>el.hidden=true);
  for(const [k,v] of Object.entries(c.camposProposta||{})) if(!v) {

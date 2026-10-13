@@ -688,6 +688,7 @@ enum StatusLancamentoFinanceiro {
 }
 
 enum OrigemLancamentoFinanceiro {
+  OBRA
   COMPRA
   NOTA_FISCAL
   MANUAL
@@ -755,4 +756,108 @@ model Compra {
  @@unique([empresaId, numero])
  @@index([empresaId, dataCompra])
  @@index([fornecedorId])
+}
+
+model Obra {
+  id            Int               @id @default(autoincrement())
+  empresaId     Int
+  nome          String
+  clienteId     Int
+  propostaId    Int?
+  endereco      String
+  responsavel   String
+  inicio        DateTime
+  prazo         DateTime?
+  valorContrato Decimal           @db.Decimal(14, 2)
+  status        String            @default("EM_ANDAMENTO")
+  etapas        EtapaObra[]
+  apontamentos  ApontamentoObra[]
+  despesas      DespesaObra[]
+  medicoes      MedicaoObra[]
+
+  @@index([empresaId])
+}
+
+model ColaboradorObra {
+  id           Int               @id @default(autoincrement())
+  empresaId    Int
+  nome         String
+  funcao       String
+  diaria       Decimal           @db.Decimal(14, 2)
+  ativo        Boolean           @default(true)
+  apontamentos ApontamentoObra[]
+
+  @@index([empresaId])
+}
+
+model ApontamentoObra {
+  id            Int             @id @default(autoincrement())
+  empresaId     Int
+  obraId        Int
+  obra          Obra            @relation(fields: [obraId], references: [id])
+  colaboradorId Int
+  colaborador   ColaboradorObra @relation(fields: [colaboradorId], references: [id])
+  data          DateTime        @db.Date
+  fracao        Decimal         @db.Decimal(5, 2)
+  diaria        Decimal         @db.Decimal(14, 2)
+  observacoes   String
+  lancamentoId  Int?
+
+  @@unique([empresaId, colaboradorId, data, obraId])
+  @@index([empresaId, data])
+}
+
+model EtapaObra {
+  id     Int               @id @default(autoincrement())
+  obraId Int
+  obra   Obra              @relation(fields: [obraId], references: [id])
+  nome   String
+  valor  Decimal           @db.Decimal(14, 2)
+  itens  ItemMedicaoObra[]
+}
+
+model MedicaoObra {
+  id           Int               @id @default(autoincrement())
+  empresaId    Int
+  obraId       Int
+  obra         Obra              @relation(fields: [obraId], references: [id])
+  inicio       DateTime          @db.Date
+  fim          DateTime          @db.Date
+  vencimento   DateTime          @db.Date
+  observacoes  String
+  fotos        Json
+  status       String            @default("RASCUNHO")
+  valor        Decimal           @db.Decimal(14, 2)
+  lancamentoId Int?              @unique
+  itens        ItemMedicaoObra[]
+
+  @@index([empresaId, obraId])
+}
+
+model ItemMedicaoObra {
+  id        Int         @id @default(autoincrement())
+  medicaoId Int
+  medicao   MedicaoObra @relation(fields: [medicaoId], references: [id])
+  etapaId   Int
+  etapa     EtapaObra   @relation(fields: [etapaId], references: [id])
+  anterior  Decimal     @db.Decimal(5, 2)
+  atual     Decimal     @db.Decimal(5, 2)
+  valor     Decimal     @db.Decimal(14, 2)
+
+  @@unique([medicaoId, etapaId])
+}
+
+model DespesaObra {
+  id            Int      @id @default(autoincrement())
+  empresaId     Int
+  obraId        Int
+  obra          Obra     @relation(fields: [obraId], references: [id])
+  colaboradorId Int?
+  categoria     String
+  descricao     String
+  data          DateTime @db.Date
+  valor         Decimal  @db.Decimal(14, 2)
+  lancamentoId  Int      @unique
+
+  @@index([empresaId, obraId])
 }

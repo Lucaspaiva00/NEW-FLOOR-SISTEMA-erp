@@ -1,4 +1,5 @@
 import express from "express";
+import * as obra from "../controller/ctobra";
 import * as agenda from "../controller/agenda.controller";
 import * as compra from "../controller/ctcompra";
 import * as fornecedor from "../controller/ctfornecedor";
@@ -19,6 +20,19 @@ import auth from "../middlewares/auth";
 import requireRole from "../middlewares/requireRole";
 
 const routes = express.Router();
+routes.use('/obras', auth, obra.acesso);
+routes.get('/obras', obra.listar);
+routes.post('/obras', requireRole(['ADMIN','SUPER_ADMIN']), obra.salvar);
+routes.get('/obras/colaboradores', obra.colaboradores);
+routes.post('/obras/colaboradores', requireRole(['ADMIN','SUPER_ADMIN']), obra.salvarColaborador);
+routes.put('/obras/colaboradores/:id', requireRole(['ADMIN','SUPER_ADMIN']), obra.salvarColaborador);
+routes.post('/obras/apontamentos', requireRole(['ADMIN','SUPER_ADMIN']), obra.apontar);
+routes.post('/obras/fechamentos', requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']), obra.fechar);
+routes.post('/obras/despesas', requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']), obra.despesa);
+routes.post('/obras/medicoes', requireRole(['ADMIN','SUPER_ADMIN']), obra.medir);
+routes.post('/obras/medicoes/:id/aprovar', requireRole(['ADMIN','SUPER_ADMIN']), obra.aprovar);
+routes.get('/obras/medicoes/:id/pdf', obra.pdf);
+routes.get('/obras/:id', obra.detalhe);
 
 routes.get("/", (_req, res) => {
   return res.json({
