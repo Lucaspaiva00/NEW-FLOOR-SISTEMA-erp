@@ -2,7 +2,7 @@ import {data,id,numero,texto,dinheiro,valorMedicao} from './obras.service';
 export const json=(v:any)=>JSON.parse(JSON.stringify(v,(k,v)=>k==='fotos'&&Array.isArray(v)?{quantidade:v.length}:v));
 export async function carregarObra(db:any,empresaId:number,obraId:number){const o=await db.obra.findFirst({where:{id:obraId,empresaId},include:{etapas:true}});if(!o)throw Error('Obra não encontrada.');return o;}
 export async function historico(db:any,empresaId:number,obraId:number,usuarioId:number|undefined,acao:string,antes:any,depois:any){return db.historicoObra.create({data:{empresaId,obraId,usuarioId,acao,antes:json(antes),depois:json(depois)}});}
-export async function bloqueio(db:any,empresaId:number){await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, 0)::text`;}
+export async function bloqueio(db:any,empresaId:number){await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}::integer, 0::integer)::text`;}
 export async function apontarDia(db:any,empresaId:number,b:any,usuarioId?:number){
  await bloqueio(db,empresaId);const obraId=id(b.obraId),colaboradorId=id(b.colaboradorId),dia=data(b.data),fracao=numero(b.fracao,0,1);await carregarObra(db,empresaId,obraId);
  const c=await db.colaboradorObra.findFirst({where:{id:colaboradorId,empresaId,ativo:true}});if(!c)throw Error('Colaborador não encontrado ou inativo.');

@@ -37,7 +37,7 @@ export const medir=executar(async(req,res)=>{
  const b=req.body,empresaId=req.empresaId!,obraId=id(b.obraId),inicio=data(b.inicio),fim=data(b.fim),vencimento=data(b.vencimento);if(fim<inicio)throw Error('Período inválido.');
  const fotos=Array.isArray(b.fotos)?b.fotos:[];if(fotos.length>12||fotos.some((f:any)=>typeof f!=='string'||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(f)||f.length>500000))throw Error('Use até 12 fotos JPG, PNG ou WebP de até 375 KB.');
  const r=await prisma.$transaction(async db=>{
-  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, 0)::text`;
+  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}::integer, 0::integer)::text`;
   const o=await obra(db,empresaId,obraId);if(await db.medicaoObra.findFirst({where:{empresaId,obraId,status:'RASCUNHO'}}))throw Error('Aprove a medição pendente antes de criar outra.');
   const prev=await db.medicaoObra.findFirst({where:{empresaId,obraId,status:'APROVADA'},orderBy:{fim:'desc'}});if(prev&&inicio<=prev.fim)throw Error('O período deve ser posterior à última medição aprovada.');
   if(!Array.isArray(b.itens)||b.itens.length!==o.etapas.length||new Set(b.itens.map((i:any)=>id(i.etapaId))).size!==o.etapas.length)throw Error('Informe todas as etapas uma única vez.');
