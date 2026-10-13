@@ -1,5 +1,6 @@
+import {Prisma} from '@prisma/client';
 import {data,id,numero,texto,dinheiro,valorMedicao} from './obras.service';
-export const json=(v:any)=>JSON.parse(JSON.stringify(v,(k,v)=>k==='fotos'&&Array.isArray(v)?{quantidade:v.length}:v));
+export const json=(v:any)=>v===null?Prisma.JsonNull:JSON.parse(JSON.stringify(v,(k,v)=>k==='fotos'&&Array.isArray(v)?{quantidade:v.length}:v));
 export async function carregarObra(db:any,empresaId:number,obraId:number){const o=await db.obra.findFirst({where:{id:obraId,empresaId},include:{etapas:true}});if(!o)throw Error('Obra não encontrada.');return o;}
 export async function historico(db:any,empresaId:number,obraId:number,usuarioId:number|undefined,acao:string,antes:any,depois:any){return db.historicoObra.create({data:{empresaId,obraId,usuarioId,acao,antes:json(antes),depois:json(depois)}});}
 export async function bloqueio(db:any,empresaId:number){await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}::integer, 0::integer)::text`;}
