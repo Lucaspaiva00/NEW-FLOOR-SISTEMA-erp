@@ -269,7 +269,7 @@ export const reabrir = async(req:Request,res:Response):Promise<void>=>{
 export const cancelar = async (req: Request, res: Response): Promise<void> => {
   try {
     const atual=await prisma.lancamentoFinanceiro.findFirst({where:{lancamentofinanceiroid:idParam(req.params.id),empresaId:req.empresaId as number}});
-    if(["NOTA_FISCAL","COMPRA"].includes(atual?.origem||"")){res.status(400).json({error:"Cancele o documento de origem para cancelar esta conta."});return;}
+    if(["NOTA_FISCAL","COMPRA","OBRA"].includes(atual?.origem||"")){res.status(400).json({error:"Cancele o documento de origem para cancelar esta conta."});return;}
     if(!atual || Number(atual.valorPago)>0){res.status(400).json({error:'Estorne os pagamentos antes de cancelar a conta.'});return;}
     const resultado = await prisma.lancamentoFinanceiro.updateMany({
       where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number, valorPago: 0 },

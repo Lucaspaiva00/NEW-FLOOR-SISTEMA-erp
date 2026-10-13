@@ -2,6 +2,7 @@ import {Request,Response,NextFunction} from 'express';
 import prisma from '../prisma';
 import {data,id,numero,texto,dinheiro,valorMedicao,htmlSeguro as h} from '../services/obras.service';
 import puppeteer from 'puppeteer';
+import {aprovarMedicao,apontarDia,fecharDiarias} from '../services/obrasOperacao.service';
 
 export function acesso(req:Request,res:Response,next:NextFunction){
  if(!req.empresaId||req.configuracaoSistema?.modulos.obras!==true){res.status(403).json({error:'Gestão de obras não habilitada para esta empresa.'});return;}next();
@@ -23,31 +24,8 @@ export const colaboradores=executar(async(req,res)=>{res.json(await prisma.colab
 export const salvarColaborador=executar(async(req,res)=>{const b=req.body,empresaId=req.empresaId!,d={nome:texto(b.nome,'nome',300),funcao:texto(b.funcao,'função',300),diaria:dinheiro(numero(b.diaria,0.01)),ativo:b.ativo!==false};
  if(req.params.id){const r=await prisma.colaboradorObra.updateMany({where:{id:id(req.params.id),empresaId},data:d});if(!r.count)throw Error('Colaborador não encontrado.');res.json({ok:true});}else res.status(201).json(await prisma.colaboradorObra.create({data:{...d,empresaId}}));
 });
-export const apontar=executar(async(req,res)=>{
- const b=req.body,empresaId=req.empresaId!,obraId=id(b.obraId),colaboradorId=id(b.colaboradorId),dia=data(b.data),fracao=numero(b.fracao,0,1);
- const r=await prisma.$transaction(async db=>{
-  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, ${colaboradorId})::text`;
-  await obra(db,empresaId,obraId);const c=await colaborador(db,empresaId,colaboradorId);
-  const apontamentos=await db.apontamentoObra.findMany({where:{empresaId,colaboradorId,data:dia}});
-  const antigo=apontamentos.find(a=>a.obraId===obraId);if(antigo?.lancamentoId)throw Error('Apontamento já fechado no financeiro.');
-  if(apontamentos.filter(a=>a.obraId!==obraId).reduce((s,a)=>s+Number(a.fracao),fracao)>1.00001)throw Error('A alocação diária entre obras não pode exceder uma diária.');
-  const d={fracao,diaria:antigo?.diaria??c.diaria,observacoes:String(b.observacoes||'').slice(0,2000)};
-  return db.apontamentoObra.upsert({where:{empresaId_colaboradorId_data_obraId:{empresaId,colaboradorId,data:dia,obraId}},create:{empresaId,colaboradorId,data:dia,obraId,...d},update:d});
- },{isolationLevel:'Serializable'});res.json(r);
-});
-export const fechar=executar(async(req,res)=>{
- const empresaId=req.empresaId!,inicio=data(req.body.inicio),fim=data(req.body.fim),vencimento=data(req.body.vencimento);if(fim<inicio)throw Error('Período inválido.');
- const r=await prisma.$transaction(async db=>{
-  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, 0)::text`;
-  const itens=await db.apontamentoObra.findMany({where:{empresaId,data:{gte:inicio,lte:fim},lancamentoId:null},include:{colaborador:true,obra:true}});if(!itens.length)throw Error('Nenhum apontamento pendente no período.');
-  const grupos=new Map<string,typeof itens>();for(const a of itens){const k=a.colaboradorId+':'+a.obraId;grupos.set(k,[...(grupos.get(k)||[]),a]);}
-  let total=0;for(const g of grupos.values()){
-   const valor=dinheiro(g.reduce((s,a)=>s+dinheiro(Number(a.diaria)*Number(a.fracao)),0));if(valor<=0)continue;
-   const l=await db.lancamentoFinanceiro.create({data:{empresaId,origem:'OBRA',tipo:'SAIDA',descricao:`Diárias · ${g[0].colaborador.nome} · ${g[0].obra.nome}`,favorecido:g[0].colaborador.nome,valor,dataCompetencia:fim,dataVencimento:vencimento}});
-   await db.apontamentoObra.updateMany({where:{empresaId,id:{in:g.map(a=>a.id)},lancamentoId:null},data:{lancamentoId:l.lancamentofinanceiroid}});total+=valor;
-  }return {total:dinheiro(total)};
- },{isolationLevel:'Serializable'});res.json(r);
-});
+export const apontar=executar(async(req,res)=>{res.json(await prisma.$transaction(db=>apontarDia(db,req.empresaId!,req.body,req.usuario?.id),{isolationLevel:'Serializable'}));});
+export const fechar=executar(async(req,res)=>{res.json(await prisma.$transaction(db=>fecharDiarias(db,req.empresaId!,req.body,req.usuario?.id),{isolationLevel:'Serializable'}));});
 export const despesa=executar(async(req,res)=>{
  const b=req.body,empresaId=req.empresaId!,obraId=id(b.obraId),valor=dinheiro(numero(b.valor,0.01)),dia=data(b.data),categoria=texto(b.categoria,'categoria',100),descricao=texto(b.descricao,'descrição');
  const r=await prisma.$transaction(async db=>{await obra(db,empresaId,obraId);const colaboradorId=b.colaboradorId?id(b.colaboradorId):null;if(colaboradorId)await colaborador(db,empresaId,colaboradorId);
@@ -59,7 +37,7 @@ export const medir=executar(async(req,res)=>{
  const b=req.body,empresaId=req.empresaId!,obraId=id(b.obraId),inicio=data(b.inicio),fim=data(b.fim),vencimento=data(b.vencimento);if(fim<inicio)throw Error('Período inválido.');
  const fotos=Array.isArray(b.fotos)?b.fotos:[];if(fotos.length>12||fotos.some((f:any)=>typeof f!=='string'||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(f)||f.length>500000))throw Error('Use até 12 fotos JPG, PNG ou WebP de até 375 KB.');
  const r=await prisma.$transaction(async db=>{
-  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, ${-obraId})::text`;
+  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, 0)::text`;
   const o=await obra(db,empresaId,obraId);if(await db.medicaoObra.findFirst({where:{empresaId,obraId,status:'RASCUNHO'}}))throw Error('Aprove a medição pendente antes de criar outra.');
   const prev=await db.medicaoObra.findFirst({where:{empresaId,obraId,status:'APROVADA'},orderBy:{fim:'desc'}});if(prev&&inicio<=prev.fim)throw Error('O período deve ser posterior à última medição aprovada.');
   if(!Array.isArray(b.itens)||b.itens.length!==o.etapas.length||new Set(b.itens.map((i:any)=>id(i.etapaId))).size!==o.etapas.length)throw Error('Informe todas as etapas uma única vez.');
@@ -68,21 +46,13 @@ export const medir=executar(async(req,res)=>{
   return db.medicaoObra.create({data:{empresaId,obraId,inicio,fim,vencimento,observacoes:String(b.observacoes||'').slice(0,10000),fotos,valor,itens:{create:itens}},include:{itens:true}});
  },{isolationLevel:'Serializable'});res.status(201).json(r);
 });
-export const aprovar=executar(async(req,res)=>{
- const empresaId=req.empresaId!,medicaoId=id(req.params.id);
- const r=await prisma.$transaction(async db=>{
-  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, 0)::text`;
-  const m=await db.medicaoObra.findFirst({where:{id:medicaoId,empresaId},include:{obra:true}});if(!m)throw Error('Medição não encontrada.');if(m.status==='APROVADA')return m;
-  const l=await db.lancamentoFinanceiro.create({data:{empresaId,origem:'OBRA',tipo:'ENTRADA',descricao:`Medição #${m.id} · ${m.obra.nome}`,valor:m.valor,clienteId:m.obra.clienteId,dataCompetencia:m.fim,dataVencimento:m.vencimento,chaveOrigem:`obra-medicao:${empresaId}:${m.id}`}});
-  return db.medicaoObra.update({where:{id:m.id},data:{status:'APROVADA',lancamentoId:l.lancamentofinanceiroid}});
- },{isolationLevel:'Serializable'});res.json(r);
-});
+export const aprovar=executar(async(req,res)=>{res.json(await prisma.$transaction(db=>aprovarMedicao(db,req.empresaId!,id(req.params.id),req.usuario?.id),{isolationLevel:'Serializable'}));});
 export const detalhe=executar(async(req,res)=>{
  const empresaId=req.empresaId!,obraId=id(req.params.id),o=await obra(prisma,empresaId,obraId);
  const [apontamentos,despesas,medicoes]=await Promise.all([prisma.apontamentoObra.findMany({where:{empresaId,obraId},include:{colaborador:true},orderBy:{data:'desc'}}),prisma.despesaObra.findMany({where:{empresaId,obraId},orderBy:{data:'desc'}}),prisma.medicaoObra.findMany({where:{empresaId,obraId},include:{itens:{include:{etapa:true}}},orderBy:{id:'desc'}})]);
  const ids=medicoes.flatMap(m=>m.lancamentoId?[m.lancamentoId]:[]),financeiro=await prisma.lancamentoFinanceiro.findMany({where:{empresaId,lancamentofinanceiroid:{in:ids}}});
- const custoMaoObra=dinheiro(apontamentos.reduce((s,a)=>s+dinheiro(Number(a.diaria)*Number(a.fracao)),0)),custoDespesas=dinheiro(despesas.reduce((s,d)=>s+Number(d.valor),0));
- res.json({...o,apontamentos,despesas,medicoes,financeiro,resumo:{custoMaoObra,custoDespesas,custoTotal:dinheiro(custoMaoObra+custoDespesas),medido:dinheiro(medicoes.filter(m=>m.status==='APROVADA').reduce((s,m)=>s+Number(m.valor),0)),recebido:dinheiro(financeiro.filter(l=>l.status!=='CANCELADO').reduce((s,l)=>s+Number(l.valorPago),0)),aReceber:dinheiro(financeiro.filter(l=>l.status!=='CANCELADO').reduce((s,l)=>s+Number(l.valor)-Number(l.valorPago),0))}});
+ const custoMaoObra=dinheiro(apontamentos.reduce((s,a)=>s+dinheiro(Number(a.diaria)*Number(a.fracao)),0)),custoDespesas=dinheiro(despesas.filter(d=>!d.canceladoEm).reduce((s,d)=>s+Number(d.valor),0));
+ res.json({...o,apontamentos,despesas,medicoes:medicoes.map(({fotos,...m})=>({...m,quantidadeFotos:(fotos as any[])?.length||0})),financeiro,resumo:{custoMaoObra,custoDespesas,custoTotal:dinheiro(custoMaoObra+custoDespesas),medido:dinheiro(medicoes.filter(m=>m.status==='APROVADA').reduce((s,m)=>s+Number(m.valor),0)),recebido:dinheiro(financeiro.filter(l=>l.status!=='CANCELADO').reduce((s,l)=>s+Number(l.valorPago),0)),aReceber:dinheiro(financeiro.filter(l=>l.status!=='CANCELADO').reduce((s,l)=>s+Number(l.valor)-Number(l.valorPago),0))}});
 });
 export const pdf=executar(async(req,res)=>{
  const empresaId=req.empresaId!,m=await prisma.medicaoObra.findFirst({where:{id:id(req.params.id),empresaId},include:{obra:true,itens:{include:{etapa:true}}}});if(!m)throw Error('Medição não encontrada.');

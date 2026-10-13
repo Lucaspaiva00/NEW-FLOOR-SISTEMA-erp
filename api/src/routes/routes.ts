@@ -1,5 +1,7 @@
 import express from "express";
 import * as obra from "../controller/ctobra";
+import * as obraOperacao from "../controller/ctobraOperacao";
+import * as obraImportacao from "../controller/ctobraImportacao";
 import * as agenda from "../controller/agenda.controller";
 import * as compra from "../controller/ctcompra";
 import * as fornecedor from "../controller/ctfornecedor";
@@ -32,6 +34,18 @@ routes.post('/obras/despesas', requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO'])
 routes.post('/obras/medicoes', requireRole(['ADMIN','SUPER_ADMIN']), obra.medir);
 routes.post('/obras/medicoes/:id/aprovar', requireRole(['ADMIN','SUPER_ADMIN']), obra.aprovar);
 routes.get('/obras/medicoes/:id/pdf', obra.pdf);
+routes.post('/obras/importacao/previa', requireRole(['ADMIN','SUPER_ADMIN']), obraImportacao.previa);
+routes.post('/obras/importacao/confirmar', requireRole(['ADMIN','SUPER_ADMIN']), obraImportacao.confirmar);
+routes.post('/obras/planejamento', requireRole(['ADMIN','SUPER_ADMIN']), obraOperacao.planejar);
+routes.delete('/obras/planejamento/:id', requireRole(['ADMIN','SUPER_ADMIN']), obraOperacao.removerPlanejamento);
+routes.get('/obras/medicoes/:id', obraOperacao.medicao);
+routes.put('/obras/medicoes/:id', requireRole(['ADMIN','SUPER_ADMIN']), obraOperacao.corrigirMedicao);
+routes.post('/obras/medicoes/:id/cancelar', requireRole(['ADMIN','SUPER_ADMIN']), obraOperacao.cancelar);
+routes.post('/obras/despesas/:id/cancelar', requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']), obraOperacao.cancelarGasto);
+routes.post('/obras/fechamentos/:id/reabrir', requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']), obraOperacao.reabrirFechamento);
+routes.get('/obras/:id/consulta', obraOperacao.consulta);
+routes.get('/obras/:id/relatorio', obraOperacao.relatorio);
+routes.put('/obras/:id', requireRole(['ADMIN','SUPER_ADMIN']), obraOperacao.editar);
 routes.get('/obras/:id', obra.detalhe);
 
 routes.get("/", (_req, res) => {

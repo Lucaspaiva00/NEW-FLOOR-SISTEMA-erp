@@ -3,10 +3,11 @@ import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import prisma from '../prisma';
 
-const migration='20261013010000_gestao_obras';
+const migrations=['20261013010000_gestao_obras','20261013020000_operacao_obras'];
 // Deploy autorizado para a empresa José/Construarty. As outras configurações
 // são preservadas; não executa migrations históricas já garantidas no startup.
 export async function garantirSchemaObras(db:any=prisma){
+ for(const migration of migrations){
  const sql=fs.readFileSync(path.join(process.cwd(),'prisma','migrations',migration,'migration.sql'),'utf8');
  const checksum=createHash('sha256').update(sql).digest('hex');
  await db.$transaction(async(tx:any)=>{
@@ -21,6 +22,7 @@ export async function garantirSchemaObras(db:any=prisma){
    await tx.$executeRaw`INSERT INTO "_prisma_migrations" (id,checksum,finished_at,migration_name,logs,rolled_back_at,started_at,applied_steps_count) VALUES (${randomUUID()},${checksum},CURRENT_TIMESTAMP,${migration},NULL,NULL,CURRENT_TIMESTAMP,1)`;
   }
   // Não habilita por correspondência parcial, nome de login ou perfil genérico.
-  if(aplicada)await tx.$executeRaw`UPDATE "Empresa" SET "configuracaoSistema"=jsonb_set(COALESCE("configuracaoSistema",'{}'::jsonb),'{modulos}',COALESCE("configuracaoSistema"->'modulos','{}'::jsonb)||'{"obras":true}'::jsonb),"updatedAt"=CURRENT_TIMESTAMP WHERE empresaid=5 AND slug='construarty' AND nome='Jose' AND ativo=true AND COALESCE("configuracaoSistema"->'modulos'->>'clientes','true')='true' AND COALESCE("configuracaoSistema"->'modulos'->>'financeiro','true')='true' AND COALESCE("configuracaoSistema"->'modulos'->>'obras','false')<>'true'`;
+  if(aplicada&&migration===migrations[0])await tx.$executeRaw`UPDATE "Empresa" SET "configuracaoSistema"=jsonb_set(COALESCE("configuracaoSistema",'{}'::jsonb),'{modulos}',COALESCE("configuracaoSistema"->'modulos','{}'::jsonb)||'{"obras":true}'::jsonb),"updatedAt"=CURRENT_TIMESTAMP WHERE empresaid=5 AND slug='construarty' AND nome='Jose' AND ativo=true AND COALESCE("configuracaoSistema"->'modulos'->>'clientes','true')='true' AND COALESCE("configuracaoSistema"->'modulos'->>'financeiro','true')='true' AND COALESCE("configuracaoSistema"->'modulos'->>'obras','false')<>'true'`;
  },{timeout:60000});
+ }
 }

@@ -15,8 +15,8 @@ export async function validarVinculos(tx: any, empresaId: number, b: any) {
  }
  if(b.categoriaFinanceiraId && b.tipo){const cat=await tx.categoriaFinanceira.findFirst({where:{categoriafinanceiraid:Number(b.categoriaFinanceiraId),empresaId}});if(cat.tipo!==b.tipo)throw new Error('Escolha uma categoria correspondente a receber ou pagar.');}
 }
-export async function movimentarConta(id: number, empresaId: number, b: any, estornar=false) {
- return prisma.$transaction(async tx=>{
+export async function movimentarConta(id: number, empresaId: number, b: any, estornar=false, db:any=prisma) {
+ return db.$transaction(async (tx:any)=>{
   await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "lancamentofinanceiroid"=${id} AND "empresaId"=${empresaId} FOR UPDATE`;
   const atual=await tx.lancamentoFinanceiro.findFirst({where:{lancamentofinanceiroid:id,empresaId}});
   if(!atual)throw new Error('Conta não encontrada.');
@@ -38,7 +38,7 @@ export async function movimentarConta(id: number, empresaId: number, b: any, est
    await tx.pagamentoFinanceiro.create({data:{empresaId,lancamentoId:id,valor:valor/100,dataPagamento:data,contaFinanceiraId:Number(b.contaFinanceiraId),formaPagamento:b.formaPagamento||null}});
   }
   const pagamentos=await tx.pagamentoFinanceiro.findMany({where:{empresaId,lancamentoId:id,estornadoEm:null},orderBy:{dataPagamento:'desc'}});
-  const pago=pagamentos.reduce((sum,p)=>sum+centavos(p.valor),0);
+  const pago=pagamentos.reduce((sum:number,p:any)=>sum+centavos(p.valor),0);
   return tx.lancamentoFinanceiro.update({where:{lancamentofinanceiroid:id},data:{valorPago:pago/100,status:atual.status==='CANCELADO'?'CANCELADO':pago>=centavos(atual.valor)?'PAGO':'ABERTO',dataPagamento:pagamentos[0]?.dataPagamento||null},include:{pagamentos:true}});
  });
 }

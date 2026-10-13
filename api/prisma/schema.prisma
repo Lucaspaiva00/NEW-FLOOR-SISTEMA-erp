@@ -817,6 +817,8 @@ model EtapaObra {
 }
 
 model MedicaoObra {
+ motivoCancelamento String?
+ canceladoEm DateTime?
   id           Int               @id @default(autoincrement())
   empresaId    Int
   obraId       Int
@@ -848,6 +850,8 @@ model ItemMedicaoObra {
 }
 
 model DespesaObra {
+ canceladoEm DateTime?
+ motivoCancelamento String?
   id            Int      @id @default(autoincrement())
   empresaId     Int
   obraId        Int
@@ -860,4 +864,37 @@ model DespesaObra {
   lancamentoId  Int      @unique
 
   @@index([empresaId, obraId])
+}
+
+model PlanejamentoObra {
+ id Int @id @default(autoincrement())
+ empresaId Int
+ obraId Int
+ colaboradorId Int
+ data DateTime @db.Date
+ fracao Decimal @db.Decimal(5,2)
+ observacoes String
+ @@unique([empresaId, colaboradorId, data, obraId])
+ @@index([empresaId,obraId,data])
+}
+
+model HistoricoObra {
+ id Int @id @default(autoincrement())
+ empresaId Int
+ obraId Int
+ usuarioId Int?
+ acao String
+ antes Json
+ depois Json
+ createdAt DateTime @default(now())
+ @@index([empresaId,obraId,createdAt])
+}
+
+model ImportacaoObra {
+ id Int @id @default(autoincrement())
+ empresaId Int
+ chave String @unique
+ dados Json
+ createdAt DateTime @default(now())
+ @@index([empresaId])
 }

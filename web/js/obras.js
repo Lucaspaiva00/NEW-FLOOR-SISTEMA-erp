@@ -2,15 +2,15 @@
  const $=id=>document.getElementById(id),sessao=JSON.parse(localStorage.getItem('usuarioLogado')||'null'),token=sessao?.token;
  if(!token){location.replace('login.html');return;}
  const role=sessao?.usuario?.role||sessao?.role,admin=['ADMIN','SUPER_ADMIN'].includes(role),fin=admin||role==='FINANCEIRO';
- const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),dia=v=>String(v).slice(0,10).split('-').reverse().join('/');
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),dia=v=>v?String(v).slice(0,10).split('-').reverse().join('/'):'—';
  let obras=[],pessoas=[],clientes=[],o=null,tab='cronograma',submit,sequencia=0;
  async function api(path,method='GET',body){const r=await fetch(API_URL+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const d=await r.json();if(!r.ok)throw Error(d.error||'Não foi possível concluir.');return d;}
  function erro(e){$('mensagem').textContent=e.message;}
  function campo(nome,label,type='text',value='',extra=''){return `<label>${esc(label)}<input name="${nome}" type="${type}" value="${esc(value)}" ${extra}></label>`;}
  function select(nome,label,options){return `<label>${esc(label)}<select name="${nome}" required><option value="">Selecione</option>${options.map(x=>`<option value="${x.id}">${esc(x.nome)}</option>`).join('')}</select></label>`;}
- function abrir(titulo,html,fn){$('tituloEditor').textContent=titulo;$('camposEditor').innerHTML=html;$('erroEditor').textContent='';submit=fn;$('editor').showModal();}
+ function abrir(titulo,html,fn){$('tituloEditor').textContent=titulo;$('camposEditor').innerHTML=html;$('erroEditor').textContent='';$('salvarEditor').hidden=!fn;$('salvarEditor').textContent='Salvar';submit=fn;if(!$('editor').open)$('editor').showModal();}
  $('cancelarEditor').onclick=()=>$('editor').close();
- $('formEditor').onsubmit=async e=>{e.preventDefault();$('salvarEditor').disabled=true;try{await submit(Object.fromEntries(new FormData(e.target)));$('editor').close();await carregar();}catch(e){$('erroEditor').textContent=e.message;}finally{$('salvarEditor').disabled=false;}};
+ $('formEditor').onsubmit=async e=>{e.preventDefault();if(!submit)return;$('salvarEditor').disabled=true;try{const result=await submit(Object.fromEntries(new FormData(e.target)));if(result?.continuar)return;$('editor').close();await carregar();}catch(e){$('erroEditor').textContent=e.message;}finally{$('salvarEditor').disabled=false;}};
  async function carregar(){obras=await api('/obras');pessoas=await api('/obras/colaboradores');const anterior=$('obraSelecionada').value;$('obraSelecionada').innerHTML='<option value="">Selecione</option>'+obras.map(x=>`<option value="${x.id}">${esc(x.nome)}</option>`).join('');$('obraSelecionada').value=anterior||String(obras[0]?.id||'');await detalhe();}
  async function detalhe(){const seq=++sequencia,id=$('obraSelecionada').value;if(!id){o=null;render();return;}const d=await api('/obras/'+id);if(seq!==sequencia)return;o=d;render();}
  function tabela(headers,rows){return `<table><thead><tr>${headers.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.join('')||`<tr><td colspan="${headers.length}">Nenhum registro.</td></tr>`}</tbody></table>`;}
@@ -35,5 +35,6 @@
  function medir(){const anterior=e=>Number(o.medicoes.find(m=>m.status==='APROVADA'&&m.itens.some(i=>i.etapaId===e.id))?.itens.find(i=>i.etapaId===e.id)?.atual||0);abrir('Nova medição · '+o.nome,campo('inicio','Início','date','','required')+campo('fim','Fim','date','','required')+campo('vencimento','Vencimento da cobrança','date','','required')+o.etapas.map(e=>campo('etapa_'+e.id,e.nome+' · acumulado (%) · anterior '+anterior(e)+'%','number',anterior(e),`required min="${anterior(e)}" max="100" step="0.01"`)).join('')+'<label class="wide">Observações<textarea name="observacoes" rows="3"></textarea></label><label class="wide">Fotos (até 12, JPG/PNG/WebP, até 375 KB cada)<input id="fotosMedicao" type="file" multiple accept="image/jpeg,image/png,image/webp"></label>',async d=>{const fotos=await Promise.all([...$('fotosMedicao').files].map(f=>new Promise((resolve,reject)=>{if(f.size>375000){reject(Error('Foto acima de 375 KB.'));return;}const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(f);})));return api('/obras/medicoes','POST',{...d,obraId:o.id,fotos,itens:o.etapas.map(e=>({etapaId:e.id,atual:Number(d['etapa_'+e.id])}))});});}
  // Restore submit visibility after a read-only team view.
  $('editor').addEventListener('close',()=>{$('salvarEditor').hidden=false;});
+ window.obrasUI={api,abrir,campo,select,tabela,esc,brl,dia,carregar,detalhe,get obra(){return o},get pessoas(){return pessoas},get obras(){return obras},get tab(){return tab},get render(){return render},set render(fn){render=fn},admin,fin,erro};
  carregar().catch(erro);
 })();
