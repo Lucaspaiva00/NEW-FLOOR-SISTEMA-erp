@@ -7,6 +7,7 @@ import routes from "./routes/routes";
 import { garantirSchemaFinanceiro } from "./services/financeiroSchema.service";
 
 import { garantirSchemaConfiguracao } from "./services/configuracaoSchema.service";
+import { garantirSchemaObras } from "./services/obrasSchema.service";
 const app = express();
 
 app.use(cors({ exposedHeaders: ["Content-Disposition"] }));
@@ -28,6 +29,8 @@ const PORT = process.env.PORT || 3000;
 
 async function iniciarServidor() {
   await garantirSchemaConfiguracao();
+  await garantirSchemaObras();
+  console.log("Estrutura de obras verificada; ativação restrita a José/Construarty.");
   try {
     await garantirSchemaFinanceiro();
     console.log("✅ Estrutura do módulo financeiro verificada.");

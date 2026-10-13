@@ -4,7 +4,7 @@ O módulo `obras` inicia desligado em todas as empresas, incluindo SBA e NEW FLO
 
 ## Implantação
 
-Antes de habilitar, executar `npx prisma migrate deploy` e `npx prisma generate` na API. A migração 20261013010000_gestao_obras cria tabelas novas, sem modificar os registros dos módulos existentes, e adiciona a origem financeira OBRA para proteger os valores gerados. As tabelas são necessárias para as rotas de obras; o servidor não as cria automaticamente.
+Antes de habilitar, executar `npx prisma migrate deploy` e `npx prisma generate` na API. A migração 20261013010000_gestao_obras cria tabelas novas, sem modificar os registros dos módulos existentes, e adiciona a origem financeira OBRA para proteger os valores gerados. O servidor aplica apenas esta migração pendente no startup, com transação, bloqueio e checksum registrado no histórico Prisma. Nesse primeiro processamento habilita obras somente na empresa ID 5, nome Jose e slug construarty, preservando as outras opções. Reinícios posteriores não forçam a habilitação caso o administrador a desative.
 
 ## Operação
 
