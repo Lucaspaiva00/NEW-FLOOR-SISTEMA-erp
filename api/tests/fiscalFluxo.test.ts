@@ -36,7 +36,7 @@ test('Homologação autorizada não fatura proposta; produção independe do per
 });
 test('Uma falha financeira posterior não troca AUTORIZADA por ERRO',async()=>{
  const original={find:prisma.notaFiscal.findFirst,many:prisma.notaFiscal.updateMany,update:prisma.notaFiscal.update,empresa:prisma.empresa.findUnique,transaction:prisma.$transaction,event:prisma.eventoNotaFiscal.create,fetch:global.fetch};let estado:any={...base(),propostaId:8};
- (prisma.notaFiscal as any).findFirst=async()=>({...estado});(prisma.notaFiscal as any).updateMany=async({where,data}:any)=>{if(typeof where.status==='string'&&where.status!==estado.status)return {count:0};Object.assign(estado,data);return {count:1};};(prisma.notaFiscal as any).update=async({data}:any)=>{Object.assign(estado,data);return estado;};(prisma.empresa as any).findUnique=async()=>({configuracaoSistema:{perfil:'PADRAO'}});(prisma as any).$transaction=async()=>{throw Error('Falha financeira de teste');};(prisma.eventoNotaFiscal as any).create=async()=>({});global.fetch=(async()=>({ok:true,status:200,text:async()=>'{"status":"autorizado"}'})) as any;
+ (prisma.notaFiscal as any).findFirst=async()=>({...estado});(prisma.notaFiscal as any).updateMany=async({where,data}:any)=>{if(typeof where.status==='string'&&where.status!==estado.status)return {count:0};Object.assign(estado,data);return {count:1};};(prisma.notaFiscal as any).update=async({data}:any)=>{Object.assign(estado,data);return estado;};(prisma.empresa as any).findUnique=async()=>({configuracaoSistema:{perfil:'PADRAO'}});let transacoes=0;(prisma as any).$transaction=async(fn:any)=>{if(++transacoes===1)return fn({$queryRaw:async()=>[],notaFiscal:{findFirst:async()=>null,updateMany:prisma.notaFiscal.updateMany}});throw Error('Falha financeira de teste');};(prisma.eventoNotaFiscal as any).create=async()=>({});global.fetch=(async()=>({ok:true,status:200,text:async()=>'{"status":"autorizado"}'})) as any;
  try{await emitirNota({params:{id:'1'},empresaId:7} as any,res());assert.equal(estado.status,'AUTORIZADA');}finally{prisma.notaFiscal.findFirst=original.find;prisma.notaFiscal.updateMany=original.many;prisma.notaFiscal.update=original.update;prisma.empresa.findUnique=original.empresa;prisma.$transaction=original.transaction;prisma.eventoNotaFiscal.create=original.event;global.fetch=original.fetch;}
 });
 test('Vínculos fiscais não aceitam emissor ou proposta de outra empresa/cliente',async()=>{
@@ -46,4 +46,9 @@ test('Vínculos fiscais não aceitam emissor ou proposta de outra empresa/client
 test('Erro de cancelamento não altera uma nota autorizada para rejeitada',()=>{
  assert.equal(parseFocusResult('https://example.test',{status:'erro_cancelamento'}).status,'AUTORIZADA');
  assert.equal(parseFocusResult('https://example.test',{status:'erro_autorizacao'}).status,'REJEITADA');
+});
+test('Uma proposta não recebe segunda nota ativa, mesmo com rascunhos diferentes',async()=>{
+ const original={find:prisma.notaFiscal.findFirst,transaction:prisma.$transaction,fetch:global.fetch};let posts=0,locks=0;
+ (prisma.notaFiscal as any).findFirst=async()=>({...base(),propostaId:8});(prisma as any).$transaction=async(fn:any)=>fn({$queryRaw:async()=>{locks++;return [];},notaFiscal:{findFirst:async({where}:any)=>{assert.equal(where.empresaId,7);assert.equal(where.propostaId,8);assert.equal(where.notafiscalid.not,1);return {notafiscalid:9};}}});global.fetch=(async()=>{posts++;throw Error('Não deveria enviar');}) as any;
+ try{const r=res();await emitirNota({params:{id:'1'},empresaId:7} as any,r);assert.equal(r.code,409);assert.equal(posts,0);assert.equal(locks,1);}finally{prisma.notaFiscal.findFirst=original.find;prisma.$transaction=original.transaction;global.fetch=original.fetch;}
 });

@@ -18,6 +18,7 @@ export async function sincronizarFinanceiroNota(nota:any,db:Prisma.TransactionCl
    await db.lancamentoFinanceiro.updateMany({where:{empresaId,propostaId:nota.propostaId,origem:'PROPOSTA'},data:{status:'CANCELADO'}});
    await db.proposta.update({where:{propostaid:proposta.propostaid},data:{status:'APROVADA',dataFaturamento:null,valorLiquidoFinanceiro:null}});return;
   }
+  if(autorizadas.length>1)throw Error("Há mais de uma nota autorizada para esta proposta. Confira o faturamento antes de ajustar a cobrança.");
   const retencoes=autorizadas.reduce((s,n)=>s+centavos(n.valorRetencoes),0);
   const bruto=centavos(Number(proposta.subtotal)+Number(proposta.frete||0));if(retencoes>bruto)throw Error('As retenções acumuladas superam o valor da proposta.');
   const liquido=(bruto-retencoes)/100;

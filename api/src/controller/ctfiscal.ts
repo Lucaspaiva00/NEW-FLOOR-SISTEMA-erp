@@ -733,7 +733,16 @@ export const emitirNota = async (req: Request, res: Response): Promise<void> => 
   if(!['RASCUNHO','ERRO','REJEITADA'].includes(nota.status)){res.status(409).json({error:'Documento já enviado. Consulte o status antes de tentar novamente.'});return;}
   const conferencia=conferirNotaFiscal(nota);
   if(!conferencia.podeEmitir){res.status(422).json({error:'Corrija os dados antes de emitir.',detalhes:conferencia});return;}
-  const claim=await prisma.notaFiscal.updateMany({where:{notafiscalid:id,empresaId,status:{in:['RASCUNHO','ERRO','REJEITADA']},updatedAt:nota.updatedAt},data:{padraoNfseEmissao:nota.empresaFiscal.padraoNfse,ambienteEmissao:nota.empresaFiscal.ambiente,status:'PROCESSANDO',payloadEnviado:buildFocusPayload(nota),mensagemRetorno:'Envio iniciado. Consulte o provedor para confirmar o resultado.'}});
+  const reservar=async(tx:Prisma.TransactionClient)=>{
+   if(nota.propostaId){
+    await tx.$queryRaw`SELECT propostaid FROM "Proposta" WHERE propostaid=${nota.propostaId} AND "empresaId"=${empresaId} FOR UPDATE`;
+    const outra=await tx.notaFiscal.findFirst({where:{empresaId,propostaId:nota.propostaId,notafiscalid:{not:id},status:{in:['AUTORIZADA','PROCESSANDO']},OR:[{ambienteEmissao:nota.empresaFiscal.ambiente},{ambienteEmissao:null,empresaFiscal:{ambiente:nota.empresaFiscal.ambiente}}]},select:{notafiscalid:true}});
+    if(outra)throw Object.assign(Error('Esta proposta já possui uma nota autorizada ou em processamento. Consulte ou cancele a nota existente antes de faturar novamente.'),{statusCode:409});
+   }
+   return tx.notaFiscal.updateMany({where:{notafiscalid:id,empresaId,status:{in:['RASCUNHO','ERRO','REJEITADA']},updatedAt:nota.updatedAt},data:{padraoNfseEmissao:nota.empresaFiscal.padraoNfse,ambienteEmissao:nota.empresaFiscal.ambiente,status:'PROCESSANDO',payloadEnviado:buildFocusPayload(nota),mensagemRetorno:'Envio iniciado. Consulte o provedor para confirmar o resultado.'}});
+  };
+  const claim=nota.propostaId?await prisma.$transaction(reservar):await reservar(prisma);
+
   if(!claim.count){res.status(409).json({error:'Outro envio foi iniciado. Consulte o status da nota.'});return;}
   envioIniciado=true;
   const result=await emitirNaFocus({...nota,padraoNfseEmissao:nota.empresaFiscal.padraoNfse,ambienteEmissao:nota.empresaFiscal.ambiente});
