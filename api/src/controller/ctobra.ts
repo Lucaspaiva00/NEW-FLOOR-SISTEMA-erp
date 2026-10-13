@@ -26,7 +26,7 @@ export const salvarColaborador=executar(async(req,res)=>{const b=req.body,empres
 export const apontar=executar(async(req,res)=>{
  const b=req.body,empresaId=req.empresaId!,obraId=id(b.obraId),colaboradorId=id(b.colaboradorId),dia=data(b.data),fracao=numero(b.fracao,0,1);
  const r=await prisma.$transaction(async db=>{
-  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, ${colaboradorId})`;
+  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, ${colaboradorId})::text`;
   await obra(db,empresaId,obraId);const c=await colaborador(db,empresaId,colaboradorId);
   const apontamentos=await db.apontamentoObra.findMany({where:{empresaId,colaboradorId,data:dia}});
   const antigo=apontamentos.find(a=>a.obraId===obraId);if(antigo?.lancamentoId)throw Error('Apontamento já fechado no financeiro.');
@@ -38,7 +38,7 @@ export const apontar=executar(async(req,res)=>{
 export const fechar=executar(async(req,res)=>{
  const empresaId=req.empresaId!,inicio=data(req.body.inicio),fim=data(req.body.fim),vencimento=data(req.body.vencimento);if(fim<inicio)throw Error('Período inválido.');
  const r=await prisma.$transaction(async db=>{
-  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, 0)`;
+  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, 0)::text`;
   const itens=await db.apontamentoObra.findMany({where:{empresaId,data:{gte:inicio,lte:fim},lancamentoId:null},include:{colaborador:true,obra:true}});if(!itens.length)throw Error('Nenhum apontamento pendente no período.');
   const grupos=new Map<string,typeof itens>();for(const a of itens){const k=a.colaboradorId+':'+a.obraId;grupos.set(k,[...(grupos.get(k)||[]),a]);}
   let total=0;for(const g of grupos.values()){
@@ -59,7 +59,7 @@ export const medir=executar(async(req,res)=>{
  const b=req.body,empresaId=req.empresaId!,obraId=id(b.obraId),inicio=data(b.inicio),fim=data(b.fim),vencimento=data(b.vencimento);if(fim<inicio)throw Error('Período inválido.');
  const fotos=Array.isArray(b.fotos)?b.fotos:[];if(fotos.length>12||fotos.some((f:any)=>typeof f!=='string'||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(f)||f.length>500000))throw Error('Use até 12 fotos JPG, PNG ou WebP de até 375 KB.');
  const r=await prisma.$transaction(async db=>{
-  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, ${-obraId})`;
+  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, ${-obraId})::text`;
   const o=await obra(db,empresaId,obraId);if(await db.medicaoObra.findFirst({where:{empresaId,obraId,status:'RASCUNHO'}}))throw Error('Aprove a medição pendente antes de criar outra.');
   const prev=await db.medicaoObra.findFirst({where:{empresaId,obraId,status:'APROVADA'},orderBy:{fim:'desc'}});if(prev&&inicio<=prev.fim)throw Error('O período deve ser posterior à última medição aprovada.');
   if(!Array.isArray(b.itens)||b.itens.length!==o.etapas.length||new Set(b.itens.map((i:any)=>id(i.etapaId))).size!==o.etapas.length)throw Error('Informe todas as etapas uma única vez.');
@@ -71,7 +71,7 @@ export const medir=executar(async(req,res)=>{
 export const aprovar=executar(async(req,res)=>{
  const empresaId=req.empresaId!,medicaoId=id(req.params.id);
  const r=await prisma.$transaction(async db=>{
-  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, 0)`;
+  await db.$queryRaw`SELECT pg_advisory_xact_lock(${empresaId}, 0)::text`;
   const m=await db.medicaoObra.findFirst({where:{id:medicaoId,empresaId},include:{obra:true}});if(!m)throw Error('Medição não encontrada.');if(m.status==='APROVADA')return m;
   const l=await db.lancamentoFinanceiro.create({data:{empresaId,origem:'OBRA',tipo:'ENTRADA',descricao:`Medição #${m.id} · ${m.obra.nome}`,valor:m.valor,clienteId:m.obra.clienteId,dataCompetencia:m.fim,dataVencimento:m.vencimento,chaveOrigem:`obra-medicao:${empresaId}:${m.id}`}});
   return db.medicaoObra.update({where:{id:m.id},data:{status:'APROVADA',lancamentoId:l.lancamentofinanceiroid}});

@@ -11,7 +11,7 @@ export async function garantirSchemaObras(db:any=prisma){
  const checksum=createHash('sha256').update(sql).digest('hex');
  await db.$transaction(async(tx:any)=>{
   let aplicada=false;
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(20261013, 130100)`;
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(20261013, 130100)::text`;
   const rows=await tx.$queryRaw`SELECT checksum, finished_at FROM "_prisma_migrations" WHERE migration_name=${migration} AND rolled_back_at IS NULL`;
   if(rows.length){if(!rows[0].finished_at||rows[0].checksum!==checksum)throw Error('Migração de obras pendente ou divergente.');}
   else{
