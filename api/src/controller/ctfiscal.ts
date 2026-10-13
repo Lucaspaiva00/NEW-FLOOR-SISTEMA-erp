@@ -1,3 +1,4 @@
+import {conferirNotaFiscal} from "../services/fiscalValidacao.service";
 import {resolverConfiguracao} from "../services/configuracaoSistema.service";
 import {sincronizarPropostaFaturada} from "../services/financeiro.service";
 import { randomUUID } from "crypto";
@@ -58,6 +59,7 @@ function empresaData(body: any, existente?: any) {
     inscricaoEstadual: nullable(body.inscricaoEstadual),
     inscricaoMunicipal: nullable(body.inscricaoMunicipal),
     regimeTributario: intOr(body.regimeTributario, 1),
+    ...(body.regimeApuracaoSimples!==undefined?{regimeApuracaoSimples:body.regimeApuracaoSimples===""||body.regimeApuracaoSimples==null?null:intOr(body.regimeApuracaoSimples)}:{}),
     ...(body.cnaesSecundarios !== undefined ? {cnaesSecundarios: String(body.cnaesSecundarios||"").slice(0,10000)} : {}),
     cnae: nullable(body.cnae),
     cep: nullable(body.cep),
@@ -191,6 +193,12 @@ function totalItens(items: any[]) {
   );
 }
 
+export async function validarVinculosNota(body:any,empresaId:number,clienteId:number){
+ const empresa=await prisma.empresaFiscal.findFirst({where:{empresafiscalid:intOr(body.empresaFiscalId),empresaId,ativo:true},select:{empresafiscalid:true}});
+ if(!empresa)throw Object.assign(Error('Selecione uma empresa emissora ativa desta empresa.'),{statusCode:400});
+ if(body.propostaId){const proposta=await prisma.proposta.findFirst({where:{propostaid:intOr(body.propostaId),empresaId,clienteId},select:{propostaid:true}});if(!proposta)throw Object.assign(Error('Proposta não encontrada para este cliente nesta empresa.'),{statusCode:400});}
+}
+
 async function obterCliente(body: any, empresaId: number) {
   const clienteId = intOr(body.clienteId);
   if (!clienteId) throw new Error("Selecione o cliente/tomador da nota.");
@@ -322,13 +330,14 @@ export async function aplicarRetorno(notaId: number, baseUrl: string, data: any)
       dataAutorizacao: parsed.status === "AUTORIZADA" ? now : undefined,
       dataCancelamento: parsed.status === "CANCELADA" ? now : undefined,
     },
+    include:{empresaFiscal:{select:{ambiente:true}}},
   });
 
   // A proposta só vira "Faturada" de verdade quando a nota fiscal
   // ligada a ela volta AUTORIZADA pela Focus — nunca antes disso.
-  if (parsed.status === "AUTORIZADA" && nota.propostaId) {
+  if (parsed.status === "AUTORIZADA" && nota.propostaId && (nota.ambienteEmissao||nota.empresaFiscal.ambiente) === "PRODUCAO") {
     const empresa=await prisma.empresa.findUnique({where:{empresaid:nota.empresaId},select:{configuracaoSistema:true}});
-    if(resolverConfiguracao(empresa?.configuracaoSistema).perfil==='SBA'){
+    if(resolverConfiguracao(empresa?.configuracaoSistema).modulos.financeiro){
       await prisma.$transaction(async tx=>{
         await tx.$queryRaw`SELECT propostaid FROM "Proposta" WHERE propostaid=${nota.propostaId!} AND "empresaId"=${nota.empresaId} FOR UPDATE`;
         const proposta=await tx.proposta.findFirst({where:{propostaid:nota.propostaId!,empresaId:nota.empresaId}});
@@ -338,7 +347,7 @@ export async function aplicarRetorno(notaId: number, baseUrl: string, data: any)
       });
     }else await prisma.proposta.updateMany({
       where: { propostaid: nota.propostaId, empresaId: nota.empresaId },
-      data: { status: "FATURADA", colunaKanbanId: null },
+      data: { status: "FATURADA", colunaKanbanId: null, dataFaturamento:now },
     });
   }
 
@@ -604,6 +613,7 @@ export const criarNota = async (req: Request, res: Response): Promise<void> => {
     }
 
     const referencia = `NF${Date.now()}${randomUUID().replace(/-/g, "").slice(0, 8)}`;
+    await validarVinculosNota(req.body,empresaId,cliente.clienteid);
     const data = notaData(req.body, cliente, itens);
 
     const nota = await prisma.notaFiscal.create({
@@ -626,7 +636,7 @@ export const criarNota = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json(nota);
   } catch (error: any) {
     console.error(error);
-    res.status(500).json({ error: error.message || "Erro ao criar nota fiscal." });
+    res.status(error.statusCode||500).json({ error: error.message || "Erro ao criar nota fiscal." });
   }
 };
 
@@ -650,9 +660,13 @@ export const atualizarNota = async (req: Request, res: Response): Promise<void> 
       res.status(400).json({ error: "Adicione pelo menos um item à nota." });
       return;
     }
+    await validarVinculosNota(req.body,empresaId,cliente.clienteid);
     const data = notaData(req.body, cliente, itens);
 
     await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT notafiscalid FROM "NotaFiscal" WHERE notafiscalid=${id} AND "empresaId"=${empresaId} FOR UPDATE`;
+      const bloqueada=await tx.notaFiscal.findFirst({where:{notafiscalid:id,empresaId}});
+      if(!bloqueada||!['RASCUNHO','ERRO','REJEITADA'].includes(bloqueada.status))throw Object.assign(Error('A nota já está sendo enviada e não pode ser editada.'),{statusCode:409});
       await tx.itemNotaFiscal.deleteMany({ where: { notaFiscalId: id } });
       await tx.notaFiscal.update({
         where: { notafiscalid: id },
@@ -676,7 +690,7 @@ export const atualizarNota = async (req: Request, res: Response): Promise<void> 
     res.json(await notaCompleta(id, req.empresaId as number));
   } catch (error: any) {
     console.error(error);
-    res.status(500).json({ error: error.message || "Erro ao atualizar nota fiscal." });
+    res.status(error.statusCode||500).json({ error: error.message || "Erro ao atualizar nota fiscal." });
   }
 };
 
@@ -714,71 +728,46 @@ export const visualizarPayload = async (req: Request, res: Response): Promise<vo
   }
 };
 
+export const conferirNota = async(req:Request,res:Response)=>{
+ try{const nota=await notaCompleta(intOr(req.params.id),req.empresaId!);if(!nota){res.status(404).json({error:'Nota fiscal não encontrada.'});return;}res.json(conferirNotaFiscal(nota));}catch(e:any){res.status(400).json({error:e.message||'Não foi possível conferir os dados.'});}
+};
 export const emitirNota = async (req: Request, res: Response): Promise<void> => {
-  const id = intOr(req.params.id);
-  try {
-    const nota = await notaCompleta(id, req.empresaId as number);
-    if (!nota) {
-      res.status(404).json({ error: "Nota fiscal não encontrada." });
-      return;
-    }
-    if (!["RASCUNHO", "ERRO", "REJEITADA"].includes(nota.status)) {
-      res.status(400).json({ error: "Documento já enviado ou finalizado." });
-      return;
-    }
-
-    const result = await emitirNaFocus(nota);
-    await prisma.notaFiscal.update({
-      where: { notafiscalid: id },
-      data: { payloadEnviado: result.payload, retornoProvedor: result.data },
-    });
-    const atualizada = await aplicarRetorno(id, result.baseUrl, result.data);
-    await registrarEvento(
-      id,
-      "EMISSAO",
-      atualizada.status,
-      atualizada.mensagemRetorno || "Documento enviado ao provedor fiscal.",
-      result.data,
-      atualizada.protocolo || undefined,
-    );
-
-    res.json(await notaCompleta(id, req.empresaId as number));
-  } catch (error: any) {
-    console.error(error);
-    if (id) {
-      await prisma.notaFiscal
-        .update({
-          where: { notafiscalid: id },
-          data: {
-            status: "ERRO",
-            mensagemRetorno: error.message,
-            retornoProvedor: error.responseData,
-          },
-        })
-        .catch(() => undefined);
-      await registrarEvento(
-        id,
-        "ERRO_EMISSAO",
-        "ERRO",
-        error.message,
-        error.responseData,
-      ).catch(() => undefined);
-    }
-    res.status(error.statusCode || 500).json({
-      error: error.message || "Erro ao emitir documento fiscal.",
-      detalhes: error.responseData,
-    });
+ const id=intOr(req.params.id),empresaId=req.empresaId!;let envioIniciado=false;
+ try{
+  const nota=await notaCompleta(id,empresaId);
+  if(!nota){res.status(404).json({error:'Nota fiscal não encontrada.'});return;}
+  if(!['RASCUNHO','ERRO','REJEITADA'].includes(nota.status)){res.status(409).json({error:'Documento já enviado. Consulte o status antes de tentar novamente.'});return;}
+  const conferencia=conferirNotaFiscal(nota);
+  if(!conferencia.podeEmitir){res.status(422).json({error:'Corrija os dados antes de emitir.',detalhes:conferencia});return;}
+  const claim=await prisma.notaFiscal.updateMany({where:{notafiscalid:id,empresaId,status:{in:['RASCUNHO','ERRO','REJEITADA']},updatedAt:nota.updatedAt},data:{padraoNfseEmissao:nota.empresaFiscal.padraoNfse,ambienteEmissao:nota.empresaFiscal.ambiente,status:'PROCESSANDO',payloadEnviado:buildFocusPayload(nota),mensagemRetorno:'Envio iniciado. Consulte o provedor para confirmar o resultado.'}});
+  if(!claim.count){res.status(409).json({error:'Outro envio foi iniciado. Consulte o status da nota.'});return;}
+  envioIniciado=true;
+  const result=await emitirNaFocus({...nota,padraoNfseEmissao:nota.empresaFiscal.padraoNfse,ambienteEmissao:nota.empresaFiscal.ambiente});
+  await prisma.notaFiscal.updateMany({where:{notafiscalid:id,empresaId},data:{retornoProvedor:result.data}});
+  const atualizada=await aplicarRetorno(id,result.baseUrl,result.data);
+  await registrarEvento(id,'EMISSAO',atualizada.status,atualizada.mensagemRetorno||'Documento enviado ao provedor fiscal.',result.data,atualizada.protocolo||undefined);
+  res.json(await notaCompleta(id,empresaId));
+ }catch(error:any){
+  console.error(error);
+  const rejeicaoConfirmada=error.statusCode>=400&&error.statusCode<500&&![408,409,429].includes(error.statusCode);
+  if(envioIniciado){
+   await prisma.notaFiscal.updateMany({where:{notafiscalid:id,empresaId,status:'PROCESSANDO'},data:{status:rejeicaoConfirmada?'ERRO':'PROCESSANDO',mensagemRetorno:rejeicaoConfirmada?error.message:'Não foi possível confirmar o resultado do envio. Consulte a nota antes de reenviar.',...(error.responseData?{retornoProvedor:error.responseData}:{})}}).catch(()=>undefined);
+   await registrarEvento(id,'FALHA_ENVIO',undefined,error.message,error.responseData).catch(()=>undefined);
   }
+  res.status(error.statusCode||502).json({error:envioIniciado&&!rejeicaoConfirmada?'Não foi possível concluir a operação. Consulte o status da nota; ela pode ter sido recebida pelo provedor.':error.message||'Erro ao emitir documento fiscal.',detalhes:error.responseData});
+ }
 };
 
 export const consultarNota = async (req: Request, res: Response): Promise<void> => {
   const id = intOr(req.params.id);
+  let notaConsultada:any;
   try {
     const nota = await notaCompleta(id, req.empresaId as number);
     if (!nota) {
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
     }
+    notaConsultada=nota;
     if (nota.status === "RASCUNHO") {
       res.status(400).json({ error: "O rascunho ainda não foi enviado ao provedor fiscal." });
       return;
@@ -798,6 +787,9 @@ export const consultarNota = async (req: Request, res: Response): Promise<void> 
     res.json(await notaCompleta(id, req.empresaId as number));
   } catch (error: any) {
     console.error(error);
+    if(error.statusCode===404&&notaConsultada?.status==='PROCESSANDO'){
+      await prisma.notaFiscal.updateMany({where:{notafiscalid:id,empresaId:req.empresaId!,status:'PROCESSANDO'},data:{status:'ERRO',mensagemRetorno:'O provedor não encontrou esta referência. Confira os dados e tente enviar novamente com a mesma referência.'}});
+    }
     res.status(error.statusCode || 500).json({
       error: error.message || "Erro ao consultar documento fiscal.",
       detalhes: error.responseData,

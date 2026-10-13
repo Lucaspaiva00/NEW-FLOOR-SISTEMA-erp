@@ -131,7 +131,7 @@ routes
   .put(auth, vendedor.update)
   .delete(auth, vendedor.remove);
 
-routes.use("/fiscal", (_req,res,next)=>{const json=res.json.bind(res);res.json=((body:any)=>json(JSON.parse(JSON.stringify(body,(key,value)=>key==="certificadoCriptografado"?undefined:value)))) as typeof res.json;next();});
+routes.use("/fiscal", (_req,res,next)=>{const json=res.json.bind(res);res.json=((body:any)=>json(JSON.parse(JSON.stringify(body,(key,value)=>["certificadoCriptografado","tokenHomologacao","tokenProducao"].includes(key)?undefined:value)))) as typeof res.json;next();});
 routes.post("/fiscal/empresas/:id/certificado",auth,requireRole(["ADMIN","SUPER_ADMIN"]),certificado.upload);
 routes.get("/fiscal/arquivos",auth,fornecedor.apenasSba,arquivoFiscal.listar);
 routes.post("/fiscal/arquivos",auth,fornecedor.apenasSba,arquivoFiscal.criar);
@@ -153,6 +153,7 @@ routes.route("/fiscal/notas/:id")
   .get(auth, fiscal.buscarNota)
   .put(auth, fiscal.atualizarNota)
   .delete(auth, fiscal.removerNota);
+routes.get("/fiscal/notas/:id/conferir",auth,fiscal.conferirNota);
 routes.get("/fiscal/notas/:id/payload", auth, fiscal.visualizarPayload);
 routes.post("/fiscal/notas/:id/emitir", auth, fiscal.emitirNota);
 routes.post("/fiscal/notas/:id/consultar", auth, fiscal.consultarNota);

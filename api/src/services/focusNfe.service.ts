@@ -93,7 +93,7 @@ function getToken(empresa: any): string {
 
 function documentPath(nota: any): "nfe" | "nfse" | "nfsen" {
   if (nota.tipo === "NFE") return "nfe";
-  return nota.empresaFiscal.padraoNfse === "NACIONAL" ? "nfsen" : "nfse";
+  return (nota.padraoNfseEmissao||nota.empresaFiscal.padraoNfse) === "NACIONAL" ? "nfsen" : "nfse";
 }
 
 function codigoOpcaoSimplesNacional(empresa: any): "1" | "2" | "3" {
@@ -129,7 +129,7 @@ function localDestino(nota: any): number {
 }
 
 function buildNfePayload(nota: any): Record<string, any> {
-  const empresa = nota.empresaFiscal;
+  const empresa = {...nota.empresaFiscal,...(nota.ambienteEmissao?{ambiente:nota.ambienteEmissao}:{})};
   const homologacao = empresa.ambiente !== "PRODUCAO";
 
   const items = (nota.itens || []).map((item: any, index: number) => {
@@ -227,7 +227,7 @@ function buildNfePayload(nota: any): Record<string, any> {
 }
 
 function buildNfseMunicipalPayload(nota: any): Record<string, any> {
-  const empresa = nota.empresaFiscal;
+  const empresa = {...nota.empresaFiscal,...(nota.ambienteEmissao?{ambiente:nota.ambienteEmissao}:{})};
   const servico = {
     aliquota: decimal(nota.aliquotaIss),
     discriminacao:
@@ -286,7 +286,7 @@ function buildNfseMunicipalPayload(nota: any): Record<string, any> {
 }
 
 function buildNfseNacionalPayload(nota: any): Record<string, any> {
-  const empresa = nota.empresaFiscal;
+  const empresa = {...nota.empresaFiscal,...(nota.ambienteEmissao?{ambiente:nota.ambienteEmissao}:{})};
   const descricao =
     nota.informacoesAdicionais ||
     (nota.itens || []).map((item: any) => item.descricao).join("\n");
@@ -303,6 +303,8 @@ function buildNfseNacionalPayload(nota: any): Record<string, any> {
 
     // NFS-e Nacional: 1=não optante, 2=MEI, 3=Simples ME/EPP.
     codigo_opcao_simples_nacional: codigoOpcaoSimplesNacional(empresa),
+    regime_tributario_simples_nacional:empresa.regimeApuracaoSimples||undefined,
+    tipo_retencao_iss:nota.issRetido?2:1,
 
     // No padrão nacional, 0 significa "Nenhum regime especial".
     regime_especial_tributacao:
@@ -347,7 +349,7 @@ function buildNfseNacionalPayload(nota: any): Record<string, any> {
 
 export function buildFocusPayload(nota: any): Record<string, any> {
   if (nota.tipo === "NFE") return buildNfePayload(nota);
-  if (nota.empresaFiscal.padraoNfse === "NACIONAL") {
+  if ((nota.padraoNfseEmissao||nota.empresaFiscal.padraoNfse) === "NACIONAL") {
     return buildNfseNacionalPayload(nota);
   }
   return buildNfseMunicipalPayload(nota);
@@ -362,6 +364,7 @@ async function focusRequest(
   const baseUrl = getBaseUrl(empresa);
   const token = getToken(empresa);
   const response = await fetch(`${baseUrl}${path}`, {
+    signal:AbortSignal.timeout(20000),
     method,
     headers: {
       Authorization: `Basic ${Buffer.from(`${token}:`).toString("base64")}`,
@@ -403,7 +406,7 @@ export async function emitirNaFocus(nota: any) {
   const path = documentPath(nota);
   const payload = buildFocusPayload(nota);
   const result = await focusRequest(
-    nota.empresaFiscal,
+    {...nota.empresaFiscal,...(nota.ambienteEmissao?{ambiente:nota.ambienteEmissao}:{})},
     `/v2/${path}?ref=${encodeURIComponent(nota.referencia)}`,
     "POST",
     payload,
@@ -415,7 +418,7 @@ export async function emitirNaFocus(nota: any) {
 export async function consultarNaFocus(nota: any) {
   const path = documentPath(nota);
   return focusRequest(
-    nota.empresaFiscal,
+    {...nota.empresaFiscal,...(nota.ambienteEmissao?{ambiente:nota.ambienteEmissao}:{})},
     `/v2/${path}/${encodeURIComponent(nota.referencia)}`,
     "GET",
   );
@@ -424,7 +427,7 @@ export async function consultarNaFocus(nota: any) {
 export async function cancelarNaFocus(nota: any, justificativa: string) {
   const path = documentPath(nota);
   return focusRequest(
-    nota.empresaFiscal,
+    {...nota.empresaFiscal,...(nota.ambienteEmissao?{ambiente:nota.ambienteEmissao}:{})},
     `/v2/${path}/${encodeURIComponent(nota.referencia)}`,
     "DELETE",
     { justificativa },
@@ -438,7 +441,8 @@ export function parseFocusResult(baseUrl: string, data: any) {
   // A Focus usa valores como processando_autorizacao, autorizado,
   // erro_autorizacao e cancelado. Erros precisam ser avaliados antes de
   // "autorizacao", senão "erro_autorizacao" seria marcado como autorizado.
-  if (rawStatus.includes("erro") || rawStatus.includes("rejeit")) status = "REJEITADA";
+  if(rawStatus.includes("erro") && rawStatus.includes("cancel"))status="AUTORIZADA";
+  else if (rawStatus.includes("erro") || rawStatus.includes("rejeit")) status = "REJEITADA";
   else if (rawStatus.includes("cancel")) status = "CANCELADA";
   else if (rawStatus.includes("process") || rawStatus.includes("fila")) status = "PROCESSANDO";
   else if (rawStatus.includes("autoriz")) status = "AUTORIZADA";
@@ -480,7 +484,7 @@ export async function emitirCartaCorrecaoNaFocus(nota: any, correcao: string) {
     throw new Error("Carta de correção está disponível somente para NF-e.");
   }
   return focusRequest(
-    nota.empresaFiscal,
+    {...nota.empresaFiscal,...(nota.ambienteEmissao?{ambiente:nota.ambienteEmissao}:{})},
     `/v2/nfe/${encodeURIComponent(nota.referencia)}/carta_correcao`,
     "POST",
     { correcao },

@@ -377,6 +377,7 @@ enum TipoCliente {
 }
 
 model EmpresaFiscal {
+  regimeApuracaoSimples Int?
   certificadoCriptografado String?
   certificadoNome String?
   empresafiscalid              Int                  @id @default(autoincrement())
@@ -434,6 +435,8 @@ model EmpresaFiscal {
 }
 
 model NotaFiscal {
+  ambienteEmissao AmbienteFiscal?
+  padraoNfseEmissao PadraoNfse?
   notafiscalid                  Int                 @id @default(autoincrement())
   empresaId                     Int
   empresa                       Empresa             @relation(fields: [empresaId], references: [empresaid])

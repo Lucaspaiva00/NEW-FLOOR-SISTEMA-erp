@@ -1,5 +1,8 @@
 import prisma from "../prisma";
 export async function garantirSchemaConfiguracao() {
+ await prisma.$executeRawUnsafe(`ALTER TABLE "NotaFiscal" ADD COLUMN IF NOT EXISTS "padraoNfseEmissao" "PadraoNfse";`);
+ await prisma.$executeRawUnsafe(`ALTER TABLE "EmpresaFiscal" ADD COLUMN IF NOT EXISTS "regimeApuracaoSimples" INTEGER;`);
+ await prisma.$executeRawUnsafe(`ALTER TABLE "NotaFiscal" ADD COLUMN IF NOT EXISTS "ambienteEmissao" "AmbienteFiscal";`);
  await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "ArquivoFiscal" (
  "arquivofiscalid" SERIAL PRIMARY KEY, "empresaId" INTEGER NOT NULL REFERENCES "Empresa"("empresaid"),
  "titulo" TEXT NOT NULL, "numero" TEXT, "temXml" BOOLEAN NOT NULL DEFAULT false,

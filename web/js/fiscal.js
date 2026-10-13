@@ -329,6 +329,7 @@
       efIe: e.inscricaoEstadual,
       efIm: e.inscricaoMunicipal,
       efRegime: e.regimeTributario,
+      efApuracaoSimples:e.regimeApuracaoSimples,
       efCnae: e.cnae,
       ...( $("efCnaesSecundarios") ? {efCnaesSecundarios:e.cnaesSecundarios} : {}),
       efCodigoMunicipio: e.codigoMunicipioIbge,
@@ -384,6 +385,7 @@
       inscricaoEstadual: vazioParaNull($("efIe").value),
       inscricaoMunicipal: vazioParaNull($("efIm").value),
       regimeTributario: numero($("efRegime").value, 1),
+      regimeApuracaoSimples:vazioParaNull($("efApuracaoSimples").value),
       cnae: vazioParaNull($("efCnae").value),
       ...($("efCnaesSecundarios")?{cnaesSecundarios:$("efCnaesSecundarios").value}:{}),
       codigoMunicipioIbge: vazioParaNull($("efCodigoMunicipio").value),
@@ -949,7 +951,7 @@
       <div class="fiscal-detail-grid">
         ${linhaDetalhe("Emitente", nomeEmpresa(n.empresaFiscal))}
         ${linhaDetalhe("CNPJ emitente", cnpjFormatado(n.empresaFiscal?.cnpj))}
-        ${linhaDetalhe("Ambiente", n.empresaFiscal?.ambiente === "PRODUCAO" ? "Produção" : "Homologação")}
+        ${linhaDetalhe("Ambiente", (n.ambienteEmissao||n.empresaFiscal?.ambiente) === "PRODUCAO" ? "Produção" : "Homologação")}
         ${linhaDetalhe("Emissão", dataBr(n.dataEmissao))}
         ${linhaDetalhe("Cliente/Tomador", n.destinatarioNome)}
         ${linhaDetalhe("Documento", documentoDestinatario(n))}
@@ -975,6 +977,7 @@
       ${editavel ? `<button type="button" class="btn btn-outline-primary" data-editar-nota="${n.notafiscalid}">Editar</button>` : ""}
       ${n.caminhoXml ? `<a class="btn btn-outline-success" target="_blank" rel="noopener" href="${esc(n.caminhoXml)}">XML</a>` : ""}
       ${n.caminhoPdf ? `<a class="btn btn-outline-success" target="_blank" rel="noopener" href="${esc(n.caminhoPdf)}">PDF</a>` : ""}
+      ${editavel ? `<button type="button" class="btn btn-outline-primary" data-conferir-nota="${n.notafiscalid}">Conferir dados</button>` : ""}
       ${consultavel ? `<button type="button" class="btn btn-outline-dark" data-consultar-nota="${n.notafiscalid}">Consultar</button>` : ""}
       ${n.status === "AUTORIZADA" && n.tipo === "NFE" ? `<button type="button" class="btn btn-outline-primary" data-carta-correcao="${n.notafiscalid}">Carta de correção</button>` : ""}
       ${n.status === "AUTORIZADA" ? `<button type="button" class="btn btn-danger" data-cancelar-nota="${n.notafiscalid}">Cancelar nota</button>` : ""}
@@ -1026,10 +1029,12 @@
     const n = notaAtual?.notafiscalid === Number(id) ? notaAtual : await api(`/fiscal/notas/${id}`);
     const empresa = n.empresaFiscal;
     const ambiente = empresa?.ambiente === "PRODUCAO" ? "PRODUÇÃO" : "HOMOLOGAÇÃO";
+    const conferencia=await api(`/fiscal/notas/${id}/conferir`);
+    if(!conferencia.podeEmitir){await Swal.fire({icon:'warning',title:'Dados fiscais pendentes',html:'<ul class="text-start">'+conferencia.erros.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>',confirmButtonText:'Voltar e corrigir'});return;}
     const conf = await Swal.fire({
       icon: empresa?.ambiente === "PRODUCAO" ? "warning" : "question",
       title: `Emitir em ${ambiente}?`,
-      html: `<p><strong>${esc(n.tipo === "NFE" ? "NF-e" : "NFS-e")}</strong> de ${esc(dinheiro(n.valorTotal))}</p><p>Emitente: ${esc(nomeEmpresa(empresa))}</p>`,
+      html: `<p><strong>${esc(n.tipo === "NFE" ? "NF-e" : "NFS-e")}</strong> de ${esc(dinheiro(n.valorTotal))}</p><p>Emitente: ${esc(nomeEmpresa(empresa))}</p>${conferencia.avisos.map(a=>`<p class="small text-muted">${esc(a)}</p>`).join("")}`,
       showCancelButton: true,
       confirmButtonText: "Sim, emitir",
       cancelButtonText: "Cancelar",
@@ -1183,7 +1188,7 @@
     $("btnAtualizarFiscal").addEventListener("click", () => atualizarTudo());
     $("btnAtualizarLogs").addEventListener("click", () => carregarLogs().catch((e) => mostrarErro(e, "Erro ao carregar logs fiscais")));
 
-    document.addEventListener("click", (event) => {
+    document.addEventListener("click", async (event) => {
       const editarEmpresaBtn = event.target.closest("[data-editar-empresa]");
       if (editarEmpresaBtn) {
         event.stopPropagation();
@@ -1204,6 +1209,8 @@
       }
       const editarNotaBtn = event.target.closest("[data-editar-nota]");
       if (editarNotaBtn) return void editarNota(editarNotaBtn.dataset.editarNota);
+      const conferirBtn=event.target.closest('[data-conferir-nota]');
+      if(conferirBtn){try{const c=await api(`/fiscal/notas/${conferirBtn.dataset.conferirNota}/conferir`);await Swal.fire({icon:c.podeEmitir?'success':'warning',title:c.podeEmitir?'Conferência concluída':'Dados fiscais pendentes',html:'<ul class="text-start">'+[...c.erros,...c.avisos].map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>'});}catch(e){mostrarErro(e);}return;}
       const emitirBtn = event.target.closest("[data-emitir-nota]");
       if (emitirBtn) return void emitirNota(emitirBtn.dataset.emitirNota);
       const consultarBtn = event.target.closest("[data-consultar-nota]");
@@ -1239,7 +1246,7 @@
     window.history.replaceState({}, "", window.location.pathname);
   });
 window.addEventListener('configuracao-sistema',({detail:c})=>{
- if(c.perfil!=='SBA')return;
+
  const campo=$('efCnpj'),status=document.createElement('small'),botao=document.createElement('button');status.className='d-block text-muted';status.setAttribute('role','status');botao.type='button';botao.className='btn btn-sm btn-outline-secondary mt-2';botao.textContent='Buscar dados do CNPJ';campo.after(botao,status);
  const label=document.createElement('label');label.className='col-12 mt-2';label.textContent='CNAEs secundários (cadastro)';const secundarios=document.createElement('textarea');secundarios.id='efCnaesSecundarios';secundarios.className='form-control';secundarios.rows=3;secundarios.maxLength=10000;label.append(secundarios);$('efCnae').parentElement.after(label);
  let seq=0,timer;

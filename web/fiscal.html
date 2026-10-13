@@ -154,7 +154,7 @@
                                     <option value="4">4 - MEI</option>
                                 </select>
                             </div>
-                            <div class="col-md-4"><label>CNAE principal</label><input id="efCnae" class="form-control"></div>
+                            <div class="col-md-6"><label>Apuração do Simples (NFS-e Nacional)</label><select id="efApuracaoSimples" class="form-select"><option value="">Conforme cadastro / não informado</option><option value="1">Federais e ISS dentro do Simples</option><option value="2">Federais no Simples; ISS fora</option><option value="3">Federais e ISS fora do Simples</option></select><small>Preencha conforme orientação da contabilidade.</small></div><div class="col-md-4"><label>CNAE principal</label><input id="efCnae" class="form-control"></div>
                             <div class="col-md-4"><label>Código município IBGE</label><input id="efCodigoMunicipio" class="form-control" maxlength="7"></div>
                         </div>
 
@@ -344,7 +344,7 @@
                                 <div class="col-md-3"><label>Código tributário municipal</label><input id="nfCodigoTributarioMunicipal" class="form-control"></div>
                                 <div class="col-md-2"><label>CNAE serviço</label><input id="nfCnaeServico" class="form-control"></div>
                                 <div class="col-md-2"><label>Alíquota ISS %</label><input id="nfAliquotaIss" type="number" step="0.0001" class="form-control"></div>
-                                <div class="col-md-2 fiscal-check"><input id="nfIssRetido" type="checkbox"><label for="nfIssRetido">ISS retido</label></div>
+                                <div class="col-md-2 fiscal-check"><input id="nfIssRetido" type="checkbox"><label for="nfIssRetido">ISS retido pelo tomador</label></div>
                                 <div class="col-md-4"><label>Código da obra</label><input id="nfCodigoObra" class="form-control"></div>
                                 <div class="col-md-4"><label>ART</label><input id="nfArt" class="form-control"></div>
                             </div>
@@ -403,7 +403,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
-    <script src="js/fiscal.js"></script>
+    <script src="js/fiscal.js?v=20261012-conferencia"></script>
     <script src="js/menu-mobile.js"></script>
     <script src="js/arquivo-fiscal-sba.js?v=20261012"></script>
     <script src="js/sidebar.js"></script>
