@@ -13,6 +13,10 @@
   const modalNota = new bootstrap.Modal($("modalNotaFiscal"));
   const modalDetalhe = new bootstrap.Modal($("modalDetalheFiscal"));
 
+  const planoFiscal=window.criarPlanoRecebimento($("nfInformacoesAdicionais"));
+  const atualizarLiquido=()=>{$("nfLiquidoReceber").textContent=dinheiro(Math.max(0,Number($("nfValorTotal").value||0)-Number($("nfValorRetencoes").value||0)));};
+  $("nfValorRetencoes").oninput=atualizarLiquido;$("nfValorTotal").addEventListener("input",atualizarLiquido);
+  $("formNotaFiscal").addEventListener("reset",()=>setTimeout(()=>{atualizarLiquido();},0));
   let empresas = [];
   let clientes = [];
   let notas = [];
@@ -675,7 +679,7 @@
     }
     const base = tipo === "NFE" ? numero($("nfValorProdutos").value) : numero($("nfValorServicos").value);
     const total = base + numero($("nfValorFrete").value) + numero($("nfValorSeguro").value) + numero($("nfValorOutras").value) - numero($("nfValorDesconto").value);
-    $("nfValorTotal").value = Math.max(total, 0).toFixed(2);
+    $("nfValorTotal").value = Math.max(total, 0).toFixed(2);atualizarLiquido();
   }
 
   function abrirNovaNota() {
@@ -783,6 +787,7 @@
     $("nfCnaeServico").value = n.cnaeServico || "";
     $("nfAliquotaIss").value = n.aliquotaIss ?? "";
     $("nfIssRetido").checked = Boolean(n.issRetido);
+    $("nfValorRetencoes").value=n.valorRetencoes||0;planoFiscal.preencher(n.planoRecebimento);atualizarLiquido();
     $("nfCodigoObra").value = n.codigoObra || "";
     $("nfArt").value = n.art || "";
     $("nfValorProdutos").value = numero(n.valorProdutos).toFixed(2);
@@ -791,7 +796,7 @@
     $("nfValorSeguro").value = numero(n.valorSeguro).toFixed(2);
     $("nfValorDesconto").value = numero(n.valorDesconto).toFixed(2);
     $("nfValorOutras").value = numero(n.valorOutrasDespesas).toFixed(2);
-    $("nfValorTotal").value = numero(n.valorTotal).toFixed(2);
+    $("nfValorTotal").value = numero(n.valorTotal).toFixed(2);atualizarLiquido();
     $("nfInformacoesAdicionais").value = n.informacoesAdicionais || "";
     $("nfPayloadExtra").value = n.payloadExtra ? JSON.stringify(n.payloadExtra, null, 2) : "";
     $("listaItensFiscal").innerHTML = "";
@@ -852,6 +857,7 @@
       cnaeServico: vazioParaNull($("nfCnaeServico").value),
       aliquotaIss: $("nfAliquotaIss").value === "" ? null : numero($("nfAliquotaIss").value),
       issRetido: $("nfIssRetido").checked,
+      valorRetencoes:Number($("nfValorRetencoes").value||0),planoRecebimento:planoFiscal.ler(),
       codigoObra: vazioParaNull($("nfCodigoObra").value),
       art: vazioParaNull($("nfArt").value),
       valorProdutos: numero($("nfValorProdutos").value),
@@ -948,6 +954,7 @@
         <div>${statusBadge(n.status)}</div>
       </div>
       ${n.mensagemRetorno ? `<div class="alert ${n.status === "AUTORIZADA" ? "alert-success" : n.status === "PROCESSANDO" ? "alert-info" : "alert-warning"}"><strong>Retorno:</strong> ${esc(n.mensagemRetorno)}</div>` : ""}
+      ${n.status==="CANCELADA"?`<div class="alert alert-warning">Cobrança cancelada. Se houver recebimentos anteriores, confira a devolução no histórico financeiro. O cancelamento não devolve dinheiro automaticamente.</div>`:""}
       <div class="fiscal-detail-grid">
         ${linhaDetalhe("Emitente", nomeEmpresa(n.empresaFiscal))}
         ${linhaDetalhe("CNPJ emitente", cnpjFormatado(n.empresaFiscal?.cnpj))}
@@ -960,7 +967,9 @@
         ${linhaDetalhe("Chave", n.chave || "-", true)}
         ${linhaDetalhe("Protocolo", n.protocolo || "-")}
         ${linhaDetalhe("Código verificação", n.codigoVerificacao || "-")}
-        ${linhaDetalhe("Valor total", dinheiro(n.valorTotal))}
+        ${linhaDetalhe("Valor bruto", dinheiro(n.valorTotal))}
+        ${linhaDetalhe("Retenções (financeiro)",dinheiro(n.valorRetencoes||0))}
+        ${linhaDetalhe("Líquido a receber",dinheiro(Number(n.valorTotal)-Number(n.valorRetencoes||0)))}
       </div>
       <div class="fiscal-section-title mt-4">Itens</div>
       <div class="table-responsive"><table class="table table-sm fiscal-detail-table"><thead><tr><th>#</th><th>Cód.</th><th>Descrição</th><th>Qtd.</th><th>Un.</th><th>Unitário</th><th>Bruto</th><th>NCM</th><th>CFOP</th></tr></thead><tbody>${itens || `<tr><td colspan="9">Sem itens</td></tr>`}</tbody></table></div>

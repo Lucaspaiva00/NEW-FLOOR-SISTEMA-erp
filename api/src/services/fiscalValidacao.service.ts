@@ -12,6 +12,7 @@ export function conferirNotaFiscal(nota:any){
  exigir(digits(nota.destinatarioCnpj).length===14||digits(nota.destinatarioCpf).length===11,'Destinatário: informe CNPJ ou CPF válido.');
  exigir(nota.itens?.length>0,'Adicione ao menos um item à nota.');
  const total=Number(nota.valorTotal);exigir(Number.isFinite(total)&&total>0,'Informe um valor total positivo.');
+ if(nota.proposta){const totalProposta=Number(nota.proposta.subtotal||0)+Number(nota.proposta.frete||0);exigir(Math.abs(totalProposta-total)<.011,'A nota vinculada deve corresponder ao total da proposta. Faturamento parcial ou dividido em várias notas ainda exige um fluxo próprio.');}
  const soma=(nota.itens||[]).reduce((s:number,i:any)=>s+Number(i.valorBruto)-Number(i.valorDesconto||0),0);
  const base=Number(nota.tipo==='NFE'?nota.valorProdutos:nota.valorServicos);
  exigir(Number.isFinite(soma)&&Math.abs(soma-base)<.011,'O valor de produtos/serviços deve conferir com a soma dos itens e seus descontos.');
@@ -46,6 +47,7 @@ export function conferirNotaFiscal(nota:any){
   if(empresa.regimeApuracaoSimples!=null)exigir([1,2,3].includes(Number(empresa.regimeApuracaoSimples)),'Informe uma apuração válida do Simples Nacional.');
  }else exigir(payload.servico?.item_lista_servico,'Informe o item da lista de serviços.');
  if(empresa.ambiente!=='PRODUCAO')avisos.push('Homologação: documento de teste, sem faturamento ou parcelas financeiras.');
+ if(nota.issRetido&&!Number(nota.valorRetencoes))avisos.push('ISS retido informado: confira e preencha as retenções financeiras para que o líquido a receber esteja correto.');
  avisos.push('Confira os códigos, alíquotas e retenções com a contabilidade. Esta conferência não substitui a autorização do fisco.');
  return {podeEmitir:erros.length===0,erros,avisos,ambiente:empresa.ambiente,tipo:nota.tipo};
 }

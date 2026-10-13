@@ -368,7 +368,7 @@
                         </div>
 
                         <div class="fiscal-section-title mt-4">Informações adicionais</div>
-                        <textarea id="nfInformacoesAdicionais" class="form-control" rows="3" placeholder="Informações complementares da operação ou discriminação do serviço."></textarea>
+                        <div class="row g-3 mb-3"><label class="col-md-6">Retenções para o financeiro (R$)<input id="nfValorRetencoes" type="number" min="0" step="0.01" value="0" class="form-control"><small>Informe o valor confirmado pela contabilidade. Este campo ajusta a cobrança; não altera os tributos enviados à Focus.</small></label><div class="col-md-6"><label>Líquido a receber</label><small class="d-block">Notas vinculadas usam as parcelas da proposta. O plano abaixo é para notas sem proposta.</small><strong id="nfLiquidoReceber" class="d-block"></strong></div></div><textarea id="nfInformacoesAdicionais" class="form-control" rows="3" placeholder="Informações complementares da operação ou discriminação do serviço."></textarea>
 
                         <details class="fiscal-advanced mt-3">
                             <summary>Configuração avançada / JSON adicional do provedor</summary>
@@ -403,7 +403,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
-    <script src="js/fiscal.js?v=20261012-conferencia"></script>
+    <script src="js/plano-recebimento.js?v=20261013"></script>
+    <script src="js/fiscal.js?v=20261013-financeiro"></script>
     <script src="js/menu-mobile.js"></script>
     <script src="js/arquivo-fiscal-sba.js?v=20261012"></script>
     <script src="js/sidebar.js"></script>

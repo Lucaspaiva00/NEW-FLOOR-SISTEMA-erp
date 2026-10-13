@@ -54,13 +54,14 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
   if (!proposta || proposta.status !== "FATURADA") return null;
 
   const categoria = await garantirCategoriaReceitaPropostas(empresaId, tx);
-  const valor = Number(proposta.subtotal || 0) + Number(proposta.frete || 0);
+  const valor = proposta.valorLiquidoFinanceiro != null ? Number(proposta.valorLiquidoFinanceiro) : Number(proposta.subtotal || 0) + Number(proposta.frete || 0);
   const nomeCliente =
     proposta.cliente.nomeFantasia ||
     proposta.cliente.razaoSocial ||
     proposta.cliente.responsavel ||
     `Cliente #${proposta.clienteId}`;
 
+  if(valor===0){return tx.lancamentoFinanceiro.updateMany({where:{empresaId,propostaId,origem:"PROPOSTA"},data:{status:"CANCELADO"}});}
   const parcelas=parcelasRecebimento(valor,proposta.planoRecebimento);
   await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "propostaId"=${propostaId} AND "empresaId"=${empresaId} FOR UPDATE`;
   const existentes=await tx.lancamentoFinanceiro.findMany({where:{empresaId,propostaId,origem:"PROPOSTA"}});
@@ -70,7 +71,7 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
     const ativos=existentes.filter(l=>l.status!=="CANCELADO");
     if(ativos.length!==parcelas.length||parcelas.some(p=>{
       const l=ativos.find(l=>l.chaveOrigem===`PROPOSTA:${propostaId}:${p.numero}`);
-      return !l||Math.round(Number(l.valor)*100)!==Math.round(p.valor*100)||l.clienteId!==proposta.clienteId||(proposta.planoRecebimento&&l.dataVencimento?.toISOString().slice(0,10)!==p.vencimento?.toISOString().slice(0,10));
+      return !l||(proposta.valorLiquidoFinanceiro==null && Math.round(Number(l.valor)*100)!==Math.round(p.valor*100))||l.clienteId!==proposta.clienteId||(proposta.planoRecebimento&&l.dataVencimento?.toISOString().slice(0,10)!==p.vencimento?.toISOString().slice(0,10));
     }))throw new Error("Estorne os recebimentos antes de alterar valores, cliente ou parcelamento da proposta.");
   }
   await tx.lancamentoFinanceiro.updateMany({where:{empresaId,propostaId,origem:"PROPOSTA",chaveOrigem:{notIn:chaves},valorPago:0,status:"ABERTO"},data:{status:"CANCELADO"}});
@@ -78,7 +79,7 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
   for(const parcela of parcelas){
     const chaveOrigem=`PROPOSTA:${propostaId}:${parcela.numero}`,existente=existentes.find(l=>l.chaveOrigem===chaveOrigem);
     const dados={descricao:`Proposta ${proposta.numero} - ${nomeCliente}${parcelas.length>1?` (${parcela.numero}/${parcelas.length})`:""}`,documento:proposta.numero,valor:parcela.valor,clienteId:proposta.clienteId,categoriaFinanceiraId:categoria.categoriafinanceiraid,formaPagamento:proposta.formaPagamento,parcelaNumero:parcela.numero,totalParcelas:parcelas.length,observacoes:proposta.condicoesPagamento?`Condições comerciais: ${proposta.condicoesPagamento}`:"Gerado ao faturar a proposta.",...(proposta.planoRecebimento?{dataVencimento:parcela.vencimento}:{})};
-    resultados.push(await tx.lancamentoFinanceiro.upsert({where:{chaveOrigem},update:{...dados,status:existente?.status==="PAGO"?"PAGO":existente?.status==="CANCELADO"&&!reativar?"CANCELADO":"ABERTO"},create:{...dados,empresaId,tipo:"ENTRADA",status:"ABERTO",origem:"PROPOSTA",dataCompetencia:proposta.dataFaturamento||new Date(),dataVencimento:parcela.vencimento,chaveOrigem,propostaId}}));
+    resultados.push(await tx.lancamentoFinanceiro.upsert({where:{chaveOrigem},update:{...dados,status:existente&&Number(existente.valorPago)>=parcela.valor?"PAGO":existente?.status==="CANCELADO"&&!reativar?"CANCELADO":"ABERTO"},create:{...dados,empresaId,tipo:"ENTRADA",status:"ABERTO",origem:"PROPOSTA",dataCompetencia:proposta.dataFaturamento||new Date(),dataVencimento:parcela.vencimento,chaveOrigem,propostaId}}));
   }
   return resultados[0];
   };

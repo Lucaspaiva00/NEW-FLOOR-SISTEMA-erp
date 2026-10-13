@@ -147,4 +147,7 @@ export async function garantirSchemaFinanceiro() {
       ON DELETE SET NULL ON UPDATE CASCADE;
   EXCEPTION WHEN duplicate_object THEN NULL;
   END $$;`);
+ await exec(`ALTER TYPE "OrigemLancamentoFinanceiro" ADD VALUE IF NOT EXISTS 'NOTA_FISCAL';`);
+ await exec(`ALTER TABLE "LancamentoFinanceiro" ADD COLUMN IF NOT EXISTS "notaFiscalId" INTEGER REFERENCES "NotaFiscal"("notafiscalid") ON DELETE RESTRICT;`);
+
 }

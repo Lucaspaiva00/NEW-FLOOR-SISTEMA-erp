@@ -20,7 +20,7 @@ export async function movimentarConta(id: number, empresaId: number, b: any, est
   await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "lancamentofinanceiroid"=${id} AND "empresaId"=${empresaId} FOR UPDATE`;
   const atual=await tx.lancamentoFinanceiro.findFirst({where:{lancamentofinanceiroid:id,empresaId}});
   if(!atual)throw new Error('Conta não encontrada.');
-  if(atual.status==='CANCELADO')throw new Error('Conta cancelada não pode receber pagamentos.');
+  if(atual.status==='CANCELADO'&&!estornar)throw new Error('Conta cancelada não pode receber pagamentos.');
   if(estornar){
    if(!String(b.motivo||'').trim())throw new Error('Informe o motivo do estorno.');
    const where:any={lancamentoId:id,empresaId,estornadoEm:null};
@@ -39,6 +39,6 @@ export async function movimentarConta(id: number, empresaId: number, b: any, est
   }
   const pagamentos=await tx.pagamentoFinanceiro.findMany({where:{empresaId,lancamentoId:id,estornadoEm:null},orderBy:{dataPagamento:'desc'}});
   const pago=pagamentos.reduce((sum,p)=>sum+centavos(p.valor),0);
-  return tx.lancamentoFinanceiro.update({where:{lancamentofinanceiroid:id},data:{valorPago:pago/100,status:pago>=centavos(atual.valor)?'PAGO':'ABERTO',dataPagamento:pagamentos[0]?.dataPagamento||null},include:{pagamentos:true}});
+  return tx.lancamentoFinanceiro.update({where:{lancamentofinanceiroid:id},data:{valorPago:pago/100,status:atual.status==='CANCELADO'?'CANCELADO':pago>=centavos(atual.valor)?'PAGO':'ABERTO',dataPagamento:pagamentos[0]?.dataPagamento||null},include:{pagamentos:true}});
  });
 }

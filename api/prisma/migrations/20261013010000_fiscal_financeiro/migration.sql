@@ -1,0 +1,5 @@
+ALTER TABLE "Proposta" ADD COLUMN IF NOT EXISTS "valorLiquidoFinanceiro" DECIMAL(14,2);
+ALTER TABLE "NotaFiscal" ADD COLUMN IF NOT EXISTS "valorRetencoes" DECIMAL(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE "NotaFiscal" ADD COLUMN IF NOT EXISTS "planoRecebimento" JSONB;
+ALTER TYPE "OrigemLancamentoFinanceiro" ADD VALUE IF NOT EXISTS 'NOTA_FISCAL';
+ALTER TABLE "LancamentoFinanceiro" ADD COLUMN IF NOT EXISTS "notaFiscalId" INTEGER REFERENCES "NotaFiscal"("notafiscalid") ON DELETE RESTRICT;

@@ -35,7 +35,7 @@ test('Pagamentos parciais, quitação, estorno individual e isolamento entre emp
   assert.equal(db.conta.valorPago,600);assert.equal(db.conta.status,'ABERTO');assert.equal(db.pagamentos.length,2);assert(db.pagamentos[0].estornadoEm);
   await movimentarConta(1,7,{...b,valorPago:400});assert.equal(db.conta.status,'PAGO');assert.equal(db.pagamentos.length,3);
   await movimentarConta(1,7,{motivo:'Revisão'},true);assert.equal(db.conta.valorPago,0);assert.equal(db.conta.status,'ABERTO');
-  db.conta.status='CANCELADO';await assert.rejects(()=>movimentarConta(1,7,b),/cancelada/);
+  db.conta.status='CANCELADO';db.pagamentos.push({pagamentofinanceiroid:99,empresaId:7,lancamentoId:1,valor:100,dataPagamento:new Date(),estornadoEm:null});db.conta.valorPago=100;await movimentarConta(1,7,{motivo:'Devolução após cancelamento',pagamentoId:99},true);assert.equal(db.conta.status,'CANCELADO');assert.equal(db.conta.valorPago,0);await assert.rejects(()=>movimentarConta(1,7,b),/cancelada/);
  }finally{client.$transaction=original;}
 });
 test('Dashboard e fluxo contam recebimentos parciais, saldo inicial negativo e pendência por vencimento',async()=>{

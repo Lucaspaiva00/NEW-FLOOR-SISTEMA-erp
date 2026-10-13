@@ -114,11 +114,11 @@ export const listar = async (req: Request, res: Response): Promise<void> => {
 
     const dados = await prisma.lancamentoFinanceiro.findMany({
       where,
-      include: { cliente: true, categoria: true, conta: true, proposta: true, pagamentos: {orderBy:{createdAt:"desc"}} },
+      include: { cliente: true, categoria: true, conta: true, proposta: true, notaFiscal:true, pagamentos: {orderBy:{createdAt:"desc"}} },
       orderBy: [{ status: "asc" }, { dataVencimento: "asc" }, { createdAt: "desc" }],
     });
 
-    res.json(dados.map((item) => ({ ...item, valorRestante: saldoConta(item.valor,item.valorPago), clienteNome: nomeCliente(item.cliente) })));
+    res.json(dados.map((item) => ({ ...item, valorRestante: item.status==="CANCELADO"?0:saldoConta(item.valor,item.valorPago), clienteNome: nomeCliente(item.cliente) })));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao listar lançamentos financeiros" });
@@ -129,7 +129,7 @@ export const buscar = async (req: Request, res: Response): Promise<void> => {
   try {
     const dado = await prisma.lancamentoFinanceiro.findFirst({
       where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number },
-      include: { cliente: true, categoria: true, conta: true, proposta: true, pagamentos: {orderBy:{createdAt:"desc"}} },
+      include: { cliente: true, categoria: true, conta: true, proposta: true, notaFiscal:true, pagamentos: {orderBy:{createdAt:"desc"}} },
     });
     if (!dado) {
       res.status(404).json({ error: "Lançamento não encontrado" });
@@ -229,7 +229,7 @@ export const atualizar = async (req: Request, res: Response): Promise<void> => {
     if(b.descricao!==undefined&&!String(b.descricao).trim())throw new Error("Informe a descrição da conta.");
     await validarVinculos(tx,empresaId,{...b,tipo:b.tipo||atual.tipo});
     if(b.valor!==undefined && centavos(b.valor)<=0)throw new Error('Informe um valor maior que zero.');
-    if(atual.origem==="PROPOSTA"&&((b.valor!==undefined&&centavos(b.valor)!==centavos(atual.valor))||(b.tipo&&b.tipo!==atual.tipo)||(b.clienteId!==undefined&&Number(b.clienteId||0)!==Number(atual.clienteId||0))))throw new Error("Altere o valor e o cliente na proposta de origem para manter os registros consistentes.");
+    if(atual.origem!=="MANUAL"&&((b.valor!==undefined&&centavos(b.valor)!==centavos(atual.valor))||(b.tipo&&b.tipo!==atual.tipo)||(b.clienteId!==undefined&&Number(b.clienteId||0)!==Number(atual.clienteId||0))))throw new Error("Altere o valor e o cliente na proposta de origem para manter os registros consistentes.");
     const historico=await tx.pagamentoFinanceiro.count({where:{lancamentoId:id,empresaId}});
     if(historico && ((b.valor!==undefined&&centavos(b.valor)!==centavos(atual.valor))||(b.tipo&&b.tipo!==atual.tipo)))throw new Error('Uma conta com pagamentos não pode ter seu valor ou tipo alterado.');
     return tx.lancamentoFinanceiro.update({
@@ -269,6 +269,7 @@ export const reabrir = async(req:Request,res:Response):Promise<void>=>{
 export const cancelar = async (req: Request, res: Response): Promise<void> => {
   try {
     const atual=await prisma.lancamentoFinanceiro.findFirst({where:{lancamentofinanceiroid:idParam(req.params.id),empresaId:req.empresaId as number}});
+    if(atual?.origem==="NOTA_FISCAL"){res.status(400).json({error:"Cancele a nota no módulo Fiscal para cancelar esta cobrança."});return;}
     if(!atual || Number(atual.valorPago)>0){res.status(400).json({error:'Estorne os pagamentos antes de cancelar a conta.'});return;}
     const resultado = await prisma.lancamentoFinanceiro.updateMany({
       where: { lancamentofinanceiroid: idParam(req.params.id), empresaId: req.empresaId as number, valorPago: 0 },
@@ -293,7 +294,7 @@ export const excluir = async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({ error: "Lançamento não encontrado" });
       return;
     }
-    if (atual.origem === "PROPOSTA" || Number(atual.valorPago)>0 || await prisma.pagamentoFinanceiro.count({where:{lancamentoId:atual.lancamentofinanceiroid}})) {
+    if (atual.origem !== "MANUAL" || Number(atual.valorPago)>0 || await prisma.pagamentoFinanceiro.count({where:{lancamentoId:atual.lancamentofinanceiroid}})) {
       res.status(400).json({ error: "Lançamentos originados de proposta não são excluídos. Cancele o lançamento se necessário." });
       return;
     }

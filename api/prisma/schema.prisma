@@ -145,6 +145,7 @@ model Servico {
 }
 
 model Proposta {
+  valorLiquidoFinanceiro Decimal? @db.Decimal(14,2)
   contatoDestinatario String?
   emailDestinatario String?
   composicaoCustos Json?
@@ -435,6 +436,9 @@ model EmpresaFiscal {
 }
 
 model NotaFiscal {
+  valorRetencoes Decimal @default(0) @db.Decimal(14,2)
+  planoRecebimento Json?
+  lancamentosFinanceiros LancamentoFinanceiro[]
   ambienteEmissao AmbienteFiscal?
   padraoNfseEmissao PadraoNfse?
   notafiscalid                  Int                 @id @default(autoincrement())
@@ -626,6 +630,8 @@ model CategoriaFinanceira {
 }
 
 model LancamentoFinanceiro {
+  notaFiscalId Int?
+  notaFiscal NotaFiscal? @relation(fields: [notaFiscalId], references: [notafiscalid], onDelete: Restrict)
   lancamentofinanceiroid Int                       @id @default(autoincrement())
   empresaId              Int
   empresa                Empresa                   @relation(fields: [empresaId], references: [empresaid])
@@ -677,6 +683,7 @@ enum StatusLancamentoFinanceiro {
 }
 
 enum OrigemLancamentoFinanceiro {
+  NOTA_FISCAL
   MANUAL
   PROPOSTA
 }

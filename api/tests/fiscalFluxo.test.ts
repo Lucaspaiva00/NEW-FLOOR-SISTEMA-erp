@@ -28,9 +28,9 @@ test('Envios simultâneos usam um único POST e falha de rede conserva PROCESSAN
 });
 test('Homologação autorizada não fatura proposta; produção independe do perfil',async()=>{
  const original={update:prisma.notaFiscal.update,empresa:prisma.empresa.findUnique,transaction:prisma.$transaction};let calls=0;
- (prisma.notaFiscal as any).update=async()=>({propostaId:8,empresaId:7,ambienteEmissao:'HOMOLOGACAO',empresaFiscal:{ambiente:'PRODUCAO'}});(prisma as any).$transaction=async()=>{calls++;};
+ (prisma.notaFiscal as any).update=async()=>({status:'AUTORIZADA',propostaId:8,empresaId:7,ambienteEmissao:'HOMOLOGACAO',empresaFiscal:{ambiente:'PRODUCAO'}});(prisma as any).$transaction=async()=>{calls++;};
  try{await aplicarRetorno(1,'https://example.test',{status:'autorizado'});assert.equal(calls,0);
-  (prisma.notaFiscal as any).update=async()=>({propostaId:8,empresaId:7,ambienteEmissao:'PRODUCAO',empresaFiscal:{ambiente:'PRODUCAO'}});
+  (prisma.notaFiscal as any).update=async()=>({status:'AUTORIZADA',propostaId:8,empresaId:7,ambienteEmissao:'PRODUCAO',empresaFiscal:{ambiente:'PRODUCAO'}});
   for(const perfil of ['PADRAO','PERSONALIZADO','SBA']){(prisma.empresa as any).findUnique=async()=>({configuracaoSistema:{perfil}});await aplicarRetorno(1,'https://example.test',{status:'autorizado'});}assert.equal(calls,3);
  }finally{prisma.notaFiscal.update=original.update;prisma.empresa.findUnique=original.empresa;prisma.$transaction=original.transaction;}
 });
