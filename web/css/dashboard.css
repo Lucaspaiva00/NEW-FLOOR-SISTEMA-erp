@@ -883,7 +883,9 @@ select.premium-input-light {
 .sidebar.gestao-obras-ativa{padding-top:20px;padding-bottom:20px;gap:18px}
 .sidebar.gestao-obras-ativa>div:first-child{display:flex;flex-direction:column;min-height:0;flex:1}
 .sidebar.gestao-obras-ativa .logo{flex-shrink:0;margin-bottom:18px}
-.sidebar.gestao-obras-ativa .menu{overflow-y:auto;min-height:0;gap:4px;scrollbar-width:thin;padding-right:2px}
-.sidebar.gestao-obras-ativa .menu a{min-height:42px;height:42px;flex-shrink:0;font-size:13px;padding:0 12px;gap:11px;border-radius:11px}
+.sidebar.gestao-obras-ativa .menu{overflow-y:auto;min-height:0;gap:8px;scrollbar-width:thin;padding-right:2px}
+.sidebar.gestao-obras-ativa .menu a{min-height:52px;height:52px;flex-shrink:0;font-size:15px;padding:0 16px;gap:14px;border-radius:14px}
 .sidebar.gestao-obras-ativa .menu-label{white-space:normal;line-height:1.3}
 .sidebar.gestao-obras-ativa .user-box{flex-shrink:0}
+
+@media(min-width:901px){.sidebar.gestao-obras-ativa:not(.collapsed){width:310px;padding-left:22px;padding-right:22px}}
