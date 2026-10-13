@@ -8,6 +8,7 @@ import { garantirSchemaFinanceiro } from "./services/financeiroSchema.service";
 
 import { garantirSchemaConfiguracao } from "./services/configuracaoSchema.service";
 import { testarFluxoObras } from "./services/obrasSmoke.service";
+import { testarTelaObras } from "./services/obrasUiSmoke.service";
 import { garantirSchemaObras } from "./services/obrasSchema.service";
 const app = express();
 
@@ -33,6 +34,7 @@ async function iniciarServidor() {
   await garantirSchemaObras();
   console.log("Estrutura de obras verificada; ativação restrita a José/Construarty.");
   await testarFluxoObras();
+  await testarTelaObras();
   try {
     await garantirSchemaFinanceiro();
     console.log("✅ Estrutura do módulo financeiro verificada.");
