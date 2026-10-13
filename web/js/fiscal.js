@@ -13,6 +13,7 @@
   const modalNota = new bootstrap.Modal($("modalNotaFiscal"));
   const modalDetalhe = new bootstrap.Modal($("modalDetalheFiscal"));
 
+  const ancoraPlano=document.createElement("div");$("nfInformacoesAdicionais").before(ancoraPlano);ancoraPlano.append($("nfInformacoesAdicionais"));
   const planoFiscal=window.criarPlanoRecebimento($("nfInformacoesAdicionais"));
   const atualizarLiquido=()=>{$("nfLiquidoReceber").textContent=dinheiro(Math.max(0,Number($("nfValorTotal").value||0)-Number($("nfValorRetencoes").value||0)));};
   $("nfValorRetencoes").oninput=atualizarLiquido;$("nfValorTotal").addEventListener("input",atualizarLiquido);
