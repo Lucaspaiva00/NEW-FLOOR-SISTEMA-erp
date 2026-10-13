@@ -525,11 +525,59 @@ function atualizarKpis(lista) {
   document.getElementById("kpiEspeciais").innerText = especiais;
   document.getElementById("kpiFaturadas").innerText = faturadas;
 
-  document.getElementById("countPendentes").innerText = pendentes;
-  document.getElementById("countAprovadas").innerText = aprovadas;
-  document.getElementById("countExecutando").innerText = executando;
-  document.getElementById("countEspeciais").innerText = especiais;
-  document.getElementById("countFaturadas").innerText = faturadas;
+}
+
+
+function atualizarResumoColunas(lista) {
+  // O valor exibido é o mesmo subtotal mostrado nos cards; soma em centavos
+  // para evitar erros de ponto flutuante e respeita a pesquisa em andamento.
+  const colunasPorStatus = {
+    RASCUNHO: "colunaPendente",
+    PENDENTE: "colunaPendente",
+    APROVADA: "colunaAprovada",
+    EXECUTANDO: "colunaExecutando",
+    ESPECIAIS: "colunaEspeciais",
+    FATURADA: "colunaFaturada",
+  };
+  const ids = [...new Set([
+    ...Object.values(colunasPorStatus),
+    ...colunasPersonalizadas.map((c) => `colunaPersonalizada${c.colunakanbanid}`),
+  ])];
+  const resumo = new Map(ids.map((id) => [id, { quantidade: 0, centavos: 0 }]));
+
+  lista.forEach((proposta) => {
+    const personalizada = `colunaPersonalizada${proposta.colunaKanbanId}`;
+    const id = proposta.colunaKanbanId && resumo.has(personalizada)
+      ? personalizada
+      : colunasPorStatus[proposta.status];
+    if (!resumo.has(id)) return;
+
+    const coluna = resumo.get(id);
+    coluna.quantidade += 1;
+    const centavos = Math.round(Number(proposta.subtotal) * 100);
+    if (Number.isFinite(centavos)) coluna.centavos += centavos;
+  });
+
+  resumo.forEach(({ quantidade, centavos }, id) => {
+    const header = document.getElementById(id)
+      ?.closest(".kanban-column")?.querySelector(".kanban-header");
+    if (!header) return;
+
+    const contador = header.querySelector(".kanban-count");
+    if (contador) contador.textContent = String(quantidade);
+
+    const titulo = header.querySelector("h3");
+    if (!titulo) return;
+    let total = titulo.querySelector(".kanban-total");
+    if (!total) {
+      total = document.createElement("small");
+      total.className = "kanban-total";
+      // Somente uma segunda linha discreta no título existente, sem alterar layout ou CSS.
+      total.style.cssText = "display:block;font-size:11px;line-height:1.2;font-weight:600;letter-spacing:normal;text-transform:none;color:#64748b";
+      titulo.appendChild(total);
+    }
+    total.textContent = `Total: ${moeda(centavos / 100)}`;
+  });
 }
 
 function classePrioridadeCard(prioridade) {
@@ -765,6 +813,7 @@ function renderizarKanban(lista) {
     if (contador) contador.innerText = contagemPersonalizada[c.colunakanbanid] || 0;
   });
 
+  atualizarResumoColunas(lista);
   iniciarSortableKanban();
 }
 
@@ -880,7 +929,7 @@ function iniciarSortableKanban() {
 
         propostas = propostasCache;
         const lista = obterListaFiltrada();
-        // renderizarKanban(lista);
+        atualizarResumoColunas(lista);
         atualizarKpis(lista);
       },
     });
