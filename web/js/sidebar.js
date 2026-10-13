@@ -368,7 +368,16 @@ function aplicarPerfilEmpresa(c) {
  }
  prepararItensMenu();
 
- if(c.modulos?.obras===true&&menu&&!menu.querySelector('a[href="obras.html"]')){const link=document.createElement("a");link.href="obras.html";link.textContent="Gestão de obras";menu.append(link);MENU_ICONS.obras=MENU_ICONS.empresas;prepararItensMenu();}
+ if(c.modulos?.obras===true&&menu){
+  document.querySelector('.sidebar')?.classList.add('gestao-obras-ativa');
+  MENU_ICONS.obras='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-7 7 7v11M9 21v-7h6v7M3 10h18"/></svg>';
+  let link=menu.querySelector('a[href="obras.html"]');
+  if(!link){link=document.createElement('a');link.href='obras.html';link.textContent='Gestão de obras';}
+  const propostas=menu.querySelector('a[href="propostas.html"]');
+  if(propostas)menu.insertBefore(link,propostas);else menu.append(link);
+  if(location.pathname.endsWith('/obras.html'))link.classList.add('active');
+  prepararItensMenu();
+ }
  window.__configuracaoSistema=c;
  for(const [k,v] of Object.entries(c.modulos||{})) if(!v) document.querySelectorAll(`.menu a[href="${k}.html"]`).forEach(el=>el.hidden=true);
  for(const [k,v] of Object.entries(c.camposProposta||{})) if(!v) {
