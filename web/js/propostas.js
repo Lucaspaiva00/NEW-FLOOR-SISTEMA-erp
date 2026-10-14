@@ -1778,7 +1778,9 @@ async function abrirModalProposta(id, gerenciar = false) {
   setCardLoading(id, true);
 
   try {
-    await carregarDadosModal();
+    // O editor completo da SBA carrega seus próprios dados. Não aguardar
+    // templates, observações e vendedores do formulário antigo ao editar.
+    if (window.__configuracaoSistema?.perfil !== "SBA") await carregarDadosModal();
 
     const response = await fetch(`${API_URL}/propostas/${id}`, {
       headers: {
@@ -1793,9 +1795,12 @@ async function abrirModalProposta(id, gerenciar = false) {
 
     const proposta = await response.json();
     if (window.__configuracaoSistema?.composicaoCustos && proposta.composicaoCustos && !gerenciar) {
+      if (typeof window.abrirOrcamentoNaProposta !== "function") throw new Error("Editor de propostas SBA não está disponível.");
       await window.abrirOrcamentoNaProposta(proposta);
       return;
     }
+    // Propostas legadas da SBA continuam abrindo no editor tradicional.
+    if (window.__configuracaoSistema?.perfil === "SBA") await carregarDadosModal();
     window.__composicaoPropostaEmEdicao = window.__configuracaoSistema?.composicaoCustos ? proposta.composicaoCustos : null;
 
     preencherCampo("editarId", proposta.propostaid);
