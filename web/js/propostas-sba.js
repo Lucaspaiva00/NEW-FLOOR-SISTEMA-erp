@@ -41,7 +41,8 @@
       config: window.__configuracaoSistema,
       onSaved: async () => { await carregarPropostas(); }
     });
-    await instance.ready();
+    // Não bloquear o clique em Editar esperando clientes, materiais e fornecedores.
+    // O modal aparece imediatamente; o próprio editor aguarda os dados.
     return instance;
   }
   window.abrirOrcamentoNaProposta = async proposta => (await editor()).abrir(proposta);
