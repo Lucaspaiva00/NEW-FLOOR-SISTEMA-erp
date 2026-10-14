@@ -36,7 +36,7 @@ async function prepararBody(req: Request, res: Response): Promise<any> {
 import path from "path";
 import fs from "fs";
 import prisma from "../prisma";
-import { gerarHtmlProposta } from "../services/propostaHtml.service";
+import { gerarHtmlProposta, usarModeloPdfSba } from "../services/propostaHtml.service";
 import {
   gerarPdfProposta,
   nomeDownloadPdfProposta,
@@ -108,7 +108,7 @@ async function buscarPropostaCompleta(id: string, empresaId: number) {
       vendedor: true,
       templateProposta: true,
       empresa: {
-        select: { nome: true, logo: true, configuracaoSistema: true },
+        select: { nome: true, slug: true, logo: true, configuracaoSistema: true },
       },
       itens: {
         include: {
@@ -178,7 +178,7 @@ async function gerarPdfInterno(id: string | string[] | number, empresaId: number
   const nomeArquivo = nomeDownloadPdfProposta(
     proposta.numero,
     proposta.cliente?.razaoSocial,
-    resolverConfiguracao(proposta.empresa?.configuracaoSistema).perfil==="SBA" ? "SBA" : proposta.empresa?.nome,
+    usarModeloPdfSba(proposta.empresa) ? "SBA" : proposta.empresa?.nome,
     proposta.cliente?.nomeFantasia,
   );
 
