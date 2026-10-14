@@ -93,7 +93,16 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const { nome, logo, corPrimaria, corSecundaria, emailContato, telefoneContato, ativo } = req.body;
 
-    const configuracaoSistema = req.body.configuracaoSistema === undefined ? undefined : resolverConfiguracao(req.body.configuracaoSistema);
+    // O tenant SBA tem identidade própria: uma edição do Super Admin não
+    // pode voltar sua configuração para PERSONALIZADO/PADRAO.
+    const atual = req.body.configuracaoSistema === undefined ? null : await prisma.empresa.findUnique({
+      where: { empresaid: Number(id) },
+      select: { slug: true },
+    });
+    const configuracaoInformada = atual?.slug?.toLowerCase() === "sba"
+      ? { ...req.body.configuracaoSistema, perfil: "SBA" }
+      : req.body.configuracaoSistema;
+    const configuracaoSistema = configuracaoInformada === undefined ? undefined : resolverConfiguracao(configuracaoInformada);
     if(configuracaoSistema) validarConfiguracao(configuracaoSistema);
     const empresa = await prisma.empresa.update({
       where: { empresaid: Number(id) },
