@@ -39,6 +39,9 @@ export async function garantirSchemaConfiguracao() {
  await prisma.$executeRawUnsafe(`ALTER TABLE "EmpresaFiscal" ADD COLUMN IF NOT EXISTS "certificadoCriptografado" TEXT;`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "EmpresaFiscal" ADD COLUMN IF NOT EXISTS "certificadoNome" TEXT;`);
  await prisma.$executeRawUnsafe(`UPDATE "Empresa" SET "configuracaoSistema" = '{"perfil":"SBA"}'::jsonb WHERE "configuracaoSistema" IS NULL AND (lower(trim(slug)) = 'sba' OR lower(trim(nome)) = 'sba');`);
+ // Somente a empresa identificada por slug 'sba': restaura perfil exclusivo,
+ // preservando todos os demais campos de configuracaoSistema do Luiz.
+ await prisma.$executeRawUnsafe(`UPDATE "Empresa" SET "configuracaoSistema" = jsonb_set("configuracaoSistema", '{perfil}', '"SBA"'::jsonb, true) WHERE lower(trim(slug)) = 'sba' AND "configuracaoSistema" IS NOT NULL AND "configuracaoSistema"->>'perfil' IS DISTINCT FROM 'SBA';`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "Empresa" ADD COLUMN IF NOT EXISTS "sequenciaCompras" INTEGER NOT NULL DEFAULT 0;`);
  await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "Compra" (
  "compraid" SERIAL PRIMARY KEY,"empresaId" INTEGER NOT NULL REFERENCES "Empresa"("empresaid"),
