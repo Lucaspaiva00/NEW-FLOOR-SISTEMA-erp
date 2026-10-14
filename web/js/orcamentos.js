@@ -27,10 +27,24 @@ async function configurar(c){config=c;
  if(sba)fornecedores=await api('/fornecedores');
  if(!c.composicaoCustos){if(!options.root)location.replace("perfil.html");return;}[clientes,catalogo]=await Promise.all([api("/clientes"),api("/servicos")]);catalogo=catalogo.filter(s=>s.ativo&&s.dadosMaterial);$("cliente").replaceChildren(new Option("Selecione",""));clientes.forEach(c=>$("cliente").add(new Option(c.razaoSocial||c.nomeFantasia,c.clienteid)));novo();await listar();}
 async function abrir(p=null){
+ // A SBA mostra o editor de imediato em vez de deixar o card carregando.
+ if(options.root){
+  $("formOrcamento").reset();
+  $("materiais").replaceChildren();
+  $("maoObra").replaceChildren();
+  $("salvarOrcamento").disabled=true;
+  $("mensagem").textContent="Carregando os dados da proposta...";
+  modal.show();
+ }
+ try {
  if(carregamento)await carregamento;
  if(!config)throw Error("Aguarde o carregamento do perfil da empresa.");
- if(sba)fornecedores=await api("/fornecedores");
- [clientes,catalogo]=await Promise.all([api('/clientes'),api('/servicos')]);catalogo=catalogo.filter(s=>s.ativo&&s.dadosMaterial);
+ // O configurar() inicial já carregou as listas da SBA, sem fetch duplicado.
+ if(!options.root){
+  if(sba)fornecedores=await api("/fornecedores");
+  [clientes,catalogo]=await Promise.all([api('/clientes'),api('/servicos')]);
+  catalogo=catalogo.filter(s=>s.ativo&&s.dadosMaterial);
+ }
  $("cliente").replaceChildren(new Option("Selecione",""));clientes.forEach(c=>$("cliente").add(new Option(c.razaoSocial||c.nomeFantasia,c.clienteid)));
  novo();plano.preencher(p?.planoRecebimento);propostaAberta=p;
  if(p){if(sba){pagamentoSba.forma.value=p.formaPagamento||"";pagamentoSba.prazo.value=p.planoRecebimento?.prazoDias??"";}$("orcamentoId").value=p.propostaid;$("cliente").value=p.clienteId;contatos(p);for(const [id,k]of [["titulo","titulo"],["descricao","descricao"],["escopo","escopo"],["pagamento","condicoesPagamento"],["prazo","prazoEntrega"]])$(id).value=p[k]||"";$("validade").value=p.dataValidade?.slice(0,10)||"";$("margem").value=p.composicaoCustos.margem*100;$("imposto").value=p.composicaoCustos.imposto*100;p.composicaoCustos.materiais.forEach(m=>row("materiais",m));p.composicaoCustos.maoObra.forEach(m=>row("maoObra",m));$("tituloModalOrcamento").textContent=(options.root?"Editar proposta · ":"Editar orçamento · ")+p.numero;}
@@ -38,7 +52,13 @@ async function abrir(p=null){
   $("statusOrcamento").value=p?.status||"RASCUNHO";
   const faturada=$("statusOrcamento").querySelector('option[value="FATURADA"]');if(faturada)faturada.disabled=p?.status!=="FATURADA";
  }
- calcular();modal.show();
+ calcular();
+ if(!options.root)modal.show();
+ }catch(error){
+  $("mensagem").textContent=error?.message||"Não foi possível carregar a proposta.";
+  $("salvarOrcamento").disabled=true;
+  throw error;
+ }
 }
 if(options.config)carregamento=configurar(options.config);
 else window.addEventListener("configuracao-sistema",({detail:c})=>{carregamento=configurar(c).catch(e=>{($("mensagemListaOrcamentos")||$("mensagem")).textContent=e.message;});});
