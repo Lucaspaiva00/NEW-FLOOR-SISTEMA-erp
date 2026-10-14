@@ -725,13 +725,27 @@ function resolverAcrescimoItem(item: any): number {
   return inferido > 0.005 ? Number(inferido.toFixed(2)) : 0;
 }
 
+/**
+ * A identidade da empresa define o modelo do PDF, não a configuração visual
+ * de outro acesso. A identificação por slug/nome mantém o modelo histórico
+ * da SBA mesmo se uma edição de módulos resetar acidentalmente o perfil.
+ * Nunca use esta exceção para empresas sem identidade SBA.
+ */
+export function usarModeloPdfSba(empresa: { slug?: string | null; nome?: string | null; configuracaoSistema?: any } | null | undefined): boolean {
+  if (!empresa) return false;
+  if (resolverConfiguracao(empresa.configuracaoSistema).perfil === "SBA") return true;
+  const slug = String(empresa.slug || "").trim().toLowerCase();
+  const nome = String(empresa.nome || "").trim().toUpperCase();
+  return slug === "sba" || /^SBA(?:\b|[ -])/.test(nome) || /^SERRALHERIA\s+SBA\b/.test(nome);
+}
+
 export async function gerarHtmlProposta({
   proposta,
   cliente,
   itens,
   template,
 }: DadosProposta): Promise<string> {
-  if(resolverConfiguracao(proposta.empresa?.configuracaoSistema).perfil === "SBA") return gerarHtmlSba(proposta,cliente,itens);
+  if (usarModeloPdfSba(proposta.empresa)) return gerarHtmlSba(proposta, cliente, itens);
   const corPrimaria = template?.corPrimaria || "#111827";
 
   const corSecundaria = template?.corSecundaria || "#f3f4f6";
