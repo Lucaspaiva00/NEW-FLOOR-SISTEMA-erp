@@ -95,3 +95,65 @@
     }
 
 }
+/* ERP-MOBILE-20261014: mesmo comportamento mobile em todos os perfis. */
+body.modal-open .mobile-menu-btn,body:has(dialog[open]) .mobile-menu-btn{display:none!important}
+@media(max-width:900px){
+body,body .layout,body .main-content{min-width:0;max-width:100%}
+body .main-content:has(#kanbanBoard) .topbar{min-width:0;max-width:100%}
+body .main-content:has(#kanbanBoard) .top-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;min-width:0;align-items:stretch}
+body .main-content:has(#kanbanBoard) .search-wrap{grid-column:1/-1;width:100%;min-width:0}
+body .main-content:has(#kanbanBoard) .search{width:100%;max-width:100%;min-width:0}
+body .main-content:has(#kanbanBoard) .top-actions .btn-new{width:100%;min-width:0;height:auto;min-height:44px;padding:10px 12px;font-size:13px;line-height:1.35;white-space:normal}
+body .main-content:has(#kanbanBoard) .kanban{display:flex;flex-wrap:nowrap;width:100%;max-width:100%;overflow-x:auto!important;gap:12px;scroll-snap-type:x proximity;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+body .main-content:has(#kanbanBoard) .kanban-column{width:min(82vw,330px);flex:0 0 min(82vw,330px);min-width:0;min-height:260px;scroll-snap-align:start}
+body .main-content:has(#kanbanBoard) .kanban-list,body .main-content:has(#kanbanBoard) .proposal-card{max-width:100%;min-width:0}
+body .main-content:has(#kanbanBoard) .proposal-card-menu-btn,body .main-content:has(#kanbanBoard) .proposal-card-dropdown-item{min-width:44px;min-height:44px}
+body .modal .modal-dialog{width:calc(100% - 20px)!important;max-width:calc(100% - 20px)!important;margin:10px auto!important;box-sizing:border-box}
+body .modal .modal-content{width:100%;max-width:100%;min-width:0;max-height:calc(100dvh - 20px);overflow:hidden}
+body .modal .modal-header{min-width:0;gap:12px}
+body .modal .modal-header>:first-child{min-width:0;overflow-wrap:anywhere}
+body .modal .modal-header .btn-close{flex-shrink:0;margin-left:auto}
+body .modal .modal-body{min-width:0;max-width:100%;overflow-x:hidden}
+body .modal .modal-dialog-scrollable .modal-body{overflow-y:auto;-webkit-overflow-scrolling:touch}
+body .subject-tabs-modal .subject-tabs{box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+body .subject-tabs-modal .subject-tabs [role=tab]{min-height:44px}
+body .subject-tabs-modal .subject-tab-panels,body .subject-tabs-modal .subject-tab-panel{min-width:0;max-width:100%}
+body .modal .table-responsive{max-width:100%;overflow-x:auto}
+body .modal .modal-footer{flex-wrap:wrap;gap:8px}
+body .modal .modal-footer button{min-height:44px;white-space:normal}
+body .material-page .material-header,body .budget-page .budget-heading{flex-wrap:wrap;gap:14px;min-width:0}
+body .material-page .material-header>div,body .budget-page .budget-heading>div{min-width:0;flex:1 1 220px}
+body .material-page .material-button,body .budget-page .budget-heading button{min-height:44px}
+body .obras-page .toolbar{flex-wrap:wrap;min-width:0}
+body .obras-page .toolbar button,body .obras-page .tabs button{min-height:44px}
+body .obras-page .tabs{max-width:100%;overflow-x:auto}
+}
+@media(max-width:600px){
+body .main-content:has(#kanbanBoard) .topbar h1{font-size:29px}
+body .budget-editor-modal .modal-header,body .material-editor-modal .modal-header{padding:14px 16px!important}
+body .budget-editor-modal .modal-body,body .material-editor-modal .modal-body{padding:12px!important}
+body .budget-editor-modal .budget-section,body .material-editor-modal .material-section,body .material-editor-modal .material-panel{padding:15px;max-width:100%;min-width:0}
+body .budget-editor-modal .sba-grid,body .material-editor-modal .material-grid{grid-template-columns:minmax(0,1fr)!important;gap:12px}
+body .material-editor-modal .field-wide{grid-column:1/-1}
+body .budget-editor-modal .sba-row.materiais,body .budget-editor-modal .sba-row.maoObra{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px;padding:12px;max-width:100%}
+body .budget-editor-modal .sba-row label:first-child{grid-column:1/-1}
+body .budget-editor-modal .sba-form label{min-width:0;margin-bottom:0}
+body .budget-editor-modal .sba-form input,body .budget-editor-modal .sba-form select,body .budget-editor-modal .sba-form textarea,body .material-editor-modal input:not([type=checkbox]),body .material-editor-modal select,body .material-editor-modal textarea{max-width:100%;min-width:0;box-sizing:border-box;font-size:16px!important;min-height:44px}
+body .budget-editor-modal .budget-actions{display:flex;flex-direction:column;align-items:stretch;width:100%;bottom:0;margin:0;padding:12px;gap:10px}
+body .budget-editor-modal .budget-actions>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:8px;margin:0}
+body .budget-editor-modal .budget-actions>div>button{min-height:44px;width:100%;min-width:0;padding:10px;white-space:normal;line-height:1.25}
+body .budget-editor-modal .budget-actions>div>button[type=submit]{grid-column:1/-1}
+body .budget-editor-modal .budget-actions p{overflow-wrap:anywhere}
+body .material-editor-modal .material-actions{flex-wrap:wrap;gap:10px;padding:12px}
+body .material-editor-modal .material-actions>button,body .material-editor-modal .material-actions .action-buttons{width:100%}
+body .material-editor-modal .material-actions button{min-height:44px}
+body .material-editor-modal .nav-pills{flex-wrap:nowrap;max-width:100%;min-width:0;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+body .material-editor-modal .nav-pills>button{flex:0 0 auto;min-height:44px;white-space:nowrap}
+body .material-page .material-header{flex-direction:column;align-items:stretch}
+body .material-page .material-header>div{flex:auto}
+body .material-page .material-header>button{width:100%}
+body .material-page .material-stats{grid-template-columns:1fr}
+body .obras-page .toolbar>button{flex:1 1 135px}
+body .fiscal-modal .modal-header,body .fiscal-modal .modal-body{padding:14px}
+body .fiscal-modal input:not([type=checkbox]),body .fiscal-modal select,body .fiscal-modal textarea{max-width:100%;min-width:0;font-size:16px}
+}
