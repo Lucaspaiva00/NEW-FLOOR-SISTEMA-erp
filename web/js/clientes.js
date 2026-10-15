@@ -939,6 +939,20 @@ document
 |--------------------------------------------------------------------------
 */
 
+function cnpjValidoNoFormulario(numero) {
+  const cnpj = String(numero || "").replace(/\D/g, "");
+  if (!/^\d{14}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
+  const digito = base => {
+    const pesos = base.length === 12
+      ? [5,4,3,2,9,8,7,6,5,4,3,2]
+      : [6,5,4,3,2,9,8,7,6,5,4,3,2];
+    const resto = [...base].reduce((soma, algarismo, i) => soma + Number(algarismo) * pesos[i], 0) % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  return Number(cnpj[12]) === digito(cnpj.slice(0, 12)) &&
+    Number(cnpj[13]) === digito(cnpj.slice(0, 13));
+}
+
 const consultasCnpj = new WeakMap();
 function estadoConsultaCnpj(campo) {
   if (!consultasCnpj.has(campo)) consultasCnpj.set(campo, {sequencia:0,ultimo:"",controller:null,pendente:false});
@@ -954,6 +968,10 @@ async function consultarCnpj(campoCnpj, prefixo = "", forcar=false) {
   if (!campoCnpj || campoCnpj.disabled) return;
   const cnpj=campoCnpj.value.replace(/\D/g, ""),estado=estadoConsultaCnpj(campoCnpj);
   if(cnpj.length!==14)return;
+  if(!cnpjValidoNoFormulario(cnpj)){
+    avisoConsultaCnpj(campoCnpj,"CNPJ inválido: confira os dígitos verificadores do número informado.",true);
+    return;
+  }
   const campo=nome=>prefixo?`${prefixo}${nome.charAt(0).toUpperCase()}${nome.slice(1)}`:nome;
   if(estado.pendente&&estado.atual===cnpj)return;
   if(!forcar&&estado.ultimo===cnpj&&document.getElementById(campo("razaoSocial"))?.value)return;
