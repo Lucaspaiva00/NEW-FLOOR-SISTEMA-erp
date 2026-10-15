@@ -21,6 +21,22 @@ type EmpresaConsultada = {
 
 const cache = new Map<string, { empresa: EmpresaConsultada; expira: number }>();
 const emAndamento = new Map<string, Promise<EmpresaConsultada>>();
+const pausaProvedorAte = new Map<string, number>();
+
+export function cnpjValido(numero: string): boolean {
+  const cnpj = String(numero || "").replace(/\D/g, "");
+  if (!/^\d{14}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
+  const digito = (base: string): number => {
+    const pesos = base.length === 12
+      ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+      : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const resto = base.split("").reduce((soma, algarismo, indice) =>
+      soma + Number(algarismo) * pesos[indice], 0) % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  return Number(cnpj[12]) === digito(cnpj.slice(0, 12))
+    && Number(cnpj[13]) === digito(cnpj.slice(0, 13));
+}
 
 class ErroConsulta extends Error {
   constructor(public status: number, message: string) {
@@ -32,17 +48,30 @@ async function buscarEmpresa(cnpj: string): Promise<EmpresaConsultada> {
   const provedores = [
     { nome: "BrasilAPI", url: `https://brasilapi.com.br/api/cnpj/v1/${cnpj}` },
     { nome: "CNPJws", url: `https://publica.cnpj.ws/cnpj/${cnpj}` },
+    { nome: "MinhaReceita", url: `https://minhareceita.org/${cnpj}` },
   ];
   const falhas: number[] = [];
   for (const provedor of provedores) {
+    if ((pausaProvedorAte.get(provedor.nome) || 0) > Date.now()) {
+      falhas.push(429);
+      continue;
+    }
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 7000);
     try {
       const response = await fetch(provedor.url, {
         signal: controller.signal,
-        headers: { Accept: "application/json" },
+        // O User-Agent padrao "node" sofre bloqueio 403 no WAF da BrasilAPI.
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "PaivaTechERP/1.0 (consulta publica de CNPJ)",
+        },
       });
       if (!response.ok) {
+        if (response.status === 429) {
+          // A API publica do CNPJws permite apenas 3 consultas/minuto por IP.
+          pausaProvedorAte.set(provedor.nome, Date.now() + 60_000);
+        }
         falhas.push(response.status);
         console.warn(`Consulta CNPJ: ${provedor.nome} retornou HTTP ${response.status}`);
         continue;
@@ -51,7 +80,7 @@ async function buscarEmpresa(cnpj: string): Promise<EmpresaConsultada> {
       let empresa: EmpresaConsultada;
       if (provedor.nome === "CNPJws") {
         const estabelecimento = dados?.estabelecimento;
-        if (!estabelecimento || estabelecimento.cnpj !== cnpj) {
+        if (!estabelecimento || String(estabelecimento.cnpj || "").replace(/\D/g, "") !== cnpj) {
           falhas.push(502);
           continue;
         }
@@ -76,7 +105,8 @@ async function buscarEmpresa(cnpj: string): Promise<EmpresaConsultada> {
       } else {
         empresa = dados;
       }
-      if (!empresa || typeof empresa.razao_social !== "string" || !empresa.razao_social.trim()) {
+      if (!empresa || typeof empresa.razao_social !== "string" || !empresa.razao_social.trim()
+        || (dados?.cnpj && String(dados.cnpj).replace(/\D/g, "") !== cnpj)) {
         falhas.push(502);
         continue;
       }
@@ -102,6 +132,10 @@ export const consultar = async (req: Request, res: Response): Promise<void> => {
   const cnpj = String(req.params.cnpj || "").replace(/\D/g, "");
   if (cnpj.length !== 14) {
     res.status(400).json({ error: "Informe um CNPJ com 14 dígitos." });
+    return;
+  }
+  if (!cnpjValido(cnpj)) {
+    res.status(400).json({ error: "CNPJ inválido: confira os dígitos verificadores do número informado." });
     return;
   }
   const salvo = cache.get(cnpj);
