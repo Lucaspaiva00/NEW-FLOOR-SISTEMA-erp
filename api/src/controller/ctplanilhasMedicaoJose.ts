@@ -57,7 +57,7 @@ async function obter(identificador: number): Promise<any> {
 }
 export const previa = handle(async (req, res) => {
   const bytes = validarXlsx(req.body?.arquivo);
-  res.json(await detectarPlanilha(bytes, req.body?.mapeamentos));
+  res.json(await detectarPlanilha(bytes, req.body?.mapeamentos, true));
 });
 export const importar = handle(async (req, res) => {
   const obraId = id(req.body?.obraId);
