@@ -8,7 +8,7 @@
   const esc = value => String(value ?? "").replace(/[&<>"']/g, c =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const brl = n => Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const estado = { obraId: null, arquivo: "", arquivoNome: "", previa: null, planilha: null, draft: new Map() };
+  const estado = { obraId: null, arquivo: "", arquivoNome: "", previa: null, planilha: null, mapeamentos: {}, draft: new Map() };
   const status = (s, erro = false) => { $("pmStatus").textContent = s; $("pmStatus").classList.toggle("pm-erro", erro); };
   const api = async (rota, metodo = "GET", corpo) => {
     const resp = await fetch(API_URL + rota, {
@@ -132,7 +132,7 @@
       obras.map(o => '<option value="' + o.id + '">' + esc(o.nome) + '</option>').join("");
     $("pmObra").addEventListener("change", () => aguardar(async () => {
       estado.obraId = Number($("pmObra").value) || null;
-      estado.planilha = null; estado.previa = null; estado.draft.clear();
+      estado.planilha = null; estado.previa = null; estado.mapeamentos = {}; estado.draft.clear();
       $("pmEditor").hidden = true; $("pmPrevia").hidden = true;
       await carregarLista();
     }));
@@ -142,6 +142,7 @@
       if (!arquivo || !arquivo.name.toLowerCase().endsWith(".xlsx") || arquivo.size > 5_000_000) throw Error("Selecione um arquivo .xlsx de até 5 MB.");
       estado.arquivo = await arquivoBase64(arquivo);
       estado.arquivoNome = arquivo.name;
+      estado.mapeamentos = {};
       estado.previa = await api("/obras/planilhas/previa", "POST", { arquivo: estado.arquivo });
       mostrarPrevia();
       status("Prévia carregada. Confira as abas e a quantidade de serviços antes de confirmar.");
@@ -180,24 +181,69 @@
   }
   function mostrarPrevia() {
     const p = estado.previa;
+    const reconhecidas = p.abas.filter(a => a.reconhecida).length;
     $("pmPrevia").hidden = false;
-    $("pmPrevia").innerHTML = '<h3>Prévia do Excel</h3><p>' + p.abas.filter(a => a.reconhecida).length +
-      ' abas reconhecidas de ' + p.abas.length + ' no arquivo. As demais serão preservadas.</p>' +
-      p.abas.map(a => '<article class="pm-previa-item"><strong>' + esc(a.nome) +
-        '</strong><span>' + (a.reconhecida ? (a.itens.length + ' serviços · ' + a.medicoes.length +
-          ' medições') : esc(a.aviso || "Não reconhecida")) + '</span></article>').join("") +
-      (p.avisos.length ? '<p class="pm-aviso">As abas não reconhecidas não poderão ser editadas automaticamente, mas permanecem no arquivo exportado.</p>' : "") +
+    const letra = n => {
+      let v = Number(n), output = "";
+      while (v > 0) { v--; output = String.fromCharCode(65 + v % 26) + output; v = Math.floor(v / 26); }
+      return output;
+    };
+    const campo = (key, label, valor) =>
+      '<label>' + label + '<input type="text" data-pm-campo="' + key + '" value="' + esc(valor ?? "") + '"></label>';
+    $("pmPrevia").innerHTML = '<h3>Prévia do Excel</h3><p><strong>' + reconhecidas +
+      ' abas reconhecidas</strong> de ' + p.abas.length +
+      '. Se a empresa utilizar outro modelo, confira e ajuste as colunas manualmente.</p>' +
+      p.abas.map(a => {
+        const m = estado.mapeamentos[String(a.indice)] || a.mapeamento || {};
+        const manualAtivo = Boolean(estado.mapeamentos[String(a.indice)]);
+        return '<div class="pm-previa-item"><div><strong>' + esc(a.nome) +
+          '</strong><span>' + (a.reconhecida ? a.itens.length + ' serviços · ' +
+            a.medicoes.length + ' medições' : esc(a.aviso || "Layout não reconhecido")) +
+          '</span></div><details class="pm-mapa" data-pm-aba="' + a.indice + '"><summary>Conferir / ajustar colunas</summary>' +
+          '<label class="pm-mapa-ativar"><input type="checkbox" data-pm-manual ' +
+          (manualAtivo ? "checked" : "") + '> Usar este mapeamento na importação</label>' +
+          '<div class="pm-mapa-grid">' +
+          campo("cabecalho", "Linha de cabeçalho", m.cabecalho || a.cabecalho || 10) +
+          campo("item", "Coluna do item (0 = não existe)", letra(m.item) || "C") +
+          campo("etapa", "Coluna da etapa (0 = não existe)", letra(m.etapa) || "D") +
+          campo("descricao", "Coluna da descrição", letra(m.descricao) || "E") +
+          campo("unidade", "Coluna da unidade (0 = não existe)", letra(m.unidade) || "F") +
+          campo("quantidade", "Coluna da quantidade (0 = não existe)", letra(m.quantidade) || "G") +
+          campo("valor", "Coluna do valor do serviço", letra(m.valor) || "I") +
+          campo("colunasMedicoes", "Colunas dos percentuais (ex.: L,P,T)", m.colunasMedicoes || a.medicoes.map(n => letra(n.coluna)).join(",") || "L,P,T") +
+          '</div><p>Utilize as letras que aparecem no Excel. Cada coluna informada corresponde a uma medição. O sistema somente altera os percentuais dessas colunas.</p>' +
+          '</details></div>';
+      }).join("") +
+      (p.avisos.length ? '<p class="pm-aviso">Abas não reconhecidas ficam intactas no arquivo. Ajuste as colunas apenas se desejar editá-las.</p>' : "") +
+      '<button type="button" class="pm-secondary" id="pmRevisarMapa">Validar mapeamento das abas</button>' +
       '<label>Identificação desta planilha<input id="pmNome" maxlength="180" value="' +
       esc(estado.arquivoNome.replace(/\.xlsx$/i, "")) + '"></label>' +
-      '<button type="button" id="pmConfirmar">Confirmar importação desta planilha</button>';
+      '<button type="button" id="pmConfirmar" ' + (!reconhecidas ? 'disabled' : '') +
+      '>Confirmar importação desta planilha</button>';
+    $("pmRevisarMapa").onclick = () => aguardar(async () => {
+      const mapeamentos = {};
+      $("pmPrevia").querySelectorAll("[data-pm-aba]").forEach(div => {
+        if (!div.querySelector("[data-pm-manual]").checked) return;
+        const config = {};
+        div.querySelectorAll("[data-pm-campo]").forEach(c => { config[c.dataset.pmCampo] = c.value.trim(); });
+        mapeamentos[String(div.dataset.pmAba)] = config;
+      });
+      const nomeDigitado = $("pmNome").value;
+      estado.previa = await api("/obras/planilhas/previa", "POST", { arquivo: estado.arquivo, mapeamentos });
+      estado.mapeamentos = mapeamentos;
+      mostrarPrevia();
+      $("pmNome").value = nomeDigitado;
+      status("Mapeamento validado. Confira novamente os serviços e as medições antes de importar.");
+    }, $("pmRevisarMapa"));
     $("pmConfirmar").onclick = () => aguardar(async () => {
       const nome = $("pmNome").value.trim();
       if (!nome) throw Error("Informe a identificação da planilha.");
       const resultado = await api("/obras/planilhas/importar", "POST", {
         obraId: estado.obraId, nome, arquivoNome: estado.arquivoNome,
-        arquivo: estado.arquivo, hash: estado.previa.hash
+        arquivo: estado.arquivo, hash: estado.previa.hash, mapeamentos: estado.mapeamentos
       });
-      estado.arquivo = ""; estado.previa = null; $("pmPrevia").hidden = true; $("pmArquivo").value = "";
+      estado.arquivo = ""; estado.previa = null; estado.mapeamentos = {};
+      $("pmPrevia").hidden = true; $("pmArquivo").value = "";
       await carregarLista(); await abrirPlanilha(resultado.id);
       status("Planilha importada para a obra. Os pagamentos não foram alterados.");
     }, $("pmConfirmar"));
