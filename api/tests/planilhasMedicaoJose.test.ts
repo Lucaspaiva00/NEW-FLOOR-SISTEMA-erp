@@ -99,3 +99,28 @@ test("layout com colunas personalizadas exige mapeamento explícito e não alter
   assert.equal(verificar.worksheets[0].getCell("S5").value, 0.15);
   assert.equal(verificar.worksheets[0].getCell("K5").value, 2300);
 });
+
+test("quantidade vazia não zera o custo e preço unitário respeita quantidade", async () => {
+  const wb = new ExcelJS.Workbook(), sheet = wb.addWorksheet("Escopo de instalações");
+  sheet.getCell("L2").value = "MEDIÇÃO 01";
+  sheet.getCell("C3").value = "ITEM";
+  sheet.getCell("D3").value = "ETAPA";
+  sheet.getCell("E3").value = "DESCRIÇÃO";
+  sheet.getCell("G3").value = "Quantidade";
+  sheet.getCell("I3").value = "VALOR UNITÁRIO";
+  sheet.getCell("C4").value = "1";
+  sheet.getCell("D4").value = "Instalações";
+  sheet.getCell("E4").value = "Tubulação";
+  sheet.getCell("I4").value = 100;
+  sheet.getCell("L4").value = 0.5;
+  sheet.getCell("C5").value = "2";
+  sheet.getCell("D5").value = "Instalações";
+  sheet.getCell("E5").value = "Fiação";
+  sheet.getCell("G5").value = 3;
+  sheet.getCell("I5").value = 100;
+  const buff = Buffer.from(await wb.xlsx.writeBuffer());
+  const result = await detectarPlanilha(buff);
+  assert.equal(result.abas[0].itens[0].valor, 100);
+  assert.equal(result.abas[0].itens[1].valor, 300);
+  assert.equal(result.abas[0].itens[0].percentuais["1"], 50);
+});
