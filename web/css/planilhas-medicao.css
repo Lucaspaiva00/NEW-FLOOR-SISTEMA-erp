@@ -10,7 +10,7 @@
 .planilhas-medicao .pm-toolbar,.planilhas-medicao .pm-editor-header,.planilhas-medicao .pm-editor-actions,.planilhas-medicao .pm-arquivo,.planilhas-medicao .pm-previa-item{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
 .planilhas-medicao .pm-toolbar label{flex:1 1 220px;max-width:500px}
 .planilhas-medicao label{display:block;color:#334155;font-size:13px;font-weight:700}
-.planilhas-medicao select,.planilhas-medicao input:not([type=file]){display:block;width:100%;margin-top:6px;padding:11px 13px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#0f172a;min-width:0}
+.planilhas-medicao select,.planilhas-medicao input:not([type=file]):not([type=checkbox]){display:block;width:100%;margin-top:6px;padding:11px 13px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#0f172a;min-width:0}
 .planilhas-medicao .pm-file input{margin:10px 0 14px;display:block;width:100%;max-width:100%}
 .planilhas-medicao button,.planilhas-medicao .pm-secondary{min-height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid #0f172a;background:#0f172a;color:#fff;padding:10px 14px;text-decoration:none;font-weight:700;font-size:13px;line-height:1.3}
 .planilhas-medicao .pm-secondary{background:#fff;color:#0f172a}
@@ -41,3 +41,10 @@
 .planilhas-medicao .pm-arquivo>*{flex:1 1 100%}
 .planilhas-medicao .pm-editor-actions button{width:100%}
 }
+.planilhas-medicao .pm-mapa{display:block;flex-basis:100%;margin-top:8px;border-top:1px solid #e2e8f0;padding-top:8px}
+.planilhas-medicao .pm-mapa summary{cursor:pointer;color:#1e40af;font-weight:700;font-size:13px;padding:8px 0}
+.planilhas-medicao .pm-mapa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:12px 0}
+.planilhas-medicao .pm-mapa-ativar{display:flex;align-items:center;gap:9px;margin-top:8px}
+.planilhas-medicao .pm-mapa-ativar input{width:17px;height:17px;flex-shrink:0}
+.planilhas-medicao .pm-mapa p{line-height:1.5}
+.planilhas-medicao #pmRevisarMapa{margin:10px 0}
