@@ -44,10 +44,10 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
   const abas: AbaPlanilha[] = [], avisos: string[] = [];
   for (let indice = 0; indice < workbook.worksheets.length; indice++) {
     const sheet = workbook.worksheets[indice];
-    let cabecalho = 0, colItem = 0, colEtapa = 0, colDescricao = 0, colUnidade = 0, colQuantidade = 0, colValor = 0;
+    let cabecalho = 0, colItem = 0, colEtapa = 0, colDescricao = 0, colUnidade = 0, colQuantidade = 0, colValor = 0, precoUnitario = true;
     for (let r = 1; r <= Math.min(sheet.rowCount, 30); r++) {
       const cols = Math.min(sheet.columnCount, 180);
-      let item = 0, etapa = 0, descricao = 0, unidade = 0, qtd = 0, preco = 0;
+      let item = 0, etapa = 0, descricao = 0, unidade = 0, qtd = 0, preco = 0, unitario = true;
       for (let c = 1; c <= cols; c++) {
         const t = semAcentos(valor(sheet.getCell(r, c)));
         if (t === "ITEM" || t === "CODIGO") item = c;
@@ -55,11 +55,12 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
         if (t === "DESCRICAO" || t === "DESCRICAO DO SERVICO" || t === "SERVICO") descricao = c;
         if (t === "UNI" || t === "UNIDADE") unidade = c;
         if (t === "QUANTIDADE" || t === "QTD") qtd = c;
-        if (t.includes("VALOR UNITARIO") || t === "PRECO UNITARIO" || t === "VALOR TOTAL") preco = c;
+        if (t.includes("VALOR UNITARIO") || t === "PRECO UNITARIO") { preco = c; unitario = true; }
+        else if (t === "VALOR TOTAL" && !preco) { preco = c; unitario = false; }
       }
       if (descricao && (item || etapa) && preco) {
         cabecalho = r; colItem = item; colEtapa = etapa; colDescricao = descricao;
-        colUnidade = unidade; colQuantidade = qtd; colValor = preco;
+        colUnidade = unidade; colQuantidade = qtd; colValor = preco; precoUnitario = unitario;
         break;
       }
     }
@@ -84,6 +85,7 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
       colUnidade = col(manual.unidade, true);
       colQuantidade = col(manual.quantidade, true);
       colValor = col(manual.valor);
+      precoUnitario = manual.tipoValor !== "total";
       if (!colItem && !colEtapa) throw Error("Informe ITEM ou ETAPA na aba " + sheet.name);
     }
     const medicoes: Medicao[] = [];
@@ -118,8 +120,17 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
         const descricao = texto(valor(sheet.getCell(r, colDescricao)));
         const etapa = colEtapa ? texto(valor(sheet.getCell(r, colEtapa))) : "";
         const item = colItem ? texto(valor(sheet.getCell(r, colItem))) : "";
-        const preco = numero(valor(sheet.getCell(r, colValor)));
-        if (!descricao || !item && !etapa || !Number.isFinite(preco)) continue;
+        if (!descricao || (!item && !etapa)) continue;
+        const valorBruto = valor(sheet.getCell(r, colValor));
+        // Nunca converter preço ausente/inválido silenciosamente para R$ 0,00.
+        const textoValor = String(valorBruto ?? "").trim().replace(/[R$\s]/g, "");
+        const normalizado = textoValor.includes(",")
+          ? textoValor.replace(/\./g, "").replace(",", ".") : textoValor;
+        const preco = typeof valorBruto === "number" ? valorBruto : Number(normalizado);
+        if (!textoValor || !Number.isFinite(preco) || preco < 0) {
+          avisos.push(sheet.name + " linha " + r + ": valor contratual não numérico; serviço ignorado para evitar medição incorreta.");
+          continue;
+        }
         if (/^(TOTAL|SUBTOTAL|RESUMO|OBSERVACOES)/.test(semAcentos(descricao))) continue;
         const percentuais: Record<string, number> = {};
         for (const m of medicoes) {
@@ -130,7 +141,7 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
           linha: r, item, etapa, descricao,
           unidade: colUnidade ? texto(valor(sheet.getCell(r, colUnidade))) : "",
           quantidade: colQuantidade ? numero(valor(sheet.getCell(r, colQuantidade))) : 1,
-          valor: Math.round(preco * 100) / 100,
+          valor: Math.round(preco * (precoUnitario ? (colQuantidade ? numero(valor(sheet.getCell(r, colQuantidade))) : 1) : 1) * 100) / 100,
           percentuais,
         });
       }
@@ -139,7 +150,7 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
     const aviso = reconhecida ? undefined : "Não foi reconhecida uma tabela de serviços com colunas de medição. Esta aba será preservada, sem edição automática.";
     if (aviso) avisos.push(sheet.name + ": " + aviso);
     abas.push({ indice, nome: sheet.name, reconhecida, cabecalho, itens, medicoes, ...(aviso ? { aviso } : {}),
-      ...(!manual && cabecalho ? { mapeamento: {cabecalho, item: colItem, etapa: colEtapa, descricao: colDescricao, unidade: colUnidade, quantidade: colQuantidade, valor: colValor, colunasMedicoes: medicoes.map(m=>sheet.getColumn(m.coluna).letter).join(",")} } : {}),
+      ...(!manual && cabecalho ? { mapeamento: {cabecalho, item: colItem, etapa: colEtapa, descricao: colDescricao, unidade: colUnidade, quantidade: colQuantidade, valor: colValor, tipoValor: precoUnitario ? "unitario" : "total", colunasMedicoes: medicoes.map(m=>sheet.getColumn(m.coluna).letter).join(",")} } : {}),
     } as any);
   }
   if (!abas.some(a => a.reconhecida) && !permitirMapeamento) throw Error("Nenhuma aba reconhecida. Ajuste o mapeamento das colunas na prévia antes de importar.");
