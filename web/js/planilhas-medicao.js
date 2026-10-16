@@ -212,6 +212,9 @@
           campo("unidade", "Coluna da unidade (0 = não existe)", letra(m.unidade) || "F") +
           campo("quantidade", "Coluna da quantidade (0 = não existe)", letra(m.quantidade) || "G") +
           campo("valor", "Coluna do valor do serviço", letra(m.valor) || "I") +
+          '<label>Valor informado na coluna<select data-pm-campo="tipoValor">' +
+          '<option value="unitario" ' + (m.tipoValor !== "total" ? "selected" : "") + '>Unitário (multiplicar pela quantidade)</option>' +
+          '<option value="total" ' + (m.tipoValor === "total" ? "selected" : "") + '>Total da linha</option></select></label>' +
           campo("colunasMedicoes", "Colunas dos percentuais (ex.: L,P,T)", m.colunasMedicoes || a.medicoes.map(n => letra(n.coluna)).join(",") || "L,P,T") +
           '</div><p>Utilize as letras que aparecem no Excel. Cada coluna informada corresponde a uma medição. O sistema somente altera os percentuais dessas colunas.</p>' +
           '</details></div>';
