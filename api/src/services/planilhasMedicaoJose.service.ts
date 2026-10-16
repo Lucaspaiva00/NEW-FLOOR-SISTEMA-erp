@@ -137,11 +137,14 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
           const n = numero(valor(sheet.getCell(r, m.coluna)));
           percentuais[String(m.numero)] = Math.round((n <= 1 ? n * 100 : n) * 10000) / 10000;
         }
+        const quantidadeInformada = colQuantidade ? valor(sheet.getCell(r, colQuantidade)) : null;
+        const quantidade = quantidadeInformada === null || quantidadeInformada === undefined || quantidadeInformada === ""
+          ? 1 : numero(quantidadeInformada);
         itens.push({
           linha: r, item, etapa, descricao,
           unidade: colUnidade ? texto(valor(sheet.getCell(r, colUnidade))) : "",
-          quantidade: colQuantidade ? numero(valor(sheet.getCell(r, colQuantidade))) : 1,
-          valor: Math.round(preco * (precoUnitario ? (colQuantidade ? numero(valor(sheet.getCell(r, colQuantidade))) : 1) : 1) * 100) / 100,
+          quantidade,
+          valor: Math.round(preco * (precoUnitario ? quantidade : 1) * 100) / 100,
           percentuais,
         });
       }
