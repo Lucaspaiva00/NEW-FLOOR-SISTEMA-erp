@@ -38,7 +38,7 @@ export type AbaPlanilha = {
   indice: number; nome: string; reconhecida: boolean; cabecalho: number;
   itens: Linha[]; medicoes: Medicao[]; aviso?: string;
 };
-export async function detectarPlanilha(bytes: Buffer): Promise<{ hash: string; abas: AbaPlanilha[]; avisos: string[] }> {
+export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}): Promise<{ hash: string; abas: AbaPlanilha[]; avisos: string[] }> {
   const workbook = await abrirWorkbook(bytes);
   if (workbook.worksheets.length > 20) throw Error("Limite de 20 abas por planilha.");
   const abas: AbaPlanilha[] = [], avisos: string[] = [];
@@ -63,6 +63,29 @@ export async function detectarPlanilha(bytes: Buffer): Promise<{ hash: string; a
         break;
       }
     }
+    // Modelos diferentes podem ser mapeados após a prévia, sem qualquer
+    // alteração no arquivo original. Nunca adivinhar valores de outras colunas.
+    const manual = mapeamentos && typeof mapeamentos === "object" ? mapeamentos[String(indice)] : null;
+    const col = (v: any, aceitaZero = false): number => {
+      const str = String(v ?? "").trim().toUpperCase();
+      const n = /^[A-Z]{1,3}$/.test(str)
+        ? [...str].reduce((t, c) => t * 26 + c.charCodeAt(0) - 64, 0)
+        : Number(str);
+      if (!Number.isSafeInteger(n) || n < (aceitaZero ? 0 : 1) || n > 180) throw Error("Mapeamento de coluna inválido na aba " + sheet.name);
+      return n;
+    };
+    if (manual) {
+      const linha = Number(manual.cabecalho);
+      if (!Number.isInteger(linha) || linha < 1 || linha > 200) throw Error("Linha de cabeçalho inválida na aba " + sheet.name);
+      cabecalho = linha;
+      colItem = col(manual.item, true);
+      colEtapa = col(manual.etapa, true);
+      colDescricao = col(manual.descricao);
+      colUnidade = col(manual.unidade, true);
+      colQuantidade = col(manual.quantidade, true);
+      colValor = col(manual.valor);
+      if (!colItem && !colEtapa) throw Error("Informe ITEM ou ETAPA na aba " + sheet.name);
+    }
     const medicoes: Medicao[] = [];
     if (cabecalho) {
       for (let r = Math.max(1, cabecalho - 3); r <= cabecalho; r++) {
@@ -75,6 +98,18 @@ export async function detectarPlanilha(bytes: Buffer): Promise<{ hash: string; a
           }
         }
       }
+    }
+    if (manual) {
+      medicoes.length = 0;
+      const colunas = String(manual.colunasMedicoes || "").split(/[;, ]+/).map(s => s.trim()).filter(Boolean);
+      if (!colunas.length || colunas.length > 40) throw Error("Informe de 1 a 40 colunas de medição na aba " + sheet.name);
+      const usadas = new Set<number>();
+      colunas.forEach((c, index) => {
+        const coluna = col(c);
+        if (usadas.has(coluna) || coluna === colValor || coluna === colDescricao) throw Error("Colunas de medição repetidas ou incorretas na aba " + sheet.name);
+        usadas.add(coluna);
+        medicoes.push({ numero: index + 1, coluna, titulo: "MEDIÇÃO " + String(index + 1).padStart(2, "0") });
+      });
     }
     medicoes.sort((a, b) => a.numero - b.numero);
     const itens: Linha[] = [];
@@ -103,7 +138,9 @@ export async function detectarPlanilha(bytes: Buffer): Promise<{ hash: string; a
     const reconhecida = Boolean(cabecalho && medicoes.length && itens.length);
     const aviso = reconhecida ? undefined : "Não foi reconhecida uma tabela de serviços com colunas de medição. Esta aba será preservada, sem edição automática.";
     if (aviso) avisos.push(sheet.name + ": " + aviso);
-    abas.push({ indice, nome: sheet.name, reconhecida, cabecalho, itens, medicoes, ...(aviso ? { aviso } : {}) });
+    abas.push({ indice, nome: sheet.name, reconhecida, cabecalho, itens, medicoes, ...(aviso ? { aviso } : {}),
+      ...(!manual && cabecalho ? { mapeamento: {cabecalho, item: colItem, etapa: colEtapa, descricao: colDescricao, unidade: colUnidade, quantidade: colQuantidade, valor: colValor, colunasMedicoes: medicoes.map(m=>sheet.getColumn(m.coluna).letter).join(",")} } : {}),
+    } as any);
   }
   if (!abas.some(a => a.reconhecida)) throw Error("Nenhuma aba de medição reconhecida. Confira se a planilha contém ITEM/ETAPA, DESCRIÇÃO, VALOR UNITÁRIO e MEDIÇÃO 01. Nenhum dado foi alterado.");
   return { hash: createHash("sha256").update(bytes).digest("hex"), abas, avisos };
