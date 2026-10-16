@@ -38,7 +38,7 @@ export type AbaPlanilha = {
   indice: number; nome: string; reconhecida: boolean; cabecalho: number;
   itens: Linha[]; medicoes: Medicao[]; aviso?: string;
 };
-export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}): Promise<{ hash: string; abas: AbaPlanilha[]; avisos: string[] }> {
+export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, permitirMapeamento = false): Promise<{ hash: string; abas: AbaPlanilha[]; avisos: string[] }> {
   const workbook = await abrirWorkbook(bytes);
   if (workbook.worksheets.length > 20) throw Error("Limite de 20 abas por planilha.");
   const abas: AbaPlanilha[] = [], avisos: string[] = [];
@@ -142,7 +142,7 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}): Pr
       ...(!manual && cabecalho ? { mapeamento: {cabecalho, item: colItem, etapa: colEtapa, descricao: colDescricao, unidade: colUnidade, quantidade: colQuantidade, valor: colValor, colunasMedicoes: medicoes.map(m=>sheet.getColumn(m.coluna).letter).join(",")} } : {}),
     } as any);
   }
-  if (!abas.some(a => a.reconhecida)) throw Error("Nenhuma aba de medição reconhecida. Confira se a planilha contém ITEM/ETAPA, DESCRIÇÃO, VALOR UNITÁRIO e MEDIÇÃO 01. Nenhum dado foi alterado.");
+  if (!abas.some(a => a.reconhecida) && !permitirMapeamento) throw Error("Nenhuma aba reconhecida. Ajuste o mapeamento das colunas na prévia antes de importar.");
   return { hash: createHash("sha256").update(bytes).digest("hex"), abas, avisos };
 }
 export function aplicarEdicoes(aba: AbaPlanilha, medicoes: Record<string, number>, numeroMedicao: number) {
