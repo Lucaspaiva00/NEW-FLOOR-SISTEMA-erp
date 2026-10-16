@@ -184,6 +184,8 @@
     const reconhecidas = p.abas.filter(a => a.reconhecida).length;
     $("pmPrevia").hidden = false;
     const letra = n => {
+      if (String(n ?? "").trim() === "0") return "0";
+      if (/^[A-Z]{1,3}$/i.test(String(n ?? "").trim())) return String(n).trim().toUpperCase();
       let v = Number(n), output = "";
       while (v > 0) { v--; output = String.fromCharCode(65 + v % 26) + output; v = Math.floor(v / 26); }
       return output;
