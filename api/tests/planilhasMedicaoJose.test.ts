@@ -69,3 +69,33 @@ test("SBA e New Floor são rejeitados sem consultar banco ou tocar nos outros pe
     assert.match(erro, /José/);
   }
 });
+
+test("layout com colunas personalizadas exige mapeamento explícito e não altera o modelo original", async () => {
+  const livro = new ExcelJS.Workbook();
+  const aba = livro.addWorksheet("Planilha de outra construtora");
+  aba.getCell("B4").value = "Fase";
+  aba.getCell("G4").value = "Atividade";
+  aba.getCell("K4").value = "Preço";
+  aba.getCell("B5").value = "Estrutura";
+  aba.getCell("G5").value = "Fundação";
+  aba.getCell("K5").value = 2300;
+  aba.getCell("N5").value = 0.2;
+  aba.getCell("S5").value = 0.1;
+  const bytes = Buffer.from(await livro.xlsx.writeBuffer());
+  const semMapa = await detectarPlanilha(bytes, {}, true);
+  assert.equal(semMapa.abas[0].reconhecida, false);
+  const mapa = {
+    "0": { cabecalho: 4, item: 0, etapa: "B", descricao: "G",
+      unidade: 0, quantidade: 0, valor: "K", colunasMedicoes: "N,S" }
+  };
+  const p = await detectarPlanilha(bytes, mapa);
+  assert.equal(p.abas[0].reconhecida, true);
+  assert.deepEqual(p.abas[0].medicoes.map(m => m.coluna), [14, 19]);
+  assert.equal(p.abas[0].itens[0].descricao, "Fundação");
+  assert.equal(p.abas[0].itens[0].percentuais["1"], 20);
+  const out = await gerarExcel(bytes, p.abas, { "0:5:2": 15 });
+  const verificar = new ExcelJS.Workbook();
+  await verificar.xlsx.load(out as any);
+  assert.equal(verificar.worksheets[0].getCell("S5").value, 0.15);
+  assert.equal(verificar.worksheets[0].getCell("K5").value, 2300);
+});
