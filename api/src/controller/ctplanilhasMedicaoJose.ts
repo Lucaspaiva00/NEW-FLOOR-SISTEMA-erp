@@ -57,13 +57,13 @@ async function obter(identificador: number): Promise<any> {
 }
 export const previa = handle(async (req, res) => {
   const bytes = validarXlsx(req.body?.arquivo);
-  res.json(await detectarPlanilha(bytes));
+  res.json(await detectarPlanilha(bytes, req.body?.mapeamentos));
 });
 export const importar = handle(async (req, res) => {
   const obraId = id(req.body?.obraId);
   await obraAutorizada(obraId);
   const bytes = validarXlsx(req.body?.arquivo);
-  const parsed = await detectarPlanilha(bytes);
+  const parsed = await detectarPlanilha(bytes, req.body?.mapeamentos);
   if (req.body?.hash !== parsed.hash) throw Error("Arquivo diferente da prévia. Revise a planilha antes de salvar.");
   const nome = String(req.body?.nome || "").trim().slice(0, 180);
   const arquivoNome = String(req.body?.arquivoNome || "").replace(/[^\p{L}\p{N}._\- ()]/gu, "_").slice(0, 220);
