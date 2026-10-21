@@ -955,6 +955,23 @@ export const downloadPdf = async (
   }
 };
 
+// Prévia inline exclusiva New Floor: não altera o fluxo de download nem modelos SBA/José.
+export const visualizarPdfNewFloor = async (req: Request, res: Response): Promise<void> => {
+ try {
+  if(req.empresaId!==1){res.status(403).json({error:'Visualização exclusiva do perfil New Floor.'});return;}
+  const id=Number(req.params.id);
+  if(!Number.isSafeInteger(id)||id<=0){res.status(400).json({error:'Proposta inválida.'});return;}
+  const proposta=await buscarPropostaCompleta(String(id),req.empresaId);
+  if(!proposta){res.status(404).json({error:'Proposta não encontrada.'});return;}
+  const resultado=await gerarPdfInterno(String(id),req.empresaId);
+  if(!resultado?.caminho||!fs.existsSync(resultado.caminho)){res.status(404).json({error:'Prévia indisponível.'});return;}
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition','inline; filename="proposta-'+id+'.pdf"');
+  res.setHeader('Cache-Control','private, no-store');
+  res.sendFile(path.resolve(resultado.caminho));
+ }catch(error:any){console.error('Prévia de proposta New Floor:',error);if(!res.headersSent)res.status(500).json({error:'Não foi possível visualizar a proposta.'});}
+};
+
 export const enviarEmail = async (
   req: Request,
   res: Response,
