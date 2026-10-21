@@ -1,3 +1,5 @@
+import { textoDescricaoNacional } from "./newFloorNfseNacional.service";
+
 function onlyDigits(value: unknown): string | undefined {
   if (value === null || value === undefined) return undefined;
   const digits = String(value).replace(/\D/g, "");
@@ -331,7 +333,7 @@ function buildNfseNacionalPayload(nota: any): Record<string, any> {
     codigo_tributacao_municipal_iss:
       nota.codigoTributarioMunicipal || empresa.codigoTributarioMunicipal,
 
-    descricao_servico: descricao,
+    descricao_servico: nota.empresaId === 1 ? textoDescricaoNacional(descricao) : descricao,
     valor_servico: decimal(nota.valorServicos) ?? decimal(nota.valorTotal),
 
     // NFS-e Nacional:
