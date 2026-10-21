@@ -13,6 +13,7 @@ import {
   cancelarNaFocus,
   consultarNaFocus,
   emitirNaFocus,
+  enviarEmailExtraNaFocus,
   emitirCartaCorrecaoNaFocus,
   parseFocusResult,
 } from "../services/focusNfe.service";
@@ -766,6 +767,24 @@ export const emitirNota = async (req: Request, res: Response): Promise<void> => 
    await registrarEvento(id,'FALHA_ENVIO',undefined,error.message,error.responseData).catch(()=>undefined);
   }
   res.status(error.statusCode||502).json({error:envioIniciado&&!rejeicaoConfirmada?'Não foi possível concluir a operação. Consulte o status da nota; ela pode ter sido recebida pelo provedor.':error.message||'Erro ao emitir documento fiscal.',detalhes:error.responseData});
+ }
+};
+
+// Acionamento manual após autorização; não altera outros tenants e não emite nova nota.
+export const enviarEmailsNewFloor = async (req: Request, res: Response): Promise<void> => {
+ try {
+  const empresaId=req.empresaId;
+  if(empresaId!==1){res.status(403).json({error:'Função exclusiva da New Floor.'});return;}
+  const nota=await notaCompleta(intOr(req.params.id),empresaId);
+  if(!nota){res.status(404).json({error:'Nota não encontrada.'});return;}
+  if(nota.status!=='AUTORIZADA'){res.status(400).json({error:'A nota precisa estar autorizada para enviar cópias.'});return;}
+  const emails=String(nota.destinatarioEmail||'').split(';').map(e=>e.trim()).filter(Boolean);
+  if(!emails.length){res.status(400).json({error:'Cadastre ao menos um e-mail na nota.'});return;}
+  const enviados=await enviarEmailExtraNaFocus(nota,emails);
+  await registrarEvento(nota.notafiscalid,'ENVIO_EMAIL','AUTORIZADA','Solicitação de envio de cópia por e-mail à Focus NFe.',{emails,retorno:enviados.data});
+  res.json({message:'Solicitação de envio encaminhada à Focus NFe.',emails});
+ }catch(error:any){
+  res.status(error.statusCode||502).json({error:error.message||'Falha ao solicitar cópia fiscal.'});
  }
 };
 
