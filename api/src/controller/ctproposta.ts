@@ -399,10 +399,14 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       throw Error("Escolha faturamento externo ou emita a nota pelo módulo Fiscal. A transição direta para Faturada não é permitida.");
     }
     const metaExterno=metadataFaturamentoExterno(propostaAtual.planoRecebimento);
-    if(metaExterno && "planoRecebimento" in body && body.planoRecebimento) {
-      // Preserva referência/documento externo mesmo se o usuário editar
-      // as parcelas pelo formulário padrão da proposta.
-      body.planoRecebimento={...body.planoRecebimento,...metaExterno};
+    if(metaExterno && "planoRecebimento" in body) {
+      if(!body.planoRecebimento && (body.status ?? propostaAtual.status)==="FATURADA") {
+        throw Error("Mantenha as parcelas e o vencimento do faturamento externo enquanto a proposta estiver faturada.");
+      }
+      if(body.planoRecebimento) {
+        // Preserva referência/documento externo nas edições comuns.
+        body.planoRecebimento={...body.planoRecebimento,...metaExterno};
+      }
     }
     const temItensNoBody = Array.isArray(body.itens);
 
