@@ -1,4 +1,5 @@
 import {buildFocusPayload} from './focusNfe.service';
+import { problemasNfseNacionalNewFloor } from './newFloorNfseNacional.service';
 export function conferirNotaFiscal(nota:any){
  const erros:string[]=[],avisos:string[]=[],empresa=nota.empresaFiscal||{};
  const digits=(v:any)=>String(v??'').replace(/\D/g,'');
@@ -29,6 +30,7 @@ export function conferirNotaFiscal(nota:any){
  const calculado=base+Number(nota.valorFrete||0)+Number(nota.valorSeguro||0)+Number(nota.valorOutrasDespesas||0)-Number(nota.valorDesconto||0);
  exigir(Math.abs(calculado-total)<.011,'O total não confere com itens, descontos e despesas.');
  const payload=buildFocusPayload(nota);
+ erros.push(...problemasNfseNacionalNewFloor(nota,payload));
  for(const [index,item]of (nota.itens||[]).entries()){
   const label=`Item ${index+1}: `;
   exigir(String(item.descricao||'').trim(),label+'preencha a descrição.');
