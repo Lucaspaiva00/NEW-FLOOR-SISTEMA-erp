@@ -252,7 +252,8 @@ function notaData(body: any, cliente: any, itens: any[], empresaId?: number) {
     modalidadeFrete: intOr(body.modalidadeFrete, 9),
     indicadorIeDestinatario: intOr(body.indicadorIeDestinatario, 9),
     destinatarioNome:
-      body.destinatarioNome || cliente.razaoSocial || cliente.nomeFantasia || cliente.responsavel || `Cliente ${cliente.clienteid}`,
+      (empresaId===1 && String(cliente.razaoSocial||"").trim()) ? cliente.razaoSocial :
+      (body.destinatarioNome || cliente.razaoSocial || cliente.nomeFantasia || cliente.responsavel || `Cliente ${cliente.clienteid}`),
     destinatarioCnpj: nullable(body.destinatarioCnpj ?? cliente.cnpj),
     destinatarioCpf: nullable(body.destinatarioCpf ?? cliente.cpf),
     destinatarioIe: nullable(body.destinatarioIe ?? cliente.inscricaoEstadual),
