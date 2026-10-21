@@ -102,7 +102,7 @@
    for(const [id,key]of camposTrib){
     const input=$(id),value=input?.value.trim()||"";
     if(!input)continue;
-    if(!value){delete extra[key];continue;}
+    if(!value)continue; // Preserva JSON avançado colado pelo contador mesmo sem preencher o formulário.
     if(key==="situacao_tributaria_pis_cofins"){
       if(!/^\d{2}$/.test(value)){event.preventDefault();event.stopImmediatePropagation();alert("Informe o CST de PIS/COFINS com 2 dígitos, conforme a contabilidade.");return;}
       extra[key]=value;
