@@ -37,10 +37,11 @@ test("documentos da SBA e José mantêm fluxo anterior",()=>{
   assert.deepEqual(problemasNfseNacionalNewFloor(input,buildFocusPayload(input)),[]);
  }
 });
-test("com município e dados tributários legítimos não apresenta os três erros identificados",()=>{
+test("campos fiscais com formato de exemplo não apresentam erros de preenchimento (não valida enquadramento real)",()=>{
  const input=nota(1);
  input.destinatarioCodigoMunicipio="3509502";
- input.payloadExtra={situacao_tributaria_pis_cofins:"06",percentual_total_tributos_federais:3.5};
+ input.empresaFiscal.regimeApuracaoSimples=2; // somente dado sintético de teste
+ input.payloadExtra={situacao_tributaria_pis_cofins:"06",percentual_total_tributos_federais:3.5,ibs_cbs_situacao_tributaria:"123",ibs_cbs_classificacao_tributaria:"123456"};
  const errors=problemasNfseNacionalNewFloor(input,buildFocusPayload(input));
  assert.deepEqual(errors,[]);
 });
