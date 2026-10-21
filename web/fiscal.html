@@ -66,6 +66,7 @@
                 <div class="fiscal-tabs">
                     <button class="fiscal-tab active" data-fiscal-tab="notas">Notas fiscais</button>
                     <button class="fiscal-tab" data-fiscal-tab="logs">Logs fiscais</button>
+                    <button class="fiscal-tab" data-fiscal-tab="recebidas">Notas recebidas / A pagar</button>
                     <button class="fiscal-tab" data-fiscal-tab="empresas">Empresas emissoras</button>
                 </div>
 
@@ -110,6 +111,26 @@
                     <div class="fiscal-empty d-none" id="emptyNotasFiscal">Nenhuma nota fiscal encontrada.</div>
                 </section>
 
+                <section id="tabFiscalRecebidas" class="fiscal-tab-content" aria-label="Notas fiscais recebidas por empresa">
+                    <p class="text-muted small mt-3">Consulte notas emitidas por fornecedores para o CNPJ da empresa. A consulta não gera pagamento nem cria contas automaticamente. Exige habilitação do recebimento na Focus e certificado/credenciais válidas em produção.</p>
+                    <div class="row g-2 align-items-end mb-3">
+                        <label class="col-12 col-md-5">Empresa destinatária (CNPJ)
+                          <select id="nrEmpresa" class="form-select mt-1"><option value="">Selecione a empresa</option></select>
+                        </label>
+                        <label class="col-12 col-md-4">Documento
+                          <select id="nrTipo" class="form-select mt-1"><option value="NFSENACIONAL">NFS-e Nacional</option><option value="NFE">NF-e (mercadorias)</option><option value="NFSEMUNICIPAL">NFS-e municipal</option></select>
+                        </label>
+                        <div class="col-12 col-md-3"><button id="nrConsultar" class="btn-new w-100" type="button">Consultar recebidas</button></div>
+                    </div>
+                    <div id="nrAviso" role="status" aria-live="polite" class="small mb-2 text-muted"></div>
+                    <div class="table-responsive">
+                      <table class="table fiscal-table align-middle">
+                        <thead><tr><th>Fornecedor</th><th>Emissão / chave</th><th>Valor</th><th>Situação</th><th>Financeiro</th></tr></thead>
+                        <tbody id="nrTabela"><tr><td colspan="5">Selecione a empresa e consulte as notas recebidas.</td></tr></tbody>
+                      </table>
+                    </div>
+                    <button type="button" class="btn-secondary-fiscal d-none" id="nrMais">Próximos documentos</button>
+                </section>
                 <section id="tabFiscalLogs" class="fiscal-tab-content">
                     <div class="fiscal-filters"><div><strong>Histórico de integrações</strong><small class="d-block text-muted">Retornos de envio, consulta, autorização e rejeição da Focus NFe.</small></div><button class="btn-secondary-fiscal" id="btnAtualizarLogs">Atualizar logs</button></div>
                     <div class="table-responsive fiscal-table-wrap"><table class="table fiscal-table align-middle mb-0"><thead><tr><th>Data/hora</th><th>Documento</th><th>Cliente</th><th>Evento</th><th>Resultado</th><th></th></tr></thead><tbody id="listaLogsFiscais"></tbody></table></div>
@@ -404,7 +425,7 @@
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/plano-recebimento.js?v=20261013"></script>
-    <script src="js/fiscal.js?v=20261021-newfloor2"></script><script src="js/newfloor-fiscal.js?v=20261021-2"></script>
+    <script src="js/fiscal.js?v=20261021-newfloor2"></script><script src="js/newfloor-fiscal.js?v=20261021-2"></script><script src="js/notas-recebidas.js?v=20261021-1"></script>
     <script src="js/menu-mobile.js"></script>
     <script src="js/arquivo-fiscal-sba.js?v=20261012"></script>
     <script src="js/sidebar.js"></script>
