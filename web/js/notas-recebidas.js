@@ -32,7 +32,7 @@
     const empresas=await api("/fiscal/empresas");
     $("nrEmpresa").innerHTML='<option value="">Selecione uma empresa emissora cadastrada</option>'+
       empresas.map(e=>'<option value="'+Number(e.empresafiscalid)+'">'+esc(e.razaoSocial)+' · '+esc(e.cnpj)+
-      (e.ambiente==="PRODUCAO"?" · Produção":" · Homologação (recebidas reais indisponíveis)")+'</option>').join("");
+      (e.ambiente==="PRODUCAO"?" · Produção":" · Emissão em homologação (recepção requer token de produção)")+'</option>').join("");
   }
   async function consultar(mais=false){
     if(carregando)return;
