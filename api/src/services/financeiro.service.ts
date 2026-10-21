@@ -1,4 +1,5 @@
 import { parcelasRecebimento } from "./planoRecebimento.service";
+import { metadataFaturamentoExterno } from "./faturamentoExterno.service";
 import { Prisma } from "@prisma/client";
 import prisma from "../prisma";
 
@@ -62,6 +63,12 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
     `Cliente #${proposta.clienteId}`;
 
   if(valor===0){return tx.lancamentoFinanceiro.updateMany({where:{empresaId,propostaId,origem:"PROPOSTA"},data:{status:"CANCELADO"}});}
+  const metaExterno = metadataFaturamentoExterno(proposta.planoRecebimento);
+  const observacaoFaturamento = metaExterno
+    ? "Faturamento EXTERNO (nota já emitida fora do ERP)." +
+      (metaExterno.referenciaFiscalExterna ? " Referência fiscal: " + metaExterno.referenciaFiscalExterna + "." : " Sem referência fiscal informada.") +
+      (metaExterno.dataEmissaoExterna ? " Emissão: " + metaExterno.dataEmissaoExterna + "." : "")
+    : "Gerado ao faturar a proposta.";
   const parcelas=parcelasRecebimento(valor,proposta.planoRecebimento);
   await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "propostaId"=${propostaId} AND "empresaId"=${empresaId} FOR UPDATE`;
   const existentes=await tx.lancamentoFinanceiro.findMany({where:{empresaId,propostaId,origem:"PROPOSTA"}});
@@ -78,7 +85,7 @@ export async function sincronizarPropostaFaturada(propostaId: number, empresaId:
   const resultados=[];
   for(const parcela of parcelas){
     const chaveOrigem=`PROPOSTA:${propostaId}:${parcela.numero}`,existente=existentes.find(l=>l.chaveOrigem===chaveOrigem);
-    const dados={descricao:`Proposta ${proposta.numero} - ${nomeCliente}${parcelas.length>1?` (${parcela.numero}/${parcelas.length})`:""}`,documento:proposta.numero,valor:parcela.valor,clienteId:proposta.clienteId,categoriaFinanceiraId:categoria.categoriafinanceiraid,formaPagamento:proposta.formaPagamento,parcelaNumero:parcela.numero,totalParcelas:parcelas.length,observacoes:proposta.condicoesPagamento?`Condições comerciais: ${proposta.condicoesPagamento}`:"Gerado ao faturar a proposta.",...(proposta.planoRecebimento?{dataVencimento:parcela.vencimento}:{})};
+    const dados={descricao:`Proposta ${proposta.numero} - ${nomeCliente}${parcelas.length>1?` (${parcela.numero}/${parcelas.length})`:""}`,documento:proposta.numero,valor:parcela.valor,clienteId:proposta.clienteId,categoriaFinanceiraId:categoria.categoriafinanceiraid,formaPagamento:proposta.formaPagamento,parcelaNumero:parcela.numero,totalParcelas:parcelas.length,observacoes:[observacaoFaturamento, proposta.condicoesPagamento ? `Condições comerciais: ${proposta.condicoesPagamento}` : null].filter(Boolean).join(" "),...(proposta.planoRecebimento?{dataVencimento:parcela.vencimento}:{})};
     resultados.push(await tx.lancamentoFinanceiro.upsert({where:{chaveOrigem},update:{...dados,status:existente&&Number(existente.valorPago)>=parcela.valor?"PAGO":existente?.status==="CANCELADO"&&!reativar?"CANCELADO":"ABERTO"},create:{...dados,empresaId,tipo:"ENTRADA",status:"ABERTO",origem:"PROPOSTA",dataCompetencia:proposta.dataFaturamento||new Date(),dataVencimento:parcela.vencimento,chaveOrigem,propostaId}}));
   }
   return resultados[0];
