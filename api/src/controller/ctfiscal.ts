@@ -210,7 +210,13 @@ async function obterCliente(body: any, empresaId: number) {
   return cliente;
 }
 
-function notaData(body: any, cliente: any, itens: any[]) {
+export function emailsNotaNewFloor(primario:any, adicional:any) {
+ const validar=(email:string)=>/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email);
+ const emails=[String(primario||"").trim(),String(adicional||"").trim()].filter(Boolean);
+ if(emails.some(email=>email.length>254||!validar(email)))throw Object.assign(Error("Informe e-mails válidos para a nota fiscal."),{statusCode:400});
+ return [...new Set(emails.map(e=>e.toLowerCase()))].join(";") || null;
+}
+function notaData(body: any, cliente: any, itens: any[], empresaId?: number) {
   const tipo: TipoDocumentoFiscal = body.tipo === "NFSE" ? "NFSE" : "NFE";
   const valorItens = totalItens(itens);
   const valorProdutos =
@@ -250,7 +256,9 @@ function notaData(body: any, cliente: any, itens: any[]) {
     destinatarioCpf: nullable(body.destinatarioCpf ?? cliente.cpf),
     destinatarioIe: nullable(body.destinatarioIe ?? cliente.inscricaoEstadual),
     destinatarioIm: nullable(body.destinatarioIm),
-    destinatarioEmail: nullable(body.destinatarioEmail ?? cliente.email1),
+    destinatarioEmail: empresaId===1
+      ? emailsNotaNewFloor(body.destinatarioEmail ?? cliente.email1, body.destinatarioEmailAdicional)
+      : nullable(body.destinatarioEmail ?? cliente.email1),
     destinatarioTelefone: nullable(body.destinatarioTelefone ?? cliente.telefone1),
     destinatarioCep: nullable(body.destinatarioCep ?? cliente.cep),
     destinatarioEndereco: nullable(body.destinatarioEndereco ?? cliente.endereco),
@@ -608,7 +616,7 @@ export const criarNota = async (req: Request, res: Response): Promise<void> => {
 
     const referencia = `NF${Date.now()}${randomUUID().replace(/-/g, "").slice(0, 8)}`;
     await validarVinculosNota(req.body,empresaId,cliente.clienteid);
-    const data = notaData(req.body, cliente, itens);
+    const data = notaData(req.body, cliente, itens, empresaId);
 
     const nota = await prisma.notaFiscal.create({
       data: {
@@ -655,7 +663,7 @@ export const atualizarNota = async (req: Request, res: Response): Promise<void> 
       return;
     }
     await validarVinculosNota(req.body,empresaId,cliente.clienteid);
-    const data = notaData(req.body, cliente, itens);
+    const data = notaData(req.body, cliente, itens, empresaId);
 
     await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT notafiscalid FROM "NotaFiscal" WHERE notafiscalid=${id} AND "empresaId"=${empresaId} FOR UPDATE`;
