@@ -3,6 +3,7 @@ import {validarPlanoRecebimento} from "../services/planoRecebimento.service";
 import {Prisma} from "@prisma/client";
 import {conferirNotaFiscal} from "../services/fiscalValidacao.service";
 import {resolverConfiguracao} from "../services/configuracaoSistema.service";
+import {metadataFaturamentoExterno} from "../services/faturamentoExterno.service";
 
 import { randomUUID } from "crypto";
 import { Request, Response } from "express";
@@ -741,6 +742,13 @@ export const emitirNota = async (req: Request, res: Response): Promise<void> => 
   const nota=await notaCompleta(id,empresaId);
   if(!nota){res.status(404).json({error:'Nota fiscal não encontrada.'});return;}
   if(!['RASCUNHO','ERRO','REJEITADA'].includes(nota.status)){res.status(409).json({error:'Documento já enviado. Consulte o status antes de tentar novamente.'});return;}
+  // Não emitir segunda nota de PRODUÇÃO no ERP para venda já declarada
+  // como faturada fora dele. Homologação permanece possível para testes.
+  if(nota.proposta && nota.proposta.status==='FATURADA' &&
+     metadataFaturamentoExterno(nota.proposta.planoRecebimento) &&
+     nota.empresaFiscal.ambiente==='PRODUCAO'){
+    res.status(409).json({error:'A proposta já está registrada como faturada fora do ERP. Revise o faturamento externo antes de emitir outra nota em produção.'});return;
+  }
   const conferencia=conferirNotaFiscal(nota);
   if(!conferencia.podeEmitir){res.status(422).json({error:'Corrija os dados antes de emitir.',detalhes:conferencia});return;}
   const reservar=async(tx:Prisma.TransactionClient)=>{
