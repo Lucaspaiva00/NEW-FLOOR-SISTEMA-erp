@@ -972,10 +972,12 @@ export const downloadPdf = async (
   }
 };
 
-// Prévia inline exclusiva New Floor: não altera o fluxo de download nem modelos SBA/José.
-export const visualizarPdfNewFloor = async (req: Request, res: Response): Promise<void> => {
+// Prévia autenticada de propostas para todas as empresas com módulo Propostas.
+// O PDF mantém a escolha de modelo da empresa, incluindo o template SBA.
+export const visualizarPdf = async (req: Request, res: Response): Promise<void> => {
  try {
-  if(req.empresaId!==1){res.status(403).json({error:'Visualização exclusiva do perfil New Floor.'});return;}
+  if(!req.empresaId){res.status(401).json({error:'Autenticação necessária.'});return;}
+  if(req.configuracaoSistema?.modulos?.propostas===false){res.status(403).json({error:'Módulo de propostas indisponível para esta empresa.'});return;}
   const id=Number(req.params.id);
   if(!Number.isSafeInteger(id)||id<=0){res.status(400).json({error:'Proposta inválida.'});return;}
   const proposta=await buscarPropostaCompleta(String(id),req.empresaId);
