@@ -67,7 +67,7 @@
       event.preventDefault(); event.stopPropagation();
       previsualizar(Number(btn.dataset.visualizarNewfloor), btn);
     });
-    const obs = new MutationObserver(() => {
+    const inserirBotoes = () => {
       if (!cards) return;
       cards.querySelectorAll(".proposal-card").forEach(card => {
         if (card.querySelector("[data-visualizar-newfloor]")) return;
@@ -81,8 +81,9 @@
           pid + '">Visualizar proposta</button>';
         menu.after(li);
       });
-    });
-    if (cards) { obs.observe(cards, { childList: true, subtree: true }); }
+    };
+    const obs = new MutationObserver(inserirBotoes);
+    if (cards) { obs.observe(cards, { childList: true, subtree: true }); inserirBotoes(); }
   }
   iniciar().catch(console.error);
 })();
