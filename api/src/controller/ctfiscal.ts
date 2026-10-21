@@ -54,6 +54,18 @@ function semTokens(empresa: any) {
   };
 }
 
+/** Exclusivo SBA: Portal Nacional/SIEG, nunca Focus. */
+function empresaDataSba(body: any, existente?: any) {
+  const dados = empresaData(body, existente);
+  return {
+    ...dados,
+    provedor: "PORTAL_NACIONAL_DIRETO",
+    padraoNfse: "NACIONAL" as const,
+    tokenHomologacao: null,
+    tokenProducao: null,
+  };
+}
+
 function empresaData(body: any, existente?: any) {
   const tokenHomologacao = body.tokenHomologacao;
   const tokenProducao = body.tokenProducao;
@@ -415,7 +427,9 @@ export const criarEmpresa = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const empresa = await prisma.empresaFiscal.create({ data: { empresaId: req.empresaId as number, ...empresaData(req.body) } });
+    const data = req.configuracaoSistema?.perfil === "SBA"
+      ? empresaDataSba(req.body) : empresaData(req.body);
+    const empresa = await prisma.empresaFiscal.create({ data: { empresaId: req.empresaId as number, ...data } });
     res.status(201).json(semTokens(empresa));
   } catch (error: any) {
     console.error(error);
@@ -437,7 +451,7 @@ export const atualizarEmpresa = async (req: Request, res: Response): Promise<voi
 
     const empresa = await prisma.empresaFiscal.update({
       where: { empresafiscalid: id },
-      data: empresaData(req.body, existente),
+      data: req.configuracaoSistema?.perfil === "SBA" ? empresaDataSba(req.body, existente) : empresaData(req.body, existente),
     });
     res.json(semTokens(empresa));
   } catch (error: any) {
@@ -738,9 +752,18 @@ export const visualizarPayload = async (req: Request, res: Response): Promise<vo
 };
 
 export const conferirNota = async(req:Request,res:Response)=>{
+ if (req.configuracaoSistema?.perfil === "SBA") {
+   res.json({podeEmitir:false,erros:["A emissão direta da SBA ainda não está habilitada. NFS-e: Portal Nacional em preparação; NF-e de materiais: integração SIEG pendente."],avisos:[]});
+   return;
+ }
  try{const nota=await notaCompleta(intOr(req.params.id),req.empresaId!);if(!nota){res.status(404).json({error:'Nota fiscal não encontrada.'});return;}res.json(conferirNotaFiscal(nota));}catch(e:any){res.status(400).json({error:e.message||'Não foi possível conferir os dados.'});}
 };
 export const emitirNota = async (req: Request, res: Response): Promise<void> => {
+ // Guarda do servidor: jamais encaminhar documento SBA à Focus por engano.
+ if (req.configuracaoSistema?.perfil === "SBA") {
+   res.status(422).json({error:"Emissão pela SBA ainda não habilitada: NFS-e Nacional direta e SIEG Emissor em preparação. Nenhum documento foi transmitido à Focus."});
+   return;
+ }
  const id=intOr(req.params.id),empresaId=req.empresaId!;let envioIniciado=false;
  try{
   const nota=await notaCompleta(id,empresaId);
