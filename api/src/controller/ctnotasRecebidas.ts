@@ -5,7 +5,6 @@ const DIG = (v:unknown) => String(v??"").replace(/\D/g,"");
 const FONTES = {
   NFE: "nfes_recebidas",
   NFSE_NACIONAL: "nfsens_recebidas",
-  NFSE_MUNICIPAL: "nfses_recebidas",
 } as const;
 type TipoRecebida = keyof typeof FONTES;
 const tipoValido = (v:unknown):v is TipoRecebida =>
@@ -28,13 +27,15 @@ async function emissora(req:Request,id:number){
   if(DIG(empresa.cnpj).length!==14)throw error("CNPJ da empresa receptora inválido.");
   return empresa;
 }
-async function consultarFocus(empresa:any,tipo:TipoRecebida,versao:number):Promise<any[]>{
+async function consultarFocus(empresa:any,tipo:TipoRecebida,versao:number):Promise<{documentos:any[],maxVersion:number,total:number}>{
   if(!Number.isSafeInteger(versao)||versao<0||versao>Number.MAX_SAFE_INTEGER-1)
     throw error("Versão da consulta inválida.");
   const caminho=FONTES[tipo];
   const url=new URL("https://api.focusnfe.com.br/v2/"+caminho);
   url.searchParams.set("cnpj",DIG(empresa.cnpj));
-  url.searchParams.set("versao",String(versao));
+  // Na primeira consulta, omitir versao: a documentação Focus mostra
+  // o parâmetro apenas como cursor de paginação, não como versao=0.
+  if(versao>0)url.searchParams.set("versao",String(versao));
   const resp=await fetch(url,{
     signal:AbortSignal.timeout(20000),
     headers:{
@@ -43,13 +44,26 @@ async function consultarFocus(empresa:any,tipo:TipoRecebida,versao:number):Promi
     }
   });
   if(!resp.ok){
+    // Nunca devolver dados completos, token ou corpo bruto do provedor.
+    const raw=(await resp.text()).slice(0,1500);
+    let codigo="";
+    let mensagem="";
+    try{
+      const parsed=JSON.parse(raw);
+      codigo=String(parsed.codigo||parsed.code||"").slice(0,60);
+      mensagem=String(parsed.mensagem||parsed.message||parsed.erro||"").slice(0,250);
+    }catch(_){}
+    const safe=(v:string)=>v.replace(/https?:\/\/\S+/g,"[link]").replace(/\b\d{11,14}\b/g,"[documento]").replace(/[^\w\s\-().,;:áéíóúãõâêôçÁÉÍÓÚÃÕÂÊÔÇ]/g,"").slice(0,250);
     if([401,403].includes(resp.status))throw error(
-      "A Focus não autorizou a consulta de notas recebidas para este CNPJ. Verifique a habilitação do produto e o certificado/token do ambiente de produção.",422);
-    throw error("Não foi possível consultar a Focus (HTTP "+resp.status+"). Tente novamente.",502);
+      "A Focus não autorizou a consulta do CNPJ. Confirme token de produção, certificado e produto de notas recebidas habilitado.",422);
+    if(resp.status===400)throw error("A Focus rejeitou a consulta (400). Verifique cadastro/habilitação do recebimento e parâmetros da conta."+
+      (codigo||mensagem?" Detalhe: "+safe([codigo,mensagem].filter(Boolean).join(" - ")):""),422);
+    if(resp.status===404)throw error("A Focus informou rota ou produto de recebimento indisponível (404). Confirme o serviço habilitado para esse CNPJ.",422);
+    throw error("Consulta Focus indisponível (HTTP "+resp.status+").",502);
   }
   const dados=await resp.json();
   if(!Array.isArray(dados))throw error("A Focus retornou uma lista inválida de documentos.",502);
-  return dados.slice(0,100);
+  return {documentos:dados.slice(0,100),maxVersion:Number(resp.headers.get("X-Max-Version")||0),total:Number(resp.headers.get("X-Total-Count")||dados.length)};
 }
 function normalizar(n:any,tipo:TipoRecebida,cnpj:string){
   const chave=String(n.chave_nfe||n.chave_nfse||n.chave||"").trim();
@@ -77,14 +91,15 @@ export const listar=async(req:Request,res:Response):Promise<void>=>{
   if(!tipoValido(req.query.tipo))throw error("Selecione o tipo de nota recebida.");
   const emp=await emissora(req,Number(req.query.empresaFiscalId));
   const versao=req.query.versao==null?0:Number(req.query.versao);
-  const docs=(await consultarFocus(emp,req.query.tipo,versao))
+  const consulta=await consultarFocus(emp,req.query.tipo,versao);
+  const docs=consulta.documentos
     .map(n=>normalizar(n,req.query.tipo as TipoRecebida,DIG(emp.cnpj))).filter(Boolean);
   const chaves=docs.map((d:any)=>"RECEBIDA:"+emp.empresaId+":"+d.tipo+":"+d.chave);
   const existentes=chaves.length?await prisma.lancamentoFinanceiro.findMany({
     where:{empresaId:emp.empresaId,tipo:"SAIDA",chaveOrigem:{in:chaves}},
     select:{chaveOrigem:true,lancamentofinanceiroid:true,status:true}
   }):[];
-  res.json({empresaFiscalId:emp.empresafiscalid,tipo:req.query.tipo,versao,proximaVersao:Math.max(versao,...docs.map((d:any)=>d.versao)),
+  res.json({empresaFiscalId:emp.empresafiscalid,tipo:req.query.tipo,versao,proximaVersao:Math.max(versao,consulta.maxVersion,...docs.map((d:any)=>d.versao)),total:consulta.total,
     documentos:docs.map((d:any)=>({...d,contaExistente:existentes.find(x=>x.chaveOrigem==="RECEBIDA:"+emp.empresaId+":"+d.tipo+":"+d.chave)||null})),
     aviso:"Somente consulta. A Focus deve ter o recebimento habilitado para o CNPJ; documentos cancelados não devem ser pagos. Uma nota recebida não é, por si só, uma dívida vencida."});
  }catch(e:any){respostaErro(res,e);}
@@ -99,7 +114,7 @@ export const importarParaPagar=async(req:Request,res:Response):Promise<void>=>{
   if(!chave||chave.length>120||!/^[\w-]+$/.test(chave)||!Number.isSafeInteger(versao)||versao<0)
     throw error("Chave ou versão fiscal inválida.");
   if(!dataValida(req.body?.vencimento))throw error("Informe o vencimento acordado com o fornecedor.");
-  const rows=await consultarFocus(emp,req.body.tipo,Math.max(0,versao-1));
+  const rows=(await consultarFocus(emp,req.body.tipo,Math.max(0,versao-1))).documentos;
   const documento=rows.map(n=>normalizar(n,req.body.tipo,DIG(emp.cnpj))).find((d:any)=>d?.chave===chave&&d?.versao===versao);
   if(!documento)throw error("Nota não encontrada na consulta atual da Focus. Atualize a lista para conferir.",409);
   if(!["autorizada","autorizado"].includes(documento.situacao))
