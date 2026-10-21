@@ -15,6 +15,7 @@ import * as template from "../controller/cttemplate";
 import * as usuario from "../controller/ctusuario";
 import * as vendedor from "../controller/ctvendedor";
 import * as fiscal from "../controller/ctfiscal";
+import * as integracaoFiscalSba from "../controller/ctintegracaoFiscalSba";
 import * as notasRecebidas from "../controller/ctnotasRecebidas";
 import * as financeiro from "../controller/ctfinanceiro";
 import * as empresa from "../controller/ctempresa";
@@ -185,6 +186,7 @@ routes.post("/fiscal/arquivos",auth,fornecedor.apenasSba,arquivoFiscal.criar);
 routes.get("/fiscal/arquivos/:id/:tipo",auth,fornecedor.apenasSba,arquivoFiscal.baixar);
 // Módulo fiscal
 routes.get("/fiscal/dashboard", auth, fiscal.dashboard);
+routes.get("/fiscal/sba/integracoes/status", auth, integracaoFiscalSba.diagnosticoFiscalSba);
 routes.get("/fiscal/recebidas",auth,requireRole(["ADMIN","SUPER_ADMIN","FINANCEIRO"]),notasRecebidas.listar);
 routes.post("/fiscal/recebidas/importar",auth,requireRole(["ADMIN","SUPER_ADMIN","FINANCEIRO"]),notasRecebidas.importarParaPagar);
 routes.route("/fiscal/empresas")
