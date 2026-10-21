@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { validarPlanoRecebimento } from "../services/planoRecebimento.service";
+import { metadataFaturamentoExterno } from "../services/faturamentoExterno.service";
 import { Request, Response } from "express";
 import { resolverConfiguracao, prepararCampos } from "../services/configuracaoSistema.service";
 import { calcularComposicao } from "../services/orcamentoSba.service";
@@ -223,6 +224,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = await prepararBody(req, res);
     if (!body) return;
+    if(body.status==="FATURADA"){res.status(409).json({error:"Para faturar, selecione emissão pelo ERP ou faturamento externo em uma proposta já cadastrada."});return;}
 
     const numeroAutomatico = await gerarNumeroAutomaticoProposta(req.empresaId as number);
 
@@ -393,6 +395,15 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       await tx.$queryRaw`SELECT "propostaid" FROM "Proposta" WHERE "propostaid"=${Number(id)} AND "empresaId"=${req.empresaId as number} FOR UPDATE`;
       const propostaAtual=await tx.proposta.findFirst({where:{propostaid:Number(id),empresaId:req.empresaId as number}});
       if(!propostaAtual)throw new Error("Proposta não encontrada");
+    if (body.status === "FATURADA" && propostaAtual.status !== "FATURADA") {
+      throw Error("Escolha faturamento externo ou emita a nota pelo módulo Fiscal. A transição direta para Faturada não é permitida.");
+    }
+    const metaExterno=metadataFaturamentoExterno(propostaAtual.planoRecebimento);
+    if(metaExterno && "planoRecebimento" in body && body.planoRecebimento) {
+      // Preserva referência/documento externo mesmo se o usuário editar
+      // as parcelas pelo formulário padrão da proposta.
+      body.planoRecebimento={...body.planoRecebimento,...metaExterno};
+    }
     const temItensNoBody = Array.isArray(body.itens);
 
     if (temItensNoBody) {
@@ -636,6 +647,8 @@ export const readKanban = async (
         prioridade: true,
         origem: true,
         subtotal: true,
+        formaPagamento: true,
+        planoRecebimento: true,
         createdAt: true,
         cliente: {
           select: {
