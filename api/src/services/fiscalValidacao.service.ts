@@ -10,6 +10,12 @@ export function conferirNotaFiscal(nota:any){
  exigir(digits(empresa.codigoMunicipioIbge).length===7,'Empresa emissora: informe o código IBGE do município (7 dígitos).');
  exigir(!(nota.destinatarioCnpj&&nota.destinatarioCpf),'Destinatário: informe CNPJ ou CPF, sem preencher os dois.');
  exigir(digits(nota.destinatarioCnpj).length===14||digits(nota.destinatarioCpf).length===11,'Destinatário: informe CNPJ ou CPF válido.');
+ // Exigência operacional exclusiva do cliente New Floor (empresaId 1).
+ // Outras empresas, inclusive SBA e Construarty, seguem sua validação fiscal original.
+ if(Number(nota.empresaId)===1){
+  exigir(String(nota.destinatarioNome||'').trim(),'New Floor: informe a razão social do cliente antes de emitir.');
+  exigir(digits(nota.destinatarioIe).length>0,'New Floor: informe a inscrição estadual do cliente antes de emitir. Em caso de isenção ou não contribuinte, valide o tratamento com a contabilidade.');
+ }
  exigir(nota.itens?.length>0,'Adicione ao menos um item à nota.');
  const total=Number(nota.valorTotal);exigir(Number.isFinite(total)&&total>0,'Informe um valor total positivo.');
  if(nota.proposta){const totalProposta=Number(nota.proposta.subtotal||0)+Number(nota.proposta.frete||0);exigir(Math.abs(totalProposta-total)<.011,'A nota vinculada deve corresponder ao total da proposta. Faturamento parcial ou dividido em várias notas ainda exige um fluxo próprio.');}
