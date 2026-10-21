@@ -61,14 +61,22 @@
     '<label class="col-12 col-sm-3">Total tributos federais (%)<input id="nfTribFederal" type="number" min="0" max="100" step="0.01" class="form-control" placeholder="Conforme contabilidade"></label>'+
     '<label class="col-12 col-sm-3">Total tributos estaduais (%)<input id="nfTribEstadual" type="number" min="0" max="100" step="0.01" class="form-control"></label>'+
     '<label class="col-12 col-sm-3">Total tributos municipais (%)<input id="nfTribMunicipal" type="number" min="0" max="100" step="0.01" class="form-control"></label></div>'+
-    '<small class="text-muted d-block mt-2">O CEP do tomador deve ter código IBGE do município preenchido. A descrição fiscal deve ter no máximo 2.000 caracteres.</small>';
+    '<div class="row g-3 mt-1">'+
+    '<label class="col-12 col-sm-4">CST IBS/CBS (3 dígitos)<input id="nfIbsCst" class="form-control" maxlength="3" inputmode="numeric" placeholder="Confirmar com contador"></label>'+
+    '<label class="col-12 col-sm-4">Classificação IBS/CBS (6 dígitos)<input id="nfIbsClasse" class="form-control" maxlength="6" inputmode="numeric" placeholder="Confirmar com contador"></label>'+
+    '<label class="col-12 col-sm-4">Código NBS do serviço<input id="nfCodigoNbs" class="form-control" maxlength="16" placeholder="Conforme classificação"></label>'+
+    '</div>'+
+    '<small class="text-muted d-block mt-2">Os códigos IBS/CBS não podem ser deduzidos do CNAE. A classificação e apuração do Simples devem ser confirmadas pela contabilidade antes da homologação.</small>';
    nfseBloco.append(painel);
   }
   const camposTrib=[
    ["nfTribPis","situacao_tributaria_pis_cofins"],
    ["nfTribFederal","percentual_total_tributos_federais"],
    ["nfTribEstadual","percentual_total_tributos_estaduais"],
-   ["nfTribMunicipal","percentual_total_tributos_municipais"]
+   ["nfTribMunicipal","percentual_total_tributos_municipais"],
+   ["nfIbsCst","ibs_cbs_situacao_tributaria"],
+   ["nfIbsClasse","ibs_cbs_classificacao_tributaria"],
+   ["nfCodigoNbs","codigo_nbs"]
   ];
   function carregarTributos(){
    let extra={};
@@ -105,6 +113,13 @@
     if(!value)continue; // Preserva JSON avançado colado pelo contador mesmo sem preencher o formulário.
     if(key==="situacao_tributaria_pis_cofins"){
       if(!/^\d{2}$/.test(value)){event.preventDefault();event.stopImmediatePropagation();alert("Informe o CST de PIS/COFINS com 2 dígitos, conforme a contabilidade.");return;}
+      extra[key]=value;
+    }else if(key==="ibs_cbs_situacao_tributaria" || key==="ibs_cbs_classificacao_tributaria"){
+      const max=key==="ibs_cbs_situacao_tributaria"?3:6;
+      if(!new RegExp("^\\d{"+max+"}$").test(value)){event.preventDefault();event.stopImmediatePropagation();alert("Informe o código IBS/CBS com "+max+" dígitos, conforme a contabilidade.");return;}
+      extra[key]=value;
+    }else if(key==="codigo_nbs"){
+      if(!/^[0-9.]{7,16}$/.test(value)){event.preventDefault();event.stopImmediatePropagation();alert("Informe o NBS válido conforme a classificação contábil.");return;}
       extra[key]=value;
     }else{
       const numero=Number(value);
