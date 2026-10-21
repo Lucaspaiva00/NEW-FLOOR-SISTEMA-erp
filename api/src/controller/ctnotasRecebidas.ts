@@ -21,8 +21,10 @@ async function emissora(req:Request,id:number){
     select:{empresafiscalid:true,empresaId:true,cnpj:true,ambiente:true,tokenProducao:true}
   });
   if(!empresa)throw error("Empresa fiscal não encontrada neste acesso.",404);
-  if(empresa.ambiente!=="PRODUCAO"||!empresa.tokenProducao)throw error(
-    "Notas recebidas reais exigem ambiente PRODUÇÃO, token próprio e habilitação do serviço de recebimento na Focus.",422);
+  // Recebimento de notas reais usa o token de produção, mesmo quando
+  // a emissão está em homologação. Nunca alterar o ambiente emissor.
+  if(!empresa.tokenProducao)throw error(
+    "Configure o token Focus de PRODUÇÃO nesta empresa para consultar notas recebidas reais. A emissão pode continuar em HOMOLOGAÇÃO. Habilite também o produto de recebimento correspondente na Focus.",422);
   if(DIG(empresa.cnpj).length!==14)throw error("CNPJ da empresa receptora inválido.");
   return empresa;
 }
