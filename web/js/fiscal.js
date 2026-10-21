@@ -996,6 +996,7 @@
       ${n.status === "AUTORIZADA" && n.tipo === "NFE" ? `<button type="button" class="btn btn-outline-primary" data-carta-correcao="${n.notafiscalid}">Carta de correção</button>` : ""}
       ${n.status === "AUTORIZADA" ? `<button type="button" class="btn btn-danger" data-cancelar-nota="${n.notafiscalid}">Cancelar nota</button>` : ""}
       ${editavel ? `<button type="button" class="btn-new" data-emitir-nota="${n.notafiscalid}">Emitir agora</button>` : ""}`;
+    if(window.__newFloorFiscal)window.dispatchEvent(new CustomEvent("newfloor-nota-detalhe",{detail:n}));
   }
 
   async function abrirDetalheNota(id) {
