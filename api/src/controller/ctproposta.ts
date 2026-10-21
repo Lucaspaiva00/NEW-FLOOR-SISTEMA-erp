@@ -6,7 +6,7 @@ import { calcularComposicao } from "../services/orcamentoSba.service";
 async function prepararBody(req: Request, res: Response): Promise<any> {
  const config=req.configuracaoSistema || resolverConfiguracao(null);
  const body=prepararCampos(req.body,config);
- if(!config.selecionarDestinatario) {delete body.contatoDestinatario;delete body.emailDestinatario;}
+ if(!config.selecionarDestinatario) {delete body.contatoDestinatario; if(req.empresaId!==1)delete body.emailDestinatario;}
  if(!config.composicaoCustos) {delete body.composicaoCustos;delete body.prazoEntrega;}
  try {
  if("planoRecebimento" in body){
@@ -26,7 +26,10 @@ async function prepararBody(req: Request, res: Response): Promise<any> {
  if(body.clienteId !== undefined) {
    const cliente=await prisma.cliente.findFirst({where:{clienteid:Number(body.clienteId),empresaId:req.empresaId as number}});
    if(!cliente) throw new Error("Cliente não pertence à empresa.");
-   if(body.emailDestinatario && ![cliente.email1,cliente.email2,cliente.email3,cliente.email4].includes(body.emailDestinatario)) throw new Error("Selecione um e-mail cadastrado no cliente.");
+   if(req.empresaId===1 && body.emailDestinatario) {
+    body.emailDestinatario=String(body.emailDestinatario).trim();
+    if(body.emailDestinatario.length>254 || !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(body.emailDestinatario))throw Error('Informe um e-mail adicional válido para a New Floor.');
+   } else if(body.emailDestinatario && ![cliente.email1,cliente.email2,cliente.email3,cliente.email4].includes(body.emailDestinatario)) throw new Error("Selecione um e-mail cadastrado no cliente.");
    if(body.contatoDestinatario && ![cliente.responsavel,cliente.nomeEmail1,cliente.nomeEmail2,cliente.nomeEmail3,cliente.nomeEmail4,cliente.nomeTelefone1,cliente.nomeTelefone2,cliente.nomeTelefone3,cliente.nomeTelefone4].includes(body.contatoDestinatario)) throw new Error("Selecione um contato cadastrado no cliente.");
  }
  return body;
@@ -983,6 +986,16 @@ export const enviarEmail = async (
       return;
     }
 
+    // New Floor: enviar para o endereço principal e opcionalmente para a cópia
+    // cadastrada na proposta. O comportamento da SBA permanece inalterado.
+    const extraNewFloor = req.empresaId === 1 ? String(proposta.emailDestinatario || "").trim() : "";
+    const emailValido = (valor: string) => /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(valor);
+    if(req.empresaId === 1 && (!emailValido(String(destinatario)) || (extraNewFloor && !emailValido(extraNewFloor)))) {
+      res.status(400).json({error:'Informe endereços de e-mail válidos antes de enviar.'});return;
+    }
+    const destinatarios = req.empresaId === 1
+      ? [...new Set([String(destinatario).trim(),extraNewFloor].filter(Boolean).map(e=>e.toLowerCase()))].join(", ")
+      : destinatario;
     const resultado = await gerarPdfInterno(paramId(id), req.empresaId as number);
 
     const baseUrl =
@@ -991,7 +1004,7 @@ export const enviarEmail = async (
     const linkDownload = `${baseUrl}/propostas/${proposta.propostaid}/download`;
 
     const modoEnvio = await enviarPropostaPorEmail({
-      destinatario,
+      destinatario: destinatarios,
 
       clienteNome:
         proposta.cliente.nomeFantasia ||
