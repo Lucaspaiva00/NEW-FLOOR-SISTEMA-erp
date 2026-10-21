@@ -50,5 +50,16 @@ export function problemasNfseNacionalNewFloor(nota:any, payload:any): string[] {
   if (!camposTrib.some(key => extra[key] !== null && extra[key] !== undefined && extra[key] !== "")) {
     errors.push("NFS-e Nacional: preencha os dados tributários reais (PIS/COFINS ou totalização dos tributos) com orientação contábil na configuração avançada. O XML retornou ausência do grupo 'trib'.");
   }
+  // A documentação oficial da Focus para o leiaute Nacional 2026
+  // identifica CST e classificação IBS/CBS como obrigatórios.
+  // Nunca sugerir código 000/000001 sem análise da operação.
+  const cst=String(payload.ibs_cbs_situacao_tributaria??"").trim();
+  const classe=String(payload.ibs_cbs_classificacao_tributaria??"").trim();
+  if(!/^\d{3}$/.test(cst))errors.push("NFS-e Nacional: informe CST IBS/CBS (3 dígitos), conforme enquadramento da operação.");
+  if(!/^\d{6}$/.test(classe))errors.push("NFS-e Nacional: informe classificação tributária IBS/CBS (6 dígitos), conforme orientação contábil.");
+  if(nota.empresaFiscal?.optanteSimplesNacional===true&&Number(nota.empresaFiscal?.regimeTributario)!==4
+    &&![1,2,3].includes(Number(payload.regime_tributario_simples_nacional))) {
+    errors.push("NFS-e Nacional: no perfil fiscal da New Floor, selecione a apuração do Simples Nacional (1, 2 ou 3) conforme a contabilidade.");
+  }
   return errors;
 }
