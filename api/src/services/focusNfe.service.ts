@@ -199,7 +199,7 @@ function buildNfePayload(nota: any): Record<string, any> {
     cpf_destinatario: onlyDigits(nota.destinatarioCpf),
     inscricao_estadual_destinatario: onlyDigits(nota.destinatarioIe),
     indicador_inscricao_estadual_destinatario: nota.indicadorIeDestinatario ?? 9,
-    email_destinatario: nota.destinatarioEmail,
+    email_destinatario: nota.empresaId === 1 ? String(nota.destinatarioEmail||"").split(";")[0] : nota.destinatarioEmail,
     telefone_destinatario: onlyDigits(nota.destinatarioTelefone),
     logradouro_destinatario: nota.destinatarioEndereco,
     numero_destinatario: nota.destinatarioNumero,
@@ -265,7 +265,7 @@ function buildNfseMunicipalPayload(nota: any): Record<string, any> {
       }),
       razao_social: nota.destinatarioNome,
       inscricao_municipal: onlyDigits(nota.destinatarioIm),
-      email: nota.destinatarioEmail,
+      email: nota.empresaId === 1 ? String(nota.destinatarioEmail||"").split(";")[0] : nota.destinatarioEmail,
       endereco: {
         logradouro: nota.destinatarioEndereco,
         numero: nota.destinatarioNumero,
@@ -321,7 +321,7 @@ function buildNfseNacionalPayload(nota: any): Record<string, any> {
     complemento_tomador: nota.destinatarioComplemento,
     bairro_tomador: nota.destinatarioBairro,
     telefone_tomador: onlyDigits(nota.destinatarioTelefone),
-    email_tomador: nota.destinatarioEmail,
+    email_tomador: nota.empresaId === 1 ? String(nota.destinatarioEmail||"").split(";")[0] : nota.destinatarioEmail,
 
     codigo_municipio_prestacao:
       onlyDigits(nota.destinatarioCodigoMunicipio) ||
@@ -413,6 +413,17 @@ export async function emitirNaFocus(nota: any) {
   );
 
   return { ...result, payload };
+}
+
+// Reenvio explícito de cópia somente de NF-e ou NFS-e municipal, conforme documentação.
+export async function enviarEmailExtraNaFocus(nota:any, emails:string[]) {
+ const path=documentPath(nota);
+ if(path==='nfsen')throw Object.assign(Error('Para NFS-e Nacional, o envio de cópia adicional ainda exige confirmação da rota compatível do provedor.'),{statusCode:422});
+ return focusRequest(
+  {...nota.empresaFiscal,...(nota.ambienteEmissao?{ambiente:nota.ambienteEmissao}:{})},
+  `/v2/${path}/${encodeURIComponent(nota.referencia)}/email`,
+  "POST",{emails},
+ );
 }
 
 export async function consultarNaFocus(nota: any) {
