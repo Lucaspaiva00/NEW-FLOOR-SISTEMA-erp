@@ -12,6 +12,7 @@ const nota = (empresaId:number):any => ({
   destinatarioCep:"13920-000",
   destinatarioCodigoMunicipio:null,
   valorServicos:200,
+  itens:[{descricao:"Servico prestado conforme contrato"}],
   informacoesAdicionais:"<p><strong>Descrição de serviço</strong></p>",
   itemListaServico:"010101",
   payloadExtra:null
@@ -23,7 +24,8 @@ test("New Floor bloqueia município ausente, descrição grande e tributação s
  const input=nota(1);
  input.informacoesAdicionais="<p>"+"A".repeat(2100)+"</p>";
  const p=buildFocusPayload(input);
- assert.equal(p.descricao_servico.length,2100);
+ assert.equal(p.descricao_servico,"Servico prestado conforme contrato");
+ assert.equal(p.informacoes_complementares.length,2100);
  const errors=problemasNfseNacionalNewFloor(input,p);
  assert.ok(errors.some(x=>x.includes("município do tomador")));
  assert.ok(errors.some(x=>x.includes("2.000")));
