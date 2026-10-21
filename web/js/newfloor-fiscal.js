@@ -87,7 +87,11 @@
   const obsCounter=document.createElement("small");obsCounter.id="nfDescricaoNacionalCount";
   obsCounter.className="d-block text-muted mt-1";
   $("nfInformacoesAdicionais")?.after(obsCounter);
-  $("nfInformacoesAdicionais")?.addEventListener("input",carregarTributos);
+  $("nfInformacoesAdicionais")?.addEventListener("input",()=>{
+    const plain=String($("nfInformacoesAdicionais").value||"").replace(/<[^>]*>/g,"").trim();
+    const count=$("nfDescricaoNacionalCount");
+    if(count){count.textContent="Descrição fiscal (sem HTML): "+plain.length+" / 2.000 caracteres";count.classList.toggle("text-danger",plain.length>2000);}
+  });
   $("modalNotaFiscal")?.addEventListener("shown.bs.modal",carregarTributos);
   $("formNotaFiscal")?.addEventListener("submit",event=>{
    const json=$("nfPayloadExtra");
