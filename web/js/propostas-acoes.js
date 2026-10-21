@@ -44,6 +44,47 @@ function visualizarPdfProposta(id) {
   );
 }
 
+// Prévia de PDF por Bearer em nova aba, sem download forçado nem token na URL.
+// Funciona para todos os perfis e utiliza o gerador de cada empresa no backend.
+async function previsualizarProposta(id, btn) {
+  if (!Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+    toastErro("Selecione uma proposta válida.");
+    return;
+  }
+  const janela = window.open("", "_blank");
+  if (!janela) {
+    toastErro("Permita pop-ups para visualizar a proposta.");
+    return;
+  }
+  janela.document.title = "Prévia da proposta";
+  janela.document.body.textContent = "Preparando prévia do PDF…";
+  if (btn) btn.disabled = true;
+  try {
+    const resposta = await fetch(`${API_URL}/propostas/${encodeURIComponent(id)}/visualizar`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!resposta.ok) {
+      const dados = await resposta.json().catch(() => ({}));
+      throw new Error(dados.error || "Não foi possível visualizar a proposta.");
+    }
+    const arquivo = await resposta.blob();
+    if (!arquivo.size || arquivo.type !== "application/pdf") {
+      throw new Error("A prévia não retornou um PDF válido.");
+    }
+    const urlTemporaria = URL.createObjectURL(arquivo);
+    janela.location.replace(urlTemporaria);
+    // Manter o endereço temporário enquanto o visualizador do PDF estiver aberto.
+    // Não revogar imediatamente: Safari/iOS precisa ler o blob após a navegação.
+  } catch (erro) {
+    if (!janela.closed) {
+      janela.document.body.textContent = erro.message || "Erro ao carregar a prévia.";
+    }
+    toastErro(erro.message || "Não foi possível visualizar a proposta.");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function enviarWhatsappProposta(id, btn) {
   if (!id) {
     alert("Selecione uma proposta.");
@@ -161,6 +202,8 @@ async function executarAcaoProposta(acao, id, btn) {
       abrirModalProposta(id);
     } else if (acao === "duplicar") {
       await duplicarProposta(id, btn);
+    } else if (acao === "visualizar") {
+      await previsualizarProposta(id, btn);
     } else if (acao === "pdf") {
       await visualizarPdfProposta(id);
     } else if (acao === "whatsapp") {
