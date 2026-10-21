@@ -28,7 +28,11 @@ export function problemasNfseNacionalNewFloor(nota:any, payload:any): string[] {
   const descricao=textoDescricaoNacional(payload.descricao_servico);
   if (!descricao) errors.push("NFS-e Nacional: descreva o serviço prestado.");
   if (descricao.length > 2000) errors.push(
-    "NFS-e Nacional: a descrição tem " + descricao.length + " caracteres; o limite é de 2.000. Resuma e revise as observações antes de emitir. Nada será cortado automaticamente."
+    "NFS-e Nacional: a descrição do serviço tem " + descricao.length + " caracteres; o limite é de 2.000. Revise os itens antes de emitir."
+  );
+  const complementares=textoDescricaoNacional(payload.informacoes_complementares);
+  if(complementares.length>2000) errors.push(
+    "NFS-e Nacional: as observações complementares têm " + complementares.length + " caracteres; o limite é de 2.000. Resuma as observações antes de emitir. O conteúdo original permanecerá salvo no rascunho."
   );
   const extra=nota.payloadExtra&&typeof nota.payloadExtra==="object"&&!Array.isArray(nota.payloadExtra)?nota.payloadExtra:{};
   // Para a Focus montar o grupo trib devem existir parâmetros fiscais
