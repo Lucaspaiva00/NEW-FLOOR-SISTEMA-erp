@@ -141,7 +141,7 @@ routes.get("/observacoes/observacoes-padrao", auth, proposta.observacoesPadrao);
 routes.post("/propostas/:id/pdf", auth, proposta.gerarPdf);
 routes.post("/propostas/:id/faturamento-externo", auth, faturamentoExterno.registrar);
 routes.get("/propostas/:id/download", auth, proposta.downloadPdf);
-routes.get("/propostas/:id/visualizar", auth, proposta.visualizarPdfNewFloor);
+routes.get("/propostas/:id/visualizar", auth, proposta.visualizarPdf);
 routes.post("/propostas/:id/email", auth, proposta.enviarEmail);
 routes.get("/propostas/:id/whatsapp", auth, proposta.whatsapp);
 routes.post("/propostas/:id/duplicar", auth, proposta.duplicar);
