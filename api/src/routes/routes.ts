@@ -9,6 +9,7 @@ import * as fornecedor from "../controller/ctfornecedor";
 import * as cliente from "../controller/ctcliente";
 import * as cnpj from "../controller/ctcnpj";
 import * as proposta from "../controller/ctproposta";
+import * as faturamentoExterno from "../controller/ctfaturamentoExterno";
 import * as servico from "../controller/ctservico";
 import * as template from "../controller/cttemplate";
 import * as usuario from "../controller/ctusuario";
@@ -137,6 +138,7 @@ routes
 routes.get("/observacoes/observacoes-padrao", auth, proposta.observacoesPadrao);
 
 routes.post("/propostas/:id/pdf", auth, proposta.gerarPdf);
+routes.post("/propostas/:id/faturamento-externo", auth, faturamentoExterno.registrar);
 routes.get("/propostas/:id/download", auth, proposta.downloadPdf);
 routes.get("/propostas/:id/visualizar", auth, proposta.visualizarPdfNewFloor);
 routes.post("/propostas/:id/email", auth, proposta.enviarEmail);
