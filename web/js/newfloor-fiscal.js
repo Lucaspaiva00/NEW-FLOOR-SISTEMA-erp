@@ -79,7 +79,7 @@
     const plain=String(info.value||"").replace(/<[^>]*>/g,"").trim();
     const counter=$("nfDescricaoNacionalCount");
     if(counter){
-     counter.textContent="Descrição fiscal (sem HTML): "+plain.length+" / 2.000 caracteres";
+     counter.textContent="Observações complementares (sem HTML): "+plain.length+" / 2.000 caracteres";
      counter.classList.toggle("text-danger",plain.length>2000);
     }
    }
@@ -90,7 +90,7 @@
   $("nfInformacoesAdicionais")?.addEventListener("input",()=>{
     const plain=String($("nfInformacoesAdicionais").value||"").replace(/<[^>]*>/g,"").trim();
     const count=$("nfDescricaoNacionalCount");
-    if(count){count.textContent="Descrição fiscal (sem HTML): "+plain.length+" / 2.000 caracteres";count.classList.toggle("text-danger",plain.length>2000);}
+    if(count){count.textContent="Observações complementares (sem HTML): "+plain.length+" / 2.000 caracteres";count.classList.toggle("text-danger",plain.length>2000);}
   });
   $("modalNotaFiscal")?.addEventListener("shown.bs.modal",carregarTributos);
   $("formNotaFiscal")?.addEventListener("submit",event=>{
