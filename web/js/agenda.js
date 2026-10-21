@@ -191,6 +191,7 @@ function atualizarKpis(agendas) {
 
 function renderizarAgenda(agendas) {
 
+    window.dispatchEvent(new CustomEvent("erp-agenda-atualizada", {detail:agendas}));
     listaAgenda.innerHTML = "";
 
     if (agendas.length === 0) {
