@@ -219,7 +219,7 @@
     document.querySelectorAll(".fiscal-tab-content").forEach((section) => {
       section.classList.remove("active");
     });
-    $(nome === "empresas" ? "tabFiscalEmpresas" : nome === "logs" ? "tabFiscalLogs" : "tabFiscalNotas").classList.add("active");
+    $(nome === "recebidas" ? "tabFiscalRecebidas" : nome === "empresas" ? "tabFiscalEmpresas" : nome === "logs" ? "tabFiscalLogs" : "tabFiscalNotas").classList.add("active");
     if (nome === "logs") carregarLogs().catch((e) => mostrarErro(e, "Erro ao carregar logs fiscais"));
   }
 
