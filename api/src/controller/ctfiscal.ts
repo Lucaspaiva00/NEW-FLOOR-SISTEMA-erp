@@ -4,6 +4,7 @@ import {Prisma} from "@prisma/client";
 import {conferirNotaFiscal} from "../services/fiscalValidacao.service";
 import {resolverConfiguracao} from "../services/configuracaoSistema.service";
 import {metadataFaturamentoExterno} from "../services/faturamentoExterno.service";
+import {notaComMunicipioIBGE} from "../services/ibgeMunicipioFiscal.service";
 
 import { randomUUID } from "crypto";
 import { Request, Response } from "express";
@@ -293,7 +294,7 @@ function notaData(body: any, cliente: any, itens: any[], empresaId?: number) {
 }
 
 async function notaCompleta(id: number, empresaId: number) {
-  return prisma.notaFiscal.findFirst({
+  const encontrada = await prisma.notaFiscal.findFirst({
     where: { notafiscalid: id, empresaId },
     include: {
       empresaFiscal: true,
@@ -303,6 +304,9 @@ async function notaCompleta(id: number, empresaId: number) {
       eventos: { orderBy: { createdAt: "desc" } },
     },
   });
+  // Só New Floor/NFS-e Nacional: resolve IBGE pelo município+UF
+  // sem modificar o cadastro fiscal salvo no banco.
+  return encontrada ? await notaComMunicipioIBGE(encontrada) : null;
 }
 
 async function registrarEvento(
