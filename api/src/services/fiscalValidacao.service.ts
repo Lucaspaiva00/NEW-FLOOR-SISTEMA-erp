@@ -14,7 +14,11 @@ export function conferirNotaFiscal(nota:any){
  // Outras empresas, inclusive SBA e Construarty, seguem sua validação fiscal original.
  if(Number(nota.empresaId)===1){
   exigir(String(nota.destinatarioNome||'').trim(),'New Floor: informe a razão social do cliente antes de emitir.');
-  exigir(digits(nota.destinatarioIe).length>0,'New Floor: informe a inscrição estadual do cliente antes de emitir. Em caso de isenção ou não contribuinte, valide o tratamento com a contabilidade.');
+  exigir(digits(nota.cliente?.inscricaoEstadual).length>0,'New Floor: cadastre a inscrição estadual no cadastro do cliente antes de emitir. Em caso de isenção ou não contribuinte, confirme com a contabilidade.');
+  exigir(digits(nota.destinatarioIe).length>0,'New Floor: informe a inscrição estadual do cliente na nota antes de emitir.');
+  if(digits(nota.cliente?.inscricaoEstadual)&&digits(nota.destinatarioIe)){
+   exigir(digits(nota.cliente.inscricaoEstadual)===digits(nota.destinatarioIe),'New Floor: a inscrição estadual da nota deve corresponder ao cadastro do cliente.');
+  }
  }
  exigir(nota.itens?.length>0,'Adicione ao menos um item à nota.');
  const total=Number(nota.valorTotal);exigir(Number.isFinite(total)&&total>0,'Informe um valor total positivo.');
