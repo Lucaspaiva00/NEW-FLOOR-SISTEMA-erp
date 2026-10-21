@@ -632,6 +632,23 @@
     });
   }
 
+  function observacoesItensParaNota() {
+    if(!window.__newFloorFiscal)return;
+    const destino=$("nfInformacoesAdicionais");
+    if(!destino)return;
+    const existentes=String(destino.value||"");
+    const pendentes=[];
+    [...document.querySelectorAll(".fiscal-item-card")].forEach((card,index)=>{
+      const campo=card.querySelector('[data-field="informacoesAdicionais"]');
+      const valor=String(campo?.value||"").trim();
+      if(!valor)return;
+      const texto="Item "+(index+1)+": "+valor;
+      if(!existentes.includes(texto))pendentes.push(texto);
+      if(campo)campo.value="";
+    });
+    if(pendentes.length)destino.value=[existentes,...pendentes].filter(Boolean).join("\n");
+  }
+
   function coletarItens() {
     return [...document.querySelectorAll(".fiscal-item-card")].map((card) => {
       const get = (field) => card.querySelector(`[data-field="${field}"]`)?.value ?? "";
@@ -741,6 +758,7 @@
       itemSeq = 0;
       (p.itens || []).forEach((item) => adicionarItem(item));
       if (!(p.itens || []).length) adicionarItem();
+      observacoesItensParaNota();
       aplicarPadroesEmpresa();
       atualizarTipoNota();
       calcularTotais();
@@ -806,6 +824,7 @@
     itemSeq = 0;
     (n.itens || []).forEach((item) => adicionarItem(item));
     if (!(n.itens || []).length) adicionarItem();
+    observacoesItensParaNota();
     atualizarTipoNota();
     modalNota.show();
   }
@@ -820,6 +839,7 @@
         throw new Error("O JSON adicional do provedor está inválido.");
       }
     }
+    observacoesItensParaNota();
     const itens = coletarItens();
     if (!itens.length || itens.some((i) => !i.descricao)) throw new Error("Adicione pelo menos um item e preencha a descrição.");
     if (!$("nfEmpresa").value) throw new Error("Selecione a empresa emitente.");
