@@ -489,11 +489,12 @@
 
   function preencherDestinatario(cliente) {
     if (!cliente) return;
-    $("nfDestNome").value = nomeCliente(cliente);
+    $("nfDestNome").value = window.__newFloorFiscal ? (cliente.razaoSocial || nomeCliente(cliente)) : nomeCliente(cliente);
     $("nfDestCnpj").value = cliente.cnpj || "";
     $("nfDestCpf").value = cliente.cpf || "";
     $("nfDestIe").value = cliente.inscricaoEstadual || "";
     $("nfDestEmail").value = cliente.email1 || "";
+    if(window.__newFloorFiscal && $("nfDestEmailAdicional"))$("nfDestEmailAdicional").value = cliente.email2 || "";
     $("nfDestTelefone").value = cliente.telefone1 || "";
     $("nfDestCep").value = cliente.cep || "";
     $("nfDestEndereco").value = cliente.endereco || "";
@@ -768,7 +769,8 @@
     $("nfDestIe").value = n.destinatarioIe || "";
     $("nfIndicadorIe").value = n.indicadorIeDestinatario ?? 9;
     $("nfDestIm").value = n.destinatarioIm || "";
-    $("nfDestEmail").value = n.destinatarioEmail || "";
+    $("nfDestEmail").value = window.__newFloorFiscal ? String(n.destinatarioEmail||"").split(";")[0] : n.destinatarioEmail || "";
+    if(window.__newFloorFiscal && $("nfDestEmailAdicional"))$("nfDestEmailAdicional").value = String(n.destinatarioEmail||"").split(";")[1] || "";
     $("nfDestTelefone").value = n.destinatarioTelefone || "";
     $("nfDestCep").value = n.destinatarioCep || "";
     $("nfDestEndereco").value = n.destinatarioEndereco || "";
@@ -824,6 +826,7 @@
     if (!$("nfCliente").value) throw new Error("Selecione o cliente/tomador.");
     if (!$("nfDestNome").value.trim()) throw new Error("Informe o nome/razão social do destinatário.");
 
+
     return {
       tipo: $("nfTipo").value,
       empresaFiscalId: Number($("nfEmpresa").value),
@@ -839,6 +842,7 @@
       indicadorIeDestinatario: numero($("nfIndicadorIe").value, 9),
       destinatarioIm: vazioParaNull($("nfDestIm").value),
       destinatarioEmail: vazioParaNull($("nfDestEmail").value),
+      ...(window.__newFloorFiscal ? {destinatarioEmailAdicional: vazioParaNull($("nfDestEmailAdicional")?.value)} : {}),
       destinatarioTelefone: vazioParaNull($("nfDestTelefone").value),
       destinatarioCep: vazioParaNull($("nfDestCep").value),
       destinatarioEndereco: vazioParaNull($("nfDestEndereco").value),
