@@ -6,7 +6,7 @@
   if(!token)return;
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const dinheiro=v=>Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-  let docs=[],cursor=0,carregando=false;
+  let docs=[],cursor=0,carregando=false,consultaFalhou=false;
   const api=async(path,opts={})=>{
     const response=await fetch(API_URL+path,{
       ...opts,headers:{Authorization:"Bearer "+token,...(opts.body?{"Content-Type":"application/json"}:{})}
@@ -26,7 +26,7 @@
         '<span class="text-success">Já importada · '+esc(quitacao.status)+'</span>':
         autorizado?'<button type="button" class="btn-secondary-fiscal" data-nr-pagar="'+i+'">Gerar conta a pagar</button>':
         '<span class="text-muted">Não importável</span>')+'</td></tr>';
-    }).join(""):'<tr><td colspan="5">Nenhuma nota encontrada nesta página da Focus.</td></tr>';
+    }).join(""):'<tr><td colspan="5">'+(consultaFalhou?"Consulta não realizada: verifique o erro acima.":"Nenhuma nota retornada pela Focus.")+'</td></tr>';
   }
   async function carregarEmpresas(){
     const empresas=await api("/fiscal/empresas");
@@ -41,6 +41,7 @@
     if(!empresaFiscalId){$("nrAviso").textContent="Selecione a empresa destinatária.";return;}
     carregando=true;$("nrConsultar").disabled=true;$("nrMais").disabled=true;
     $("nrAviso").textContent="Consultando documentos recebidos pela Focus...";
+    consultaFalhou=false;
     try{
       const url=new URLSearchParams({empresaFiscalId:String(empresaFiscalId),tipo,versao:String(mais?cursor:0)});
       const result=await api("/fiscal/recebidas?"+url);
@@ -52,13 +53,13 @@
       $("nrAviso").textContent=result.aviso+" Foram retornados "+result.documentos.length+" documento(s) nesta página.";
       $("nrMais").classList.toggle("d-none",result.documentos.length<100||mais&&cursor<=previous);
       render();
-    }catch(e){$("nrAviso").textContent=e.message;if(!mais)docs=[];render();}
+    }catch(e){consultaFalhou=true;$("nrAviso").textContent=e.message;if(!mais)docs=[];render();}
     finally{carregando=false;$("nrConsultar").disabled=false;$("nrMais").disabled=false;}
   }
   $("nrConsultar").addEventListener("click",()=>consultar(false));
   $("nrMais").addEventListener("click",()=>consultar(true));
   for(const field of ["nrEmpresa","nrTipo"])$(field).addEventListener("change",()=>{
-    docs=[];cursor=0;$("nrMais").classList.add("d-none");render();
+    docs=[];cursor=0;consultaFalhou=false;$("nrMais").classList.add("d-none");render();
   });
   $("nrTabela").addEventListener("click",async(event)=>{
     const btn=event.target.closest("[data-nr-pagar]");
