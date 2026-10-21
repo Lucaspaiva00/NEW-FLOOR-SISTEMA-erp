@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { textoDescricaoNacional, problemasNfseNacionalNewFloor } from "../src/services/newFloorNfseNacional.service";
 import { buildFocusPayload } from "../src/services/focusNfe.service";
 
-const nota = (empresaId:number) => ({
+const nota = (empresaId:number):any => ({
   empresaId, tipo:"NFSE",padraoNfseEmissao:"NACIONAL",
   empresaFiscal:{padraoNfse:"NACIONAL",codigoMunicipioIbge:"3509502",cnpj:"11444777000161",
     optanteSimplesNacional:true,regimeTributario:3},
