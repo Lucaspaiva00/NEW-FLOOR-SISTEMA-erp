@@ -735,6 +735,9 @@ function criarCardProposta(proposta) {
             }
 
             ${window.__configuracaoSistema?.composicaoCustos && proposta.composicaoCustos ? resumoComposicaoProposta(proposta) : ""}
+            ${proposta.status === "FATURADA" && proposta.planoRecebimento?.origemFaturamento === "EXTERNO"
+              ? '<div class="proposal-tags"><span class="proposal-tag" title="Nota já emitida fora do ERP; cobrança gerenciada neste sistema">Faturado fora do ERP</span></div>'
+              : ""}
             <div class="proposal-card-bottom">
                 <span class="proposal-value">${moeda(proposta.subtotal)}</span>
                 <time class="proposal-date" datetime="${proposta.createdAt}">
@@ -875,21 +878,16 @@ function iniciarSortableKanban() {
 
         if (!propostaId) return;
 
-        // Mover pra "Faturada" NUNCA salva o status direto — a proposta só
-        // vira Faturada de verdade quando a nota fiscal ligada a ela voltar
-        // AUTORIZADA pela Focus. Em vez de salvar, manda pro módulo Fiscal
-        // já com essa proposta pra emitir, e desfaz o movimento visual.
+        // A coluna Faturada aceita uma NF emitida fora do ERP.
+        // O movimento visual é revertido até confirmar no servidor para
+        // evitar card faturado sem conta a receber.
         if (novoStatus === "FATURADA" && statusAnterior !== "FATURADA") {
           renderizarKanban(obterListaFiltrada());
-
-          const ir = confirm(
-            "Faturar exige emitir a nota fiscal dessa proposta. Você será levado ao módulo Fiscal para emitir agora. A proposta só fica marcada como Faturada depois que a nota voltar autorizada.",
-          );
-
-          if (ir) {
-            window.location.href = `fiscal.html?propostaId=${propostaId}`;
+          if (typeof window.solicitarFaturamentoProposta === "function") {
+            await window.solicitarFaturamentoProposta(propostaId);
+          } else {
+            alert("O formulário de faturamento não está disponível. Recarregue a página.");
           }
-
           return;
         }
 
@@ -1974,9 +1972,8 @@ formEditarProposta.addEventListener("submit", async (e) => {
       return;
     }
 
-    // Igual no drag-and-drop: escolher "FATURADA" aqui não fatura na hora.
-    // Salva o resto normalmente, mas o status fica como estava até a nota
-    // fiscal ligada à proposta voltar AUTORIZADA pela Focus.
+    // Salva as demais alterações primeiro. Para faturar, o usuário
+    // escolhe entre documento externo já emitido e emissão pelo ERP.
     const propostaAtualCache = propostasCache.find(
       (p) => Number(p.propostaid) === Number(id),
     );
@@ -2013,13 +2010,12 @@ formEditarProposta.addEventListener("submit", async (e) => {
     ).hide();
 
     if (vaiFaturar) {
-      const ir = confirm(
-        "As demais alterações foram salvas. Faturar exige emitir a nota fiscal — você será levado ao módulo Fiscal agora. A proposta só fica marcada como Faturada depois que a nota voltar autorizada.",
-      );
-      if (ir) {
-        window.location.href = `fiscal.html?propostaId=${id}`;
-        return;
+      if (typeof window.solicitarFaturamentoProposta === "function") {
+        await window.solicitarFaturamentoProposta(id);
+      } else {
+        toastErro("Recarregue a página para acessar o novo faturamento.");
       }
+      return;
     }
 
     toastSucesso("Proposta atualizada com sucesso");
@@ -2318,9 +2314,9 @@ let planoEdicao=window.criarPlanoRecebimento(document.getElementById("editarCond
 document.addEventListener('click',async event=>{
  const btn=event.target.closest('[data-sba-mover]');if(!btn||window.__configuracaoSistema?.perfil!=='SBA')return;event.stopPropagation();
  const id=Number(btn.dataset.sbaMover),p=propostasCache.find(x=>Number(x.propostaid)===id);if(!p)return;
- const result=await Swal.fire({title:'Alterar etapa da proposta',input:'select',inputOptions:{PENDENTE:'Pendente',APROVADA:'Aprovada',EXECUTANDO:'Executando',ESPECIAIS:'Especial',RECUSADA:'Recusada',CANCELADA:'Cancelada',FATURADA:'Faturar no módulo fiscal'},inputValue:p.status,showCancelButton:true,confirmButtonText:'Continuar',cancelButtonText:'Cancelar'});
+ const result=await Swal.fire({title:'Alterar etapa da proposta',input:'select',inputOptions:{PENDENTE:'Pendente',APROVADA:'Aprovada',EXECUTANDO:'Executando',ESPECIAIS:'Especial',RECUSADA:'Recusada',CANCELADA:'Cancelada',FATURADA:'Faturar proposta (ERP ou externo)'},inputValue:p.status,showCancelButton:true,confirmButtonText:'Continuar',cancelButtonText:'Cancelar'});
  if(!result.isConfirmed)return;
- if(result.value==='FATURADA'){location.href='fiscal.html?propostaId='+id;return;}
+ if(result.value==='FATURADA'){if(typeof window.solicitarFaturamentoProposta==='function')await window.solicitarFaturamentoProposta(id);else toastErro('Recarregue a página para acessar o faturamento.');return;}
  btn.disabled=true;try{if(!await atualizarStatusProposta(id,result.value))throw Error('Não foi possível alterar a etapa. Confira se existem recebimentos vinculados.');await carregarPropostas();}catch(e){toastErro(e.message);}finally{btn.disabled=false;}
 });
 
