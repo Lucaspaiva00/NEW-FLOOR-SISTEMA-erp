@@ -16,6 +16,51 @@
     const tenant = await api("/empresas/me");
     if (tenant.slug !== "sba" || tenant.configuracaoSistema?.perfil !== "SBA") return;
     if (document.getElementById("fiscalIntegracoesSba")) return;
+    // Adapta somente o modal da SBA: o HTML compartilhado continua intacto
+    // para New Floor e José, mas o Luiz não vê campos ou tokens Focus.
+    const modalEmpresa = document.getElementById("modalEmpresaFiscal");
+    const aplicarCadastroDireto = () => {
+      const provedor = document.getElementById("efProvedor");
+      const padrao = document.getElementById("efPadraoNfse");
+      if (!provedor || !padrao) return;
+      const field = provedor.closest(".col-md-4");
+      const label = field?.querySelector("label");
+      if (label) label.textContent = "Serviços: integração planejada";
+      provedor.value = "Portal Nacional — em preparação";
+      provedor.readOnly = true;
+      padrao.value = "NACIONAL";
+      padrao.disabled = true; // fiscal.js lê .value normalmente.
+      for (const id of ["efTokenHomologacao", "efTokenProducao"]) {
+        const input = document.getElementById(id);
+        if (!input) continue;
+        input.value = "";
+        input.disabled = true;
+        input.closest(".col-md-6")?.setAttribute("hidden", "");
+      }
+      const area = field?.parentElement;
+      if (area && !document.getElementById("avisoCadastroSbaSemFocus")) {
+        const aviso = document.createElement("div");
+        aviso.id = "avisoCadastroSbaSemFocus";
+        aviso.className = "col-12";
+        aviso.innerHTML = '<div class="alert alert-info mb-0" role="status"><strong>SBA:</strong> a NFS-e de serviços será integrada diretamente ao Portal Nacional. Para notas de materiais, a integração pretendida é o SIEG Emissor. <strong>Não é necessário preencher tokens Focus.</strong> Essas emissões ainda não estão habilitadas no ERP. Cadastre os dados fiscais e o certificado A1 para avançar na configuração.</div>';
+        area.appendChild(aviso);
+      }
+      const note = document.querySelector(".fiscal-certificate-section .certificate-note");
+      if (note) note.textContent = "Certificado A1 armazenado de forma criptografada para preparar a integração direta da SBA; nenhum documento será transmitido antes da homologação.";
+    };
+    modalEmpresa?.addEventListener("show.bs.modal", aplicarCadastroDireto);
+    modalEmpresa?.addEventListener("shown.bs.modal", aplicarCadastroDireto);
+    document.getElementById("formEmpresaFiscal")?.addEventListener("submit", aplicarCadastroDireto, true);
+    // Mesmo os rascunhos não devem sugerir que a emissão via Focus funciona.
+    const modalDetalhe = document.getElementById("modalDetalheFiscal");
+    modalDetalhe?.addEventListener("shown.bs.modal", () => {
+      modalDetalhe.querySelectorAll("[data-emitir-nota]").forEach(btn => {
+        btn.disabled = true;
+        btn.title = "SBA: emissão direta do Portal Nacional/SIEG ainda em preparação.";
+        btn.textContent = "Emissão em preparação";
+      });
+    });
+
     const section = document.createElement("section");
     section.id = "fiscalIntegracoesSba";
     section.className = "fiscal-panel p-3 mb-3";
