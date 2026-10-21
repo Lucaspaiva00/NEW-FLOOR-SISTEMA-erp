@@ -333,7 +333,14 @@ function buildNfseNacionalPayload(nota: any): Record<string, any> {
     codigo_tributacao_municipal_iss:
       nota.codigoTributarioMunicipal || empresa.codigoTributarioMunicipal,
 
-    descricao_servico: nota.empresaId === 1 ? textoDescricaoNacional(descricao) : descricao,
+    // No padrão nacional, descrição do SERVIÇO e informações
+    // COMPLEMENTARES são campos diferentes. Apenas New Floor muda.
+    descricao_servico: nota.empresaId === 1
+      ? textoDescricaoNacional((nota.itens || []).map((item: any) => item.descricao).filter(Boolean).join("\n"))
+      : descricao,
+    ...(nota.empresaId === 1 && nota.informacoesAdicionais
+      ? { informacoes_complementares: textoDescricaoNacional(nota.informacoesAdicionais) }
+      : {}),
     valor_servico: decimal(nota.valorServicos) ?? decimal(nota.valorTotal),
 
     // NFS-e Nacional:
