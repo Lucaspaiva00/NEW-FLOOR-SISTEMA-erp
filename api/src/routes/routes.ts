@@ -200,6 +200,7 @@ routes.route("/fiscal/notas/:id")
 routes.get("/fiscal/notas/:id/conferir",auth,fiscal.conferirNota);
 routes.get("/fiscal/notas/:id/payload", auth, fiscal.visualizarPayload);
 routes.post("/fiscal/notas/:id/emitir", auth, fiscal.emitirNota);
+routes.post("/fiscal/notas/:id/enviar-emails", auth, fiscal.enviarEmailsNewFloor);
 routes.post("/fiscal/notas/:id/consultar", auth, fiscal.consultarNota);
 routes.post("/fiscal/notas/:id/cancelar", auth, fiscal.cancelarNota);
 routes.post("/fiscal/notas/:id/carta-correcao", auth, fiscal.cartaCorrecaoNota);
