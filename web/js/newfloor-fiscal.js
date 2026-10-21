@@ -51,6 +51,7 @@
   const colocarEnvio=()=>{
    const nota=window.__newFloorNotaAtual;
    if(!nota || nota.status!=="AUTORIZADA" || !botoes || botoes.querySelector("[data-envio-email-newfloor]"))return;
+   if(nota.tipo==="NFSE" && (nota.padraoNfseEmissao || nota.empresaFiscal?.padraoNfse)==="NACIONAL")return;
    const botao=document.createElement("button");
    botao.type="button";botao.className="btn btn-outline-primary";
    botao.dataset.envioEmailNewfloor=String(nota.notafiscalid);
