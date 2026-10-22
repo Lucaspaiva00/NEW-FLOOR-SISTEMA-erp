@@ -2,6 +2,7 @@ import {Request,Response} from "express";
 import {createCipheriv,hkdfSync,randomBytes} from "crypto";
 import forge from "node-forge";
 import prisma from "../prisma";
+import {validarCertificadoA1Sba} from "../services/certificadoA1Sba.service";
 export function validarCertificado(base64:string,senha:string) {
  if(typeof base64!=="string"||typeof senha!=="string"||base64.length>1400000||!base64.length||!senha.length||senha.length>1000) throw new Error("Arquivo e senha obrigatórios; limite de 1 MB.");
  const buffer=Buffer.from(base64,"base64");if(buffer.length>1024*1024)throw new Error("Certificado maior que 1 MB");
@@ -20,15 +21,36 @@ export function criptografarCertificado(base64:string,senha:string,empresaId:num
  const encrypted=Buffer.concat([cipher.update(JSON.stringify({arquivo:base64,senha}),"utf8"),cipher.final()]);
  return JSON.stringify({v:1,iv:iv.toString("base64"),tag:cipher.getAuthTag().toString("base64"),data:encrypted.toString("base64")});
 }
+/** Prévia segura de validação, apenas SBA: evita cadastrar empresa com PFX inválido. */
+export async function prevalidarSba(req:Request,res:Response):Promise<void>{
+ if(req.configuracaoSistema?.perfil!=="SBA" || !req.configuracaoSistema?.certificadoA1){
+   res.status(403).json({error:"Validação prévia exclusiva do perfil SBA."});return;
+ }
+ try{
+   const {arquivo,senha,nome}=req.body||{};
+   if(typeof nome!=="string"||!/^.+\.(pfx|p12)$/i.test(nome)){
+     res.status(400).json({error:"Selecione um arquivo .pfx ou .p12."});return;
+   }
+   validarCertificadoA1Sba(arquivo,senha);
+   res.setHeader("Cache-Control","no-store");
+   res.json({valido:true,mensagem:"O arquivo A1 contém certificado vigente e chave privada correspondente."});
+ }catch(e:any){
+   res.status(422).json({error:e.message||"Certificado A1 inválido."});
+ }
+}
 export async function upload(req:Request,res:Response):Promise<void>{
  if(!req.configuracaoSistema?.certificadoA1){res.status(403).json({error:"Certificado A1 desabilitado para esta empresa"});return;}
  const id=Number(req.params.id);
  try{const emissora=await prisma.empresaFiscal.findFirst({where:{empresafiscalid:id,empresaId:req.empresaId as number}});if(!emissora){res.status(404).json({error:"Empresa emissora não encontrada"});return;}
  const {arquivo,senha,nome}=req.body;
  if(typeof nome!=="string"||!/^.+\.(pfx|p12)$/i.test(nome))throw new Error("Selecione um arquivo PFX ou P12");
- validarCertificado(arquivo,senha);
+ if(req.configuracaoSistema?.perfil==="SBA")validarCertificadoA1Sba(arquivo,senha);
+ else validarCertificado(arquivo,senha);
  const certificadoCriptografado=criptografarCertificado(arquivo,senha,req.empresaId as number,id);
- await prisma.empresaFiscal.update({where:{empresafiscalid:id},data:{certificadoCriptografado,certificadoNome:nome.slice(0,200)}});
- res.json({temCertificado:true,certificadoNome:nome.slice(0,200)});
+ // Nomes de arquivos podem conter senhas em texto claro; nunca persistir
+ // o nome original dos arquivos do Luiz.
+ const certificadoNome=req.configuracaoSistema?.perfil==="SBA"?"certificado-a1.pfx":nome.slice(0,200);
+ await prisma.empresaFiscal.update({where:{empresafiscalid:id},data:{certificadoCriptografado,certificadoNome}});
+ res.json({temCertificado:true,certificadoNome});
  }catch(e){res.status(400).json({error:(e as Error).message});}
 }
