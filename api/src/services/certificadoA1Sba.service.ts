@@ -23,7 +23,7 @@ export function validarCertificadoA1Sba(arquivo: unknown, senha: unknown): Buffe
   } catch {
     throw Error("O arquivo não é um contêiner PFX/P12 válido. Exporte o A1 novamente com a chave privada.");
   }
-  let pfx: forge.pkcs12.Pkcs12Pfx;
+  let pfx: any;
   try {
     pfx = forge.pkcs12.pkcs12FromAsn1(asn1, senha);
   } catch {
