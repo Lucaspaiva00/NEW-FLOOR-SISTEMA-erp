@@ -51,6 +51,59 @@
     modalEmpresa?.addEventListener("show.bs.modal", aplicarCadastroDireto);
     modalEmpresa?.addEventListener("shown.bs.modal", aplicarCadastroDireto);
     document.getElementById("formEmpresaFiscal")?.addEventListener("submit", aplicarCadastroDireto, true);
+    // Validar o PFX ANTES de alterar o cadastro da empresa: evita salvar
+    // parcialmente e depois receber erro de senha/chave do certificado.
+    const formEmissora=document.getElementById("formEmpresaFiscal");
+    let liberadoParaSalvar=false, validandoA1=false;
+    formEmissora?.addEventListener("submit",async event=>{
+      if(liberadoParaSalvar)return;
+      const input=document.getElementById("certificadoA1");
+      const file=input?.files?.[0];
+      if(!file)return; // Luiz pode salvar cadastro mesmo sem enviar A1.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if(validandoA1)return;
+      const senha=document.getElementById("senhaCertificadoA1")?.value||"";
+      if(!senha){await Swal.fire({icon:"warning",title:"Senha do A1 necessária",text:"Informe a senha do arquivo PFX/P12."});return;}
+      if(!/\.(pfx|p12)$/i.test(file.name)||file.size>1024*1024||!file.size){
+        await Swal.fire({icon:"warning",title:"Arquivo inválido",text:"Selecione um PFX ou P12 com até 1 MB."});return;
+      }
+      validandoA1=true;
+      const btn=formEmissora.querySelector('button[type="submit"]')||
+        document.querySelector('#modalEmpresaFiscal button[type="submit"]');
+      if(btn)btn.disabled=true;
+      try{
+        const arquivo=await new Promise((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onload=()=>resolve(String(reader.result).split(",")[1]);
+          reader.onerror=()=>reject(new Error("Não foi possível ler o arquivo A1."));
+          reader.readAsDataURL(file);
+        });
+        const resposta=await fetch(API_URL+"/fiscal/sba/certificado/validar",{
+          method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+          body:JSON.stringify({arquivo,senha,nome:file.name})
+        });
+        const dados=await resposta.json().catch(()=>({}));
+        if(!resposta.ok||!dados.valido)throw Error(dados.error||"O certificado A1 não passou na validação.");
+        liberadoParaSalvar=true;
+        try{formEmissora.requestSubmit();}finally{liberadoParaSalvar=false;}
+      }catch(err){
+        await Swal.fire({icon:"error",title:"Certificado A1 não aceito",text:err.message,
+          footer:"Os dados da empresa não foram alterados nesta tentativa. Confira a senha, a validade e se o arquivo foi exportado com chave privada."});
+      }finally{
+        validandoA1=false;
+        if(btn)btn.disabled=false;
+      }
+    },true);
+    const certInput=document.getElementById("certificadoA1");
+    if(certInput && !document.getElementById("sbaAvisoCertificadoA1")){
+      const aviso=document.createElement("small");
+      aviso.id="sbaAvisoCertificadoA1";
+      aviso.className="d-block text-muted mt-2";
+      aviso.textContent="O PFX deve conter a chave privada e estar vigente. Não coloque senhas no nome do arquivo. Validação antes de salvar os dados.";
+      certInput.after(aviso);
+    }
+
     // Mesmo os rascunhos não devem sugerir que a emissão via Focus funciona.
     const modalDetalhe = document.getElementById("modalDetalheFiscal");
     modalDetalhe?.addEventListener("shown.bs.modal", () => {
