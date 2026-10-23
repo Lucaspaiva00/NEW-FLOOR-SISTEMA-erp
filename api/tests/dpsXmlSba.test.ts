@@ -65,7 +65,7 @@ test("DPS não inventa série, classificação nem apuração tributária",()=>{
   assert.ok(dps.pendencias.some(x=>x.includes("série")));
   assert.ok(dps.pendencias.some(x=>x.includes("cTribNac")));
 });
-test("Assinatura XMLDSig é verificável e não exporta chave privada",()=>{
+test("Assinatura XMLDSig é verificável e não exporta chave privada",async()=>{
   const original=process.env.CERTIFICADO_ENCRYPTION_KEY;
   try{
     process.env.CERTIFICADO_ENCRYPTION_KEY="segredo-teste-xml-sba";
@@ -76,6 +76,10 @@ test("Assinatura XMLDSig é verificável e não exporta chave privada",()=>{
     assert.equal(r.signatureVerificada,true);
     assert.equal(r.xsdHomologado,false);
     assert.match(r.xmlAssinado,/SignatureValue/);
+    if(estadoXsdOficialSba().disponivel){
+      const xsd=await validarDpsOficialSba(r.xmlAssinado);
+      assert.equal(xsd.valido,true,"DPS sintética assinada deve passar no XSD oficial: "+String(xsd.erro||""));
+    }
     assert.doesNotMatch(r.xmlAssinado,/PRIVATE KEY|senha-de-laboratorio/);
     assert.throws(()=>assinarDpsXmlSba(dps.xml,envelope,3,9),/descriptografado/);
   }finally{
