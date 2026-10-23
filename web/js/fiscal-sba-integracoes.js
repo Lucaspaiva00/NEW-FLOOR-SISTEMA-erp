@@ -129,22 +129,39 @@
       btn2.type="button";btn2.className="btn btn-outline-primary";
       btn2.dataset.sbaDps="assinar";btn2.dataset.id=String(id);
       btn2.textContent="Assinar DPS (não enviar)";
-      acoes.append(btn1,btn2);
+      const btn3=document.createElement("button");
+      btn3.type="button";btn3.className="btn btn-outline-info";
+      btn3.dataset.sbaDps="xsd";btn3.dataset.id=String(id);
+      btn3.textContent="Validar DPS no XSD oficial";
+      acoes.append(btn1,btn2,btn3);
     });
     document.getElementById("acoesDetalheFiscal")?.addEventListener("click",async event=>{
       const btn=event.target.closest("[data-sba-dps]");
       if(!btn)return;
       const id=Number(btn.dataset.id);
       if(!Number.isSafeInteger(id)||id<=0)return;
+      const validar=btn.dataset.sbaDps==="xsd";
       const assinar=btn.dataset.sbaDps==="assinar";
-      const rota="/fiscal/sba/nfse/preparacao/"+id+(assinar?"/assinar":"/xml");
+      const rota="/fiscal/sba/nfse/preparacao/"+id+
+        (validar?"/validar-xsd":assinar?"/assinar":"/xml");
       btn.disabled=true;
       try{
         const resposta=await fetch(API_URL+rota,{
-          method:assinar?"POST":"GET",
-          headers:{Authorization:"Bearer "+token,...(assinar?{"Content-Type":"application/json"}:{})},
-          ...(assinar?{body:"{}"}:{})
+          method:assinar||validar?"POST":"GET",
+          headers:{Authorization:"Bearer "+token,...(assinar||validar?{"Content-Type":"application/json"}:{})},
+          ...(assinar||validar?{body:"{}"}:{})
         });
+        if(validar){
+          const data=await resposta.json().catch(()=>({}));
+          if(!resposta.ok || !data.validadoXsdOficial){
+            const pendencias=Array.isArray(data.pendencias)?data.pendencias.join("\n"):"";
+            throw Error([data.error||"DPS rejeitada pelo XSD oficial.",data.erroXsd||"",pendencias]
+              .filter(Boolean).join("\n\n"));
+          }
+          await Swal.fire({icon:"success",title:"DPS validada no XSD oficial",
+            text:"Versão: "+data.pacote+". A assinatura XMLDSig passou na validação local. A nota NÃO foi transmitida ou autorizada."});
+          return;
+        }
         if(!resposta.ok){
           const error=await resposta.json().catch(()=>({}));
           const pendencias=Array.isArray(error.pendencias)?error.pendencias.join("\n"):"";
