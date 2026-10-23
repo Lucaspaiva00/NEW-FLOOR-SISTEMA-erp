@@ -49,3 +49,11 @@ export function validarParametrosRascunhoSba(extra:unknown):Record<string,unknow
     throw Object.assign(new Error("MEI não pode ter regime especial informado nesta DPS."),{statusCode:400});
   return dados;
 }
+
+/** Mesclagem pura: padrões da empresa < serviço < valores da nota.
+ * Sem converter "0" em vazio e sem descartar informações adicionais antigas.
+ */
+export function mesclarPadroesDpsSba(empresa:unknown,servico:unknown,nota:unknown){
+  const obj=(v:unknown):Record<string,unknown>=>v&&typeof v==="object"&&!Array.isArray(v)?v as Record<string,unknown>:{};
+  return validarParametrosRascunhoSba({...obj(empresa),...obj(servico),...obj(nota)});
+}
