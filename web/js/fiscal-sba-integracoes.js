@@ -129,11 +129,31 @@
         '<a class="btn-secondary-fiscal text-decoration-none" href="https://www.nfse.gov.br/EmissorNacional" target="_blank" rel="noopener noreferrer">Abrir Portal Nacional</a>' +
         '<a class="btn-secondary-fiscal text-decoration-none" href="https://emissor.sieg.com/" target="_blank" rel="noopener noreferrer">Abrir SIEG Emissor</a>' +
         '<button type="button" id="fiscalSbaCadastro" class="btn-secondary-fiscal">Cadastro da emissora / certificado A1</button>' +
+        '<button type="button" id="fiscalSbaAssinatura" class="btn-secondary-fiscal" disabled>Testar assinatura do A1</button>' +
       '</div>' +
       '<p class="small text-muted mt-3 mb-0">A emissão direta no ERP ainda não está habilitada. Não use “Emitir agora” para uma nota SBA como se o Portal Nacional estivesse integrado. Continue emitindo nos portais oficiais até a homologação.</p>';
     area.after(section);
     section.querySelector("#fiscalSbaCadastro")?.addEventListener("click", () =>
       document.querySelector('[data-fiscal-tab="empresas"]')?.click());
+    let emissoraParaTeste=null;
+    const btnAssinatura=section.querySelector("#fiscalSbaAssinatura");
+    btnAssinatura?.addEventListener("click",async()=>{
+      if(!emissoraParaTeste)return;
+      btnAssinatura.disabled=true;
+      try{
+        const response=await fetch(API_URL+"/fiscal/sba/nfse/certificado/"+emissoraParaTeste+"/testar",{
+          method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:"{}"
+        });
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok)throw Error(data.error||"Assinatura local do A1 não pôde ser concluída.");
+        await Swal.fire({
+          icon:"success",title:"Assinatura local validada",
+          text:"Certificado vigente até "+data.certificadoValidoAte+". O teste não transmitiu nota. A DPS em XML ainda precisa ser assinada e homologada na SEFIN."
+        });
+      }catch(e){
+        await Swal.fire({icon:"error",title:"Falha no teste do A1",text:e.message});
+      }finally{btnAssinatura.disabled=false;}
+    });
     async function verificar() {
       const status = section.querySelector("#fiscalSbaSituacao");
       const btn = section.querySelector("#fiscalSbaVerificar");
@@ -149,6 +169,8 @@
           apuracaoSimples: "Apuração do Simples",
           padraoNacional: "NFS-e Nacional"
         };
+        emissoraParaTeste=dados.emissoras.find(e=>e.dados?.certificadoA1)?.id||null;
+        if(btnAssinatura)btnAssinatura.disabled=!emissoraParaTeste;
         if (!dados.emissoras.length) {
           status.innerHTML = '<strong class="text-warning">Pendente:</strong> ainda não há empresa emissora cadastrada na SBA. Cadastre a empresa fiscal antes de solicitar homologação.';
         } else {
