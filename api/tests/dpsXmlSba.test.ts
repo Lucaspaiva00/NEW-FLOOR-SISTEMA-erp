@@ -41,7 +41,7 @@ function notaTeste(){
     destinatarioCodigoMunicipio:"3509502",destinatarioCep:"13000000",
     destinatarioEndereco:"Avenida Laboratorio",destinatarioNumero:"10",destinatarioBairro:"Centro",
     valorServicos:150.2,itens:[{descricao:"Instalacao & manutencao"}],
-    payloadExtra:{cTribNac:"010101",regEspTrib:"0",tribISSQN:"1",tpRetISSQN:"1",indTotTrib:"0"},
+    payloadExtra:{cTribNac:"010101",opSimpNac:"3",regEspTrib:"0",tribISSQN:"1",tpRetISSQN:"1",indTotTrib:"0"},
     proposta:{status:"PENDENTE",planoRecebimento:null}
   };
 }
