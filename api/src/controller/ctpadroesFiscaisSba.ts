@@ -1,5 +1,5 @@
 import {Request,Response} from "express";
-import { carregarPadroesSba, salvarPadroesSba } from "../services/padroesFiscaisSba.service";
+import { carregarPadroesSba, salvarPadroesSba, criarServicoFiscalSba } from "../services/padroesFiscaisSba.service";
 
 function autorizar(req:Request,res:Response):number|null{
   if(req.configuracaoSistema?.perfil!=="SBA"||!req.empresaId){
@@ -26,6 +26,12 @@ export const salvarEmpresa=async(req:Request,res:Response):Promise<void>=>{
 };
 export const salvarServico=async(req:Request,res:Response):Promise<void>=>{
   const empresaId=autorizar(req,res);if(!empresaId)return;
-  try{res.setHeader("Cache-Control","no-store");res.json(await salvarPadroesSba(empresaId,"servico",Number(req.params.id),req.body));}
+  try{res.setHeader("Cache-Control","no-store");res.json(await salvarPadroesSba(empresaId,"servico",String(req.params.id),req.body));}
+  catch(e:any){falha(res,e);}
+};
+
+export const criarServico=async(req:Request,res:Response):Promise<void>=>{
+  const empresaId=autorizar(req,res);if(!empresaId)return;
+  try{res.setHeader("Cache-Control","no-store");res.status(201).json(await criarServicoFiscalSba(empresaId,req.body));}
   catch(e:any){falha(res,e);}
 };
