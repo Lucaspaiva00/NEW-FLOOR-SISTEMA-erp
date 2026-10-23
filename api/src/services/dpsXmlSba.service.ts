@@ -41,6 +41,7 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
   const serie=digits(fiscal.serieNfse);
   const numero=Number(nota?.notafiscalid);
   const cTribNac=digits(extra.cTribNac??extra.codigoTributacaoNacional);
+  const opSimpNac=String(extra.opSimpNac??"").trim();
   const regAp=Number(fiscal.regimeApuracaoSimples);
   const regEsp=String(extra.regEspTrib??"").trim();
   const tribIss=String(extra.tribISSQN??"").trim();
@@ -49,6 +50,7 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
   if(!/^\d{1,5}$/.test(serie))pendencias.push("Informe série DPS numérica (1 a 5 dígitos) em Padrões NFS-e da SBA.");
   if(!Number.isSafeInteger(numero)||numero<=0||numero>999999999999999)pendencias.push("Número interno da nota inválido para numeração provisória da DPS.");
   if(!/^\d{6}$/.test(cTribNac))pendencias.push("Informe cTribNac (6 dígitos) conforme classificação oficial do serviço.");
+  if(!/^[123]$/.test(opSimpNac))pendencias.push("Confirme a opção Simples Nacional (opSimpNac: 1, 2 ou 3) com os dados fiscais da SBA.");
   if(!/^[0-9]$/.test(regEsp))pendencias.push("Confirme o regime especial tributário (regEspTrib) da operação com o contador.");
   if(!/^[0-9]$/.test(tribIss))pendencias.push("Confirme tribISSQN (tributação municipal) para a operação.");
   if(!/^[0-9]$/.test(tipoRet))pendencias.push("Confirme tpRetISSQN (retenção do ISSQN) da operação.");
@@ -73,7 +75,7 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
   const tipoDocumento=documento.length===14?"CNPJ":"CPF";
   const prest=
     tag("CNPJ",cnpj)+opt("IM",fiscal.inscricaoMunicipal)+
-    "<regTrib>"+tag("opSimpNac",fiscal.optanteSimplesNacional?"3":"1")+
+    "<regTrib>"+tag("opSimpNac",opSimpNac)+
     (fiscal.optanteSimplesNacional?tag("regApTribSN",regAp):"")+
     tag("regEspTrib",regEsp)+"</regTrib>";
   const toma=tag(tipoDocumento,documento)+tag("xNome",nota.destinatarioNome)+
