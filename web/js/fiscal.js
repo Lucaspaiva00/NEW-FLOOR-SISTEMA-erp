@@ -1017,6 +1017,8 @@
       ${n.status === "AUTORIZADA" ? `<button type="button" class="btn btn-danger" data-cancelar-nota="${n.notafiscalid}">Cancelar nota</button>` : ""}
       ${editavel ? `<button type="button" class="btn-new" data-emitir-nota="${n.notafiscalid}">Emitir agora</button>` : ""}`;
     if(window.__newFloorFiscal)window.dispatchEvent(new CustomEvent("newfloor-nota-detalhe",{detail:n}));
+    // Evento neutro: habilita ações isoladas por tenant em scripts opcionais.
+    window.dispatchEvent(new CustomEvent("sba-nota-detalhe",{detail:{id:n.notafiscalid,tipo:n.tipo,status:n.status}}));
   }
 
   async function abrirDetalheNota(id) {
