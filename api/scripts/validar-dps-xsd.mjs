@@ -15,7 +15,7 @@ function safePath(version,relative){
   return file;
 }
 async function check(xml,onlySchema=false){
-  if(typeof xml!=="string"||xml.length>1024*1024||/<!DOCTYPE|<!ENTITY/i.test(xml)){
+  if(!onlySchema&&(typeof xml!=="string"||xml.length>1024*1024||/<!DOCTYPE|<!ENTITY/i.test(xml))){
     return {valido:false,erro:"XML excede limite ou contém declaração proibida"};
   }
   let schema,validator,document;
