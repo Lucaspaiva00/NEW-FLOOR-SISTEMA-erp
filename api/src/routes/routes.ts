@@ -191,6 +191,8 @@ routes.get("/fiscal/dashboard", auth, fiscal.dashboard);
 routes.get("/fiscal/sba/integracoes/status", auth, integracaoFiscalSba.diagnosticoFiscalSba);
 routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.diagnosticarAssinatura);
 routes.get("/fiscal/sba/nfse/preparacao/:notaId",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.prepararNota);
+routes.get("/fiscal/sba/nfse/preparacao/:notaId/xml",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.baixarPreviaDps);
+routes.post("/fiscal/sba/nfse/preparacao/:notaId/assinar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.baixarDpsAssinada);
 routes.get("/fiscal/recebidas",auth,requireRole(["ADMIN","SUPER_ADMIN","FINANCEIRO"]),notasRecebidas.listar);
 routes.post("/fiscal/recebidas/importar",auth,requireRole(["ADMIN","SUPER_ADMIN","FINANCEIRO"]),notasRecebidas.importarParaPagar);
 routes.route("/fiscal/empresas")
