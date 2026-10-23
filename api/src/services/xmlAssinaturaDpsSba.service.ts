@@ -18,9 +18,8 @@ export function assinarDpsXmlSba(
   }
   if(!Number.isSafeInteger(empresaId)||empresaId<=0||!Number.isSafeInteger(emissoraId)||emissoraId<=0)
     throw Error("Identificação da SBA inválida.");
-  const parser=new DOMParser({errorHandler:{
-    warning:()=>undefined,error:(m:string)=>{throw Error("XML malformado: "+m.slice(0,80));},
-    fatalError:(m:string)=>{throw Error("XML malformado: "+m.slice(0,80));},
+  const parser=new DOMParser({onError:(level,message)=>{
+    if(level!=="warning")throw Error("XML malformado: "+String(message).slice(0,80));
   }});
   const doc=parser.parseFromString(xml,"application/xml");
   if(doc.documentElement?.localName!=="DPS"||
