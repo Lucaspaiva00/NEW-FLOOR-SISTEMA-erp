@@ -114,6 +114,54 @@
       });
     });
 
+    // Só o perfil SBA recebe botões de preparação de DPS, nunca de emissão.
+    window.addEventListener("sba-nota-detalhe",event=>{
+      const {id,tipo,status}=event.detail||{};
+      const acoes=document.getElementById("acoesDetalheFiscal");
+      if(!acoes||tipo!=="NFSE"||!Number.isSafeInteger(Number(id))||
+         ["AUTORIZADA","PROCESSANDO","CANCELADA"].includes(status))return;
+      if(acoes.querySelector("[data-sba-dps]"))return;
+      const btn1=document.createElement("button");
+      btn1.type="button";btn1.className="btn btn-outline-secondary";
+      btn1.dataset.sbaDps="previa";btn1.dataset.id=String(id);
+      btn1.textContent="Prévia DPS XML";
+      const btn2=document.createElement("button");
+      btn2.type="button";btn2.className="btn btn-outline-primary";
+      btn2.dataset.sbaDps="assinar";btn2.dataset.id=String(id);
+      btn2.textContent="Assinar DPS (não enviar)";
+      acoes.append(btn1,btn2);
+    });
+    document.getElementById("acoesDetalheFiscal")?.addEventListener("click",async event=>{
+      const btn=event.target.closest("[data-sba-dps]");
+      if(!btn)return;
+      const id=Number(btn.dataset.id);
+      if(!Number.isSafeInteger(id)||id<=0)return;
+      const assinar=btn.dataset.sbaDps==="assinar";
+      const rota="/fiscal/sba/nfse/preparacao/"+id+(assinar?"/assinar":"/xml");
+      btn.disabled=true;
+      try{
+        const resposta=await fetch(API_URL+rota,{
+          method:assinar?"POST":"GET",
+          headers:{Authorization:"Bearer "+token,...(assinar?{"Content-Type":"application/json"}:{})},
+          ...(assinar?{body:"{}"}:{})
+        });
+        if(!resposta.ok){
+          const error=await resposta.json().catch(()=>({}));
+          const pendencias=Array.isArray(error.pendencias)?error.pendencias.join("\n"):"";
+          throw Error([error.error||"Não foi possível preparar a DPS.",pendencias].filter(Boolean).join("\n\n"));
+        }
+        const blob=await resposta.blob();
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement("a");
+        link.href=url;link.download=assinar?"dps-sba-assinada-nao-homologada.xml":"dps-sba-previa-nao-validada.xml";
+        document.body.appendChild(link);link.click();link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),60000);
+        await Swal.fire({icon:"info",title:assinar?"DPS assinada localmente":"Prévia DPS gerada",
+          text:"Documento experimental para análise e validação XSD. Nenhum dado foi transmitido à SEFIN e a nota continua sem autorização."});
+      }catch(error){
+        await Swal.fire({icon:"warning",title:"Preparação fiscal pendente",text:error.message});
+      }finally{btn.disabled=false;}
+    });
     const section = document.createElement("section");
     section.id = "fiscalIntegracoesSba";
     section.className = "fiscal-panel p-3 mb-3";
