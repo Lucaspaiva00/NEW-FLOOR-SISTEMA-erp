@@ -11,7 +11,7 @@ export async function seedHomologacaoSba():Promise<{propostaId:number,numero:str
    const empresa=await tx.empresa.findUnique({where:{slug:"sba"},select:{empresaid:true,ativo:true}});
    if(!empresa?.ativo||empresa.empresaid!==2)throw Error("Seed SBA: empresa inesperada.");
    // Lock exclusivo somente deste trabalho. Evita duplicatas em reinicializações.
-   await tx.$queryRawUnsafe("SELECT pg_advisory_xact_lock(20261023, 2)");
+   await tx.$queryRawUnsafe("SELECT pg_advisory_xact_lock(20261023, 2)::text AS locked");
    const existente=await tx.proposta.findFirst({where:{empresaId:2,origem:MARCADOR},
      select:{propostaid:true,numero:true}});
    if(existente){
