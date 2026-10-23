@@ -16,6 +16,7 @@ import * as usuario from "../controller/ctusuario";
 import * as vendedor from "../controller/ctvendedor";
 import * as fiscal from "../controller/ctfiscal";
 import * as integracaoFiscalSba from "../controller/ctintegracaoFiscalSba";
+import * as padroesSba from "../controller/ctpadroesFiscaisSba";
 import * as nfseNacionalSba from "../controller/ctnfseNacionalSba";
 import * as notasRecebidas from "../controller/ctnotasRecebidas";
 import * as financeiro from "../controller/ctfinanceiro";
@@ -189,6 +190,9 @@ routes.get("/fiscal/arquivos/:id/:tipo",auth,fornecedor.apenasSba,arquivoFiscal.
 // Módulo fiscal
 routes.get("/fiscal/dashboard", auth, fiscal.dashboard);
 routes.get("/fiscal/sba/integracoes/status", auth, integracaoFiscalSba.diagnosticoFiscalSba);
+routes.get("/fiscal/sba/padroes",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.listar);
+routes.put("/fiscal/sba/padroes/empresa/:id",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.salvarEmpresa);
+routes.put("/fiscal/sba/padroes/servico/:id",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.salvarServico);
 routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.diagnosticarAssinatura);
 routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar-sefin",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.testarTlsSefin);
 routes.get("/fiscal/sba/nfse/preparacao/:notaId",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.prepararNota);
