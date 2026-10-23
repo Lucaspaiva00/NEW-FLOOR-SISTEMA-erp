@@ -195,6 +195,7 @@
         '<a class="btn-secondary-fiscal text-decoration-none" href="https://emissor.sieg.com/" target="_blank" rel="noopener noreferrer">Abrir SIEG Emissor</a>' +
         '<button type="button" id="fiscalSbaCadastro" class="btn-secondary-fiscal">Cadastro da emissora / certificado A1</button>' +
         '<button type="button" id="fiscalSbaAssinatura" class="btn-secondary-fiscal" disabled>Testar assinatura do A1</button>' +
+        '<button type="button" id="fiscalSbaTls" class="btn-secondary-fiscal" disabled>Testar conexão SEFIN (sem emissão)</button>' +
       '</div>' +
       '<p class="small text-muted mt-3 mb-0">A emissão direta no ERP ainda não está habilitada. Não use “Emitir agora” para uma nota SBA como se o Portal Nacional estivesse integrado. Continue emitindo nos portais oficiais até a homologação.</p>';
     area.after(section);
@@ -202,6 +203,23 @@
       document.querySelector('[data-fiscal-tab="empresas"]')?.click());
     let emissoraParaTeste=null;
     const btnAssinatura=section.querySelector("#fiscalSbaAssinatura");
+    const btnTls=section.querySelector("#fiscalSbaTls");
+    btnTls?.addEventListener("click",async()=>{
+      if(!emissoraParaTeste)return;
+      btnTls.disabled=true;
+      try{
+        const resposta=await fetch(API_URL+"/fiscal/sba/nfse/certificado/"+emissoraParaTeste+"/testar-sefin",{
+          method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:"{}"
+        });
+        const d=await resposta.json().catch(()=>({}));
+        if(!resposta.ok||!d.tlsConectou)throw Error(d.error||"Falha na negociação TLS.");
+        await Swal.fire({icon:"success",title:"Canal TLS de homologação conectado",
+          text:"Conexão segura "+d.protocolo+" com a SEFIN de homologação. Isto NÃO confirma autorização do CNPJ para emitir; nenhuma nota foi enviada."});
+      }catch(erro){
+        await Swal.fire({icon:"warning",title:"Conexão SEFIN ainda pendente",text:erro.message});
+      }finally{btnTls.disabled=false;}
+    });
+
     btnAssinatura?.addEventListener("click",async()=>{
       if(!emissoraParaTeste)return;
       btnAssinatura.disabled=true;
@@ -236,6 +254,7 @@
         };
         emissoraParaTeste=dados.emissoras.find(e=>e.dados?.certificadoA1)?.id||null;
         if(btnAssinatura)btnAssinatura.disabled=!emissoraParaTeste;
+        if(btnTls)btnTls.disabled=!emissoraParaTeste;
         if (!dados.emissoras.length) {
           status.innerHTML = '<strong class="text-warning">Pendente:</strong> ainda não há empresa emissora cadastrada na SBA. Cadastre a empresa fiscal antes de solicitar homologação.';
         } else {
