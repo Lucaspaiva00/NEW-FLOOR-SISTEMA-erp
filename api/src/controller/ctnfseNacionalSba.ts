@@ -4,6 +4,7 @@ import { testarAssinaturaA1ArmazenadoSba } from "../services/assinaturaA1Sba.ser
 import { verificarCamposDpsSba, SEFIN_RESTRITA_DOCS, SEFIN_PRODUCAO_DOCS } from "../services/dpsNacionalSba.service";
 import {montarDpsPreviaSba} from "../services/dpsXmlSba.service";
 import {assinarDpsXmlSba} from "../services/xmlAssinaturaDpsSba.service";
+import {validarDpsOficialSba,estadoXsdOficialSba} from "../services/validacaoXsdSba.service";
 
 async function autorizarSba(req:Request) {
   if(req.configuracaoSistema?.perfil!=="SBA"||!req.empresaId)
@@ -109,5 +110,52 @@ export const baixarDpsAssinada=async(req:Request,res:Response):Promise<void>=>{
   res.setHeader("Content-Type","application/xml; charset=utf-8");
   res.setHeader("X-DPS-XSD-Validado","nao");
   res.send(documento.xmlAssinado);
+ }catch(e:any){erroSeguro(res,e);}
+};
+
+/**
+ * Validação XSD OFICIAL em produção restrita, exclusivamente SBA.
+ * A assinatura XMLDSig é verificada antes de validar o documento.
+ * Não transmite nem salva/autoriza a nota.
+ */
+export const validarXsdDps=async(req:Request,res:Response):Promise<void>=>{
+ try{
+  const empresaId=await autorizarSba(req);
+  const id=Number(req.params.notaId);
+  if(!Number.isSafeInteger(id)||id<=0){
+    res.status(400).json({error:"Número da nota inválido."});return;
+  }
+  const nota=await prisma.notaFiscal.findFirst({where:{empresaId,notafiscalid:id},
+    include:{empresaFiscal:true,itens:true,proposta:true}});
+  if(!nota)throw Object.assign(Error("Nota fiscal não encontrada no perfil SBA."),{statusCode:404});
+  if(nota.tipo!=="NFSE"){
+    res.status(422).json({error:"Somente NFS-e de serviço podem gerar DPS Nacional."});return;
+  }
+  if(nota.empresaFiscal.empresaId!==empresaId){
+    res.status(403).json({error:"Emissora não pertence ao perfil SBA."});return;
+  }
+  if(!nota.empresaFiscal.certificadoCriptografado){
+    res.status(422).json({error:"Certificado A1 ainda não cadastrado."});return;
+  }
+  const xsd=estadoXsdOficialSba();
+  if(!xsd.disponivel){
+    res.status(503).json({error:"Pacote XSD da homologação indisponível. A emissão permanece bloqueada.",xsd});return;
+  }
+  const dps=montarDpsPreviaSba(nota);
+  if(dps.pendencias.length){
+    res.status(422).json({error:"Revise os dados da nota antes de gerar a DPS.",pendencias:dps.pendencias,xsd});return;
+  }
+  const assinada=assinarDpsXmlSba(dps.xml,nota.empresaFiscal.certificadoCriptografado,empresaId,nota.empresaFiscalId);
+  const resultado=await validarDpsOficialSba(assinada.xmlAssinado);
+  res.setHeader("Cache-Control","no-store");
+  res.status(resultado.valido?200:422).json({
+    notaId:id,perfil:"SBA",ambiente:"PRODUCAO_RESTRITA",
+    xmlAssinadoLocalmente:true,
+    validadoXsdOficial:resultado.valido===true,
+    pacote:resultado.versao||xsd.versao,sha256Pacote:resultado.sha256||null,
+    erroXsd:resultado.valido?null:resultado.erro||"XML rejeitado pelo validador XSD.",
+    observacao:"Nenhum dado foi transmitido ao governo, nenhuma nota foi emitida ou faturada.",
+    transmissaoHabilitada:false
+  });
  }catch(e:any){erroSeguro(res,e);}
 };
