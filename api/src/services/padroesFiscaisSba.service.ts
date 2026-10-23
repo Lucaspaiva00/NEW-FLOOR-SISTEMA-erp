@@ -1,5 +1,5 @@
 import prisma from "../prisma";
-import { validarParametrosRascunhoSba } from "./parametrosDpsSba.service";
+import { validarParametrosRascunhoSba, mesclarPadroesDpsSba } from "./parametrosDpsSba.service";
 
 export const CAMPOS_EMPRESA_SBA=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib","cLocPrestacao"] as const;
 export const CAMPOS_SERVICO_SBA=["cTribNac","cTribMun","cNBS"] as const;
@@ -99,8 +99,7 @@ export async function aplicarPadroesEmNotaSba(empresaId:number,body:any):Promise
     servico=onlyFields(isObj(tenant.config[keyServico(servicoId)])?tenant.config[keyServico(servicoId)]:{},CAMPOS_SERVICO_SBA,true);
   }
   // O valor digitado na nota prevalece sobre o padrão.
-  const completo={...empresa,...servico,...extra};
-  input.payloadExtra=validarParametrosRascunhoSba(completo);
+  input.payloadExtra=mesclarPadroesDpsSba(empresa,servico,extra);
   if(!String(input.itemListaServico||"").trim()){
     input.itemListaServico=servico.itemListaServico || f.itemListaServicoPadrao || null;
   }
