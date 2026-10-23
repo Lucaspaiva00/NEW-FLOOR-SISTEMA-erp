@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
-    "build": "prisma generate && npx puppeteer browsers install chrome && tsc",
+    "build": "prisma generate && npx puppeteer browsers install chrome && tsc && node --import tsx --test tests/dpsXmlSba.test.ts",
     "prisma:generate": "prisma generate",
     "postbuild": "node -e \"require('fs').cpSync('public','dist/public',{recursive:true})\"",
     "start": "node dist/server.js",
