@@ -192,6 +192,7 @@ routes.get("/fiscal/dashboard", auth, fiscal.dashboard);
 routes.get("/fiscal/sba/integracoes/status", auth, integracaoFiscalSba.diagnosticoFiscalSba);
 routes.get("/fiscal/sba/padroes",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.listar);
 routes.put("/fiscal/sba/padroes/empresa/:id",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.salvarEmpresa);
+routes.post("/fiscal/sba/padroes/servico",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.criarServico);
 routes.put("/fiscal/sba/padroes/servico/:id",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.salvarServico);
 routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.diagnosticarAssinatura);
 routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar-sefin",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.testarTlsSefin);
