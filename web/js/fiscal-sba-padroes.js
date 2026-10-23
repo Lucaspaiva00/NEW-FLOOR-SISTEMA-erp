@@ -3,6 +3,8 @@
   const el=id=>document.getElementById(id);
   const escapeHtml=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const empresaFields=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib","cLocPrestacao"];
+  // tribISSQN e regEspTrib já aparecem em Padrões NFS-e do modal da empresa.
+  const empresaCamposAdicionais=["opSimpNac","tpRetISSQN","indTotTrib","cLocPrestacao"];
   const servicoFields=["cTribNac","itemListaServico","cTribMun","cNBS"];
   const labels={
     opSimpNac:"Opção pelo Simples Nacional",regEspTrib:"Regime especial municipal",
@@ -48,75 +50,107 @@
     const input=el(prefix+key);if(input)input.value=data?.[key]||"";
   });
   const selecionada=(tipo)=>tipo==="empresa"
-    ?dados.emissoras.find(x=>String(x.id)===el("sbaCfgEmpresa")?.value)
+    ?dados.emissoras.find(x=>String(x.id)===el("empresaFiscalId")?.value)
     :dados.servicos.find(x=>String(x.id)===el("sbaCfgServico")?.value);
   function carregarSelecao(tipo){
-    const campos=tipo==="empresa"?empresaFields:servicoFields;
-    setValues(campos,tipo==="empresa"?"sbaCfgE_":"sbaCfgS_",selecionada(tipo)?.padroes||{});
-    if(tipo==="servico"&&el("sbaCfgServicoNome"))el("sbaCfgServicoNome").value=selecionada(tipo)?.nome||"";
+    const campos=tipo==="empresa"?empresaCamposAdicionais:servicoFields;
+    const cadastro=selecionada(tipo);
+    setValues(campos,tipo==="empresa"?"sbaCfgE_":"sbaCfgS_",cadastro?.padroes||{});
+    if(tipo==="empresa"){
+      const nome=el("sbaCfgEmissoraNome");
+      if(nome)nome.textContent=cadastro?.nome||"Primeiro salve o cadastro da empresa emissora.";
+      const botao=el("sbaSalvarCfgEmpresa");
+      if(botao)botao.disabled=!cadastro;
+    }
+    if(tipo==="servico"&&el("sbaCfgServicoNome"))el("sbaCfgServicoNome").value=cadastro?.nome||"";
+  }
+  // Usa os campos já existentes no modal, sem exibir formulários duplicados.
+  function aplicarValoresConfirmadosEmpresa(){
+    const valores=selecionada("empresa")?.padroes||{};
+    if(valores.tribISSQN!=null && el("efNaturezaNfse"))
+      el("efNaturezaNfse").value=String(valores.tribISSQN);
+    if(valores.regEspTrib!=null && el("efRegimeEspecialNfse"))
+      el("efRegimeEspecialNfse").value=String(valores.regEspTrib);
   }
   function render(){
-    if(el("sbaPadroesFiscais"))return;
-    const panel=document.createElement("section");
+    const body=el("modalEmpresaFiscal")?.querySelector(".modal-body");
+    if(!body||el("sbaPadroesFiscais"))return;
+    const panel=document.createElement("details");
     panel.id="sbaPadroesFiscais";
-    panel.className="fiscal-panel p-3 mb-3";
-    panel.style.marginTop="16px";
+    panel.className="border rounded p-3 mt-3";
     panel.innerHTML=
-      '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">'+
-      '<div><h2 class="h5 fw-bold mb-1">Padrões fiscais de NFS-e · SBA</h2>'+
-      '<p class="small text-muted mb-0">Cadastre uma vez com a contabilidade. A emissão direta continua em preparação.</p></div>'+
-      '<button type="button" id="sbaCfgRecarregar" class="btn-secondary-fiscal">Atualizar cadastros</button></div>'+
-      '<div class="alert alert-warning small py-2">Padrões são sugestões para cada nota. Confira sempre o serviço, o município, a retenção e as condições do tomador antes de emitir.</div>'+
-      '<div class="row g-3">'+
-        '<div class="col-12 col-xl-6"><div class="border rounded p-3 h-100">'+
-          '<h3 class="h6 fw-bold">1. Padrões da empresa emissora</h3>'+
-          '<label for="sbaCfgEmpresa" class="form-label small">Emissora</label>'+
-          '<select id="sbaCfgEmpresa" class="form-select mb-3"></select>'+
-          '<div class="row g-3">'+empresaFields.map(key=>campo(key,"sbaCfgE_")).join("")+'</div>'+
-          '<button type="button" id="sbaSalvarCfgEmpresa" class="btn-secondary-fiscal mt-3">Salvar padrões da empresa</button>'+
-        '</div></div>'+
-        '<div class="col-12 col-xl-6"><div class="border rounded p-3 h-100">'+
-          '<h3 class="h6 fw-bold">2. Classificação fiscal por serviço</h3>'+
-          '<p class="small text-muted">Escolha um serviço cadastrado. Materiais sem prestação de serviço não devem receber classificação NFS-e.</p>'+
-          '<label for="sbaCfgServico" class="form-label small">Serviço cadastrado</label>'+
-          '<select id="sbaCfgServico" class="form-select mb-3"></select>'+
-          '<button type="button" id="sbaCriarTipoServico" class="btn-secondary-fiscal mb-3">+ Cadastrar tipo de serviço fiscal</button>'+ 
-          '<label class="form-label small" for="sbaCfgServicoNome">Nome do tipo de serviço fiscal</label><input id="sbaCfgServicoNome" class="form-control mb-3" maxlength="120">'+
-          '<div class="row g-3">'+servicoFields.map(key=>campo(key,"sbaCfgS_")).join("")+'</div>'+
-          '<button type="button" id="sbaSalvarCfgServico" class="btn-secondary-fiscal mt-3">Salvar classificação do serviço</button>'+
-        '</div></div>'+
+      '<summary class="fw-semibold" style="cursor:pointer">Configurações complementares NFS-e Nacional · SBA</summary>'+
+      '<div class="mt-3">'+
+        '<p class="small text-muted">Configure os dados confirmados pela contabilidade uma vez no cadastro da empresa. Estes padrões apenas preenchem rascunhos: cada nota ainda precisa de conferência.</p>'+
+        '<div class="alert alert-warning py-2 small">A tributação do ISS e o regime especial ficam nos campos <strong>Padrões NFS-e</strong>, logo acima. Os demais parâmetros são informados aqui. Não preencha códigos por tentativa.</div>'+
+        '<div class="mb-3"><span class="small text-muted">Emissora em edição:</span> <strong id="sbaCfgEmissoraNome" class="small"></strong></div>'+
+        '<div class="row g-3">'+empresaCamposAdicionais.map(key=>campo(key,"sbaCfgE_")).join("")+'</div>'+
+        '<div class="d-flex flex-wrap align-items-center gap-2 mt-3">'+
+          '<button type="button" id="sbaSalvarCfgEmpresa" class="btn-secondary-fiscal">Salvar padrões da NFS-e</button>'+
+          '<span class="text-muted small">Para salvar também os dados gerais da emissora, use “Salvar empresa” abaixo.</span>'+
+        '</div>'+
+        '<details class="border rounded p-3 mt-4" id="sbaCfgTiposServico">'+
+          '<summary class="fw-semibold" style="cursor:pointer">Classificações fiscais dos tipos de serviço</summary>'+
+          '<div class="mt-3">'+
+            '<p class="small text-muted">Cadastre a classificação de cada serviço uma vez. Esta lista é fiscal e não altera o cadastro de materiais da SBA.</p>'+
+            '<label for="sbaCfgServico" class="form-label small">Tipo de serviço fiscal</label>'+
+            '<select id="sbaCfgServico" class="form-select mb-3"></select>'+
+            '<button type="button" id="sbaCriarTipoServico" class="btn-secondary-fiscal mb-3">+ Cadastrar tipo de serviço</button>'+
+            '<label for="sbaCfgServicoNome" class="form-label small">Nome do tipo de serviço</label>'+
+            '<input id="sbaCfgServicoNome" class="form-control mb-3" maxlength="120" autocomplete="off">'+
+            '<div class="row g-3">'+servicoFields.map(key=>campo(key,"sbaCfgS_")).join("")+'</div>'+
+            '<button type="button" id="sbaSalvarCfgServico" class="btn-secondary-fiscal mt-3">Salvar classificação fiscal</button>'+
+          '</div>'+
+        '</details>'+
       '</div>';
-    const ref=el("fiscalIntegracoesSba")||document.querySelector(".fiscal-kpis");
-    ref?.after(panel);
-    el("sbaCfgEmpresa").addEventListener("change",()=>carregarSelecao("empresa"));
+    // Exclusivamente dentro do modal Empresa emissora, imediatamente após
+    // Padrões NFS-e. Não cria cartão no dashboard/na tela principal.
+    const titulos=[...body.querySelectorAll(".fiscal-section-title")];
+    const titulo=titulos.find(x=>x.textContent.trim()==="Padrões NFS-e");
+    const linha=titulo?.nextElementSibling;
+    if(linha?.parentElement===body)linha.after(panel);
+    else body.appendChild(panel);
     el("sbaCfgServico").addEventListener("change",()=>carregarSelecao("servico"));
-    el("sbaCfgRecarregar").addEventListener("click",()=>atualizar().catch(erro=>Swal.fire("Erro",erro.message,"error")));
     async function salvar(tipo){
       const entity=selecionada(tipo);
-      if(!entity){await Swal.fire("Cadastro necessário","Selecione uma emissora ou serviço.","warning");return;}
+      if(!entity){
+        await Swal.fire({icon:"info",title:"Cadastro necessário",
+          text:tipo==="empresa"?"Salve a empresa emissora antes de configurar seus padrões fiscais.":"Selecione um tipo de serviço fiscal."});
+        return;
+      }
       const btn=el(tipo==="empresa"?"sbaSalvarCfgEmpresa":"sbaSalvarCfgServico");
       btn.disabled=true;
       try{
-        const value=getValues(tipo==="empresa"?empresaFields:servicoFields,tipo==="empresa"?"sbaCfgE_":"sbaCfgS_");
-        if(tipo==="servico")value.nome=el("sbaCfgServicoNome").value.trim();
-        await api("/fiscal/sba/padroes/"+tipo+"/"+entity.id,{method:"PUT",body:JSON.stringify(value)});
+        const value=tipo==="empresa"
+          ?getValues(empresaCamposAdicionais,"sbaCfgE_")
+          :getValues(servicoFields,"sbaCfgS_");
+        if(tipo==="empresa"){
+          // Reaproveita os campos próprios do modal, sem duplicá-los.
+          value.tribISSQN=el("efNaturezaNfse")?.value||"";
+          value.regEspTrib=el("efRegimeEspecialNfse")?.value||"";
+        }else value.nome=el("sbaCfgServicoNome").value.trim();
+        await api("/fiscal/sba/padroes/"+tipo+"/"+entity.id,{
+          method:"PUT",body:JSON.stringify(value)
+        });
         await atualizar();
-        await Swal.fire({icon:"success",title:"Padrões salvos",text:"As próximas NFS-e usarão esses dados quando não houver informação específica na nota.",timer:2200,showConfirmButton:false});
-      }catch(err){await Swal.fire({icon:"error",title:"Não foi possível salvar",text:err.message});}
-      finally{btn.disabled=false;}
+        await Swal.fire({icon:"success",title:"Configuração fiscal salva",
+          text:"Os dados serão sugeridos nas próximas NFS-e da SBA e podem ser ajustados por nota.",
+          timer:2200,showConfirmButton:false});
+      }catch(err){
+        await Swal.fire({icon:"error",title:"Não foi possível salvar",text:err.message});
+      }finally{
+        btn.disabled=false;
+      }
     }
     el("sbaSalvarCfgEmpresa").addEventListener("click",()=>salvar("empresa"));
     el("sbaSalvarCfgServico").addEventListener("click",()=>salvar("servico"));
     el("sbaCriarTipoServico").addEventListener("click",async()=>{
       const resposta=await Swal.fire({
-        title:"Cadastrar tipo de serviço fiscal",
-        input:"text",
+        title:"Cadastrar tipo de serviço fiscal",input:"text",
         inputLabel:"Nome do tipo de serviço prestado (não material)",
         inputPlaceholder:"Ex.: Instalação de estruturas metálicas",
-        inputAttributes:{"maxlength":"120"},
-        showCancelButton:true,
-        confirmButtonText:"Criar cadastro",
-        cancelButtonText:"Cancelar",
+        inputAttributes:{"maxlength":"120"},showCancelButton:true,
+        confirmButtonText:"Criar cadastro",cancelButtonText:"Cancelar",
         inputValidator:v=>!v||v.trim().length<3?"Informe pelo menos 3 caracteres.":undefined
       });
       if(!resposta.isConfirmed)return;
@@ -125,22 +159,21 @@
           method:"POST",body:JSON.stringify({nome:resposta.value.trim()})
         });
         await atualizar();
+        el("sbaCfgTiposServico").open=true;
         el("sbaCfgServico").value=novo.id;
         carregarSelecao("servico");
-        await Swal.fire({icon:"success",title:"Serviço cadastrado",text:"Agora preencha a classificação fiscal com os dados do contador e clique em Salvar classificação do serviço."});
-      }catch(err){await Swal.fire({icon:"error",title:"Erro ao criar serviço",text:err.message});}
+        await Swal.fire({icon:"success",title:"Serviço fiscal cadastrado",
+          text:"Preencha os códigos confirmados pela contabilidade e salve a classificação."});
+      }catch(err){
+        await Swal.fire({icon:"error",title:"Erro ao criar serviço",text:err.message});
+      }
     });
-
   }
   async function atualizar(){
     const nova=await api("/fiscal/sba/padroes");
     dados=nova;
-    const ce=el("sbaCfgEmpresa"),cs=el("sbaCfgServico");
-    const preE=ce?.value,preS=cs?.value;
-    if(ce){
-      ce.innerHTML=dados.emissoras.map(x=>'<option value="'+x.id+'">'+escapeHtml(x.nome)+'</option>').join("");
-      if(dados.emissoras.some(x=>String(x.id)===preE))ce.value=preE;
-    }
+    const cs=el("sbaCfgServico");
+    const preS=cs?.value;
     if(cs){
       cs.innerHTML='<option value="">Selecione serviço...</option>'+
         dados.servicos.map(x=>'<option value="'+x.id+'">'+escapeHtml(x.codigo||"")+" — "+escapeHtml(x.nome)+'</option>').join("");
@@ -217,6 +250,15 @@
     if(tenant.slug!=="sba"||tenant.configuracaoSistema?.perfil!=="SBA")return;
     render();
     await atualizar();
+    el("modalEmpresaFiscal")?.addEventListener("shown.bs.modal",()=>{
+      // A tela fiscal já preencheu os dados da emissora no modal.
+      carregarSelecao("empresa");
+      aplicarValoresConfirmadosEmpresa();
+    });
+    el("modalEmpresaFiscal")?.addEventListener("hidden.bs.modal",()=>{
+      el("sbaPadroesFiscais")?.removeAttribute("open");
+      el("sbaCfgTiposServico")?.removeAttribute("open");
+    });
     el("modalNotaFiscal")?.addEventListener("shown.bs.modal",()=>{
       // A tela original preenche o rascunho primeiro; apenas campos vazios recebem padrão.
       queueMicrotask(preencherNotaComPadroes);
