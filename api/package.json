@@ -5,11 +5,12 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
-    "build": "if { [ -n \"$RENDER_INSTANCE_ID\" ] || [ \"$NODE_ENV\" = \"production\" ]; } && [ -f dist/server.js ]; then echo 'Usando build compilado no deploy da Render'; else prisma generate && npx puppeteer browsers install chrome && tsc && node --import tsx --test tests/dpsXmlSba.test.ts; fi",
+    "build": "if { [ -n \"$RENDER_INSTANCE_ID\" ] || [ \"$NODE_ENV\" = \"production\" ]; } && [ -f dist/server.js ]; then echo 'Usando build compilado no deploy da Render'; else node scripts/obter-xsd-nacional.mjs && prisma generate && npx puppeteer browsers install chrome && tsc && node --import tsx --test tests/dpsXmlSba.test.ts; fi",
     "prisma:generate": "prisma generate",
     "postbuild": "node -e \"require('fs').cpSync('public','dist/public',{recursive:true})\"",
     "start": "node dist/server.js",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "nfse:xsd:baixar": "node scripts/obter-xsd-nacional.mjs"
   },
   "keywords": [],
   "author": "",
@@ -26,7 +27,9 @@
     "nodemailer": "^8.0.11",
     "puppeteer": "^24.10.2",
     "xml-crypto": "6.4.0",
-    "@xmldom/xmldom": "0.9.12"
+    "@xmldom/xmldom": "0.9.12",
+    "libxml2-wasm": "0.7.2",
+    "fflate": "0.8.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
