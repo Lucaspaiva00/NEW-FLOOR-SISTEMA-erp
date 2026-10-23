@@ -117,7 +117,7 @@
   }
   async function iniciar(){
     const usuario=JSON.parse(localStorage.getItem("usuarioLogado")||"null");
-    if(!usuario?.token||!window.API_URL||!$("formNotaFiscal"))return;
+    if(!usuario?.token||typeof API_URL==="undefined"||!$("formNotaFiscal"))return;
     const resp=await fetch(API_URL+"/empresas/me",{
       headers:{Authorization:"Bearer "+usuario.token}
     });
