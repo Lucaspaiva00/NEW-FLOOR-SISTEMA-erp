@@ -53,6 +53,7 @@
   function carregarSelecao(tipo){
     const campos=tipo==="empresa"?empresaFields:servicoFields;
     setValues(campos,tipo==="empresa"?"sbaCfgE_":"sbaCfgS_",selecionada(tipo)?.padroes||{});
+    if(tipo==="servico"&&el("sbaCfgServicoNome"))el("sbaCfgServicoNome").value=selecionada(tipo)?.nome||"";
   }
   function render(){
     if(el("sbaPadroesFiscais"))return;
@@ -79,6 +80,8 @@
           '<p class="small text-muted">Escolha um serviço cadastrado. Materiais sem prestação de serviço não devem receber classificação NFS-e.</p>'+
           '<label for="sbaCfgServico" class="form-label small">Serviço cadastrado</label>'+
           '<select id="sbaCfgServico" class="form-select mb-3"></select>'+
+          '<button type="button" id="sbaCriarTipoServico" class="btn-secondary-fiscal mb-3">+ Cadastrar tipo de serviço fiscal</button>'+ 
+          '<label class="form-label small" for="sbaCfgServicoNome">Nome do tipo de serviço fiscal</label><input id="sbaCfgServicoNome" class="form-control mb-3" maxlength="120">'+
           '<div class="row g-3">'+servicoFields.map(key=>campo(key,"sbaCfgS_")).join("")+'</div>'+
           '<button type="button" id="sbaSalvarCfgServico" class="btn-secondary-fiscal mt-3">Salvar classificação do serviço</button>'+
         '</div></div>'+
@@ -95,6 +98,7 @@
       btn.disabled=true;
       try{
         const value=getValues(tipo==="empresa"?empresaFields:servicoFields,tipo==="empresa"?"sbaCfgE_":"sbaCfgS_");
+        if(tipo==="servico")value.nome=el("sbaCfgServicoNome").value.trim();
         await api("/fiscal/sba/padroes/"+tipo+"/"+entity.id,{method:"PUT",body:JSON.stringify(value)});
         await atualizar();
         await Swal.fire({icon:"success",title:"Padrões salvos",text:"As próximas NFS-e usarão esses dados quando não houver informação específica na nota.",timer:2200,showConfirmButton:false});
@@ -103,6 +107,30 @@
     }
     el("sbaSalvarCfgEmpresa").addEventListener("click",()=>salvar("empresa"));
     el("sbaSalvarCfgServico").addEventListener("click",()=>salvar("servico"));
+    el("sbaCriarTipoServico").addEventListener("click",async()=>{
+      const resposta=await Swal.fire({
+        title:"Cadastrar tipo de serviço fiscal",
+        input:"text",
+        inputLabel:"Nome do tipo de serviço prestado (não material)",
+        inputPlaceholder:"Ex.: Instalação de estruturas metálicas",
+        inputAttributes:{"maxlength":"120"},
+        showCancelButton:true,
+        confirmButtonText:"Criar cadastro",
+        cancelButtonText:"Cancelar",
+        inputValidator:v=>!v||v.trim().length<3?"Informe pelo menos 3 caracteres.":undefined
+      });
+      if(!resposta.isConfirmed)return;
+      try{
+        const novo=await api("/fiscal/sba/padroes/servico",{
+          method:"POST",body:JSON.stringify({nome:resposta.value.trim()})
+        });
+        await atualizar();
+        el("sbaCfgServico").value=novo.id;
+        carregarSelecao("servico");
+        await Swal.fire({icon:"success",title:"Serviço cadastrado",text:"Agora preencha a classificação fiscal com os dados do contador e clique em Salvar classificação do serviço."});
+      }catch(err){await Swal.fire({icon:"error",title:"Erro ao criar serviço",text:err.message});}
+    });
+
   }
   async function atualizar(){
     const nova=await api("/fiscal/sba/padroes");
