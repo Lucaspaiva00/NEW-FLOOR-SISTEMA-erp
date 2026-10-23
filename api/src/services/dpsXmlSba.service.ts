@@ -98,7 +98,7 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
     tag("tpAmb","2")+tag("dhEmi",hora)+tag("verAplic","PAIVA_TECH_1.0")+
     tag("serie",String(Number(serie)))+tag("nDPS",String(numero))+
     tag("dCompet",dataCompetencia(nota.dataEmissao))+
-    tag("tpEmit","1")+tag("cLocEmi",municipio)+
+    tag("tpEmit","1")+tag("finNFSe","0")+tag("cLocEmi",municipio)+
     "<prest>"+prest+"</prest><toma>"+toma+"</toma><serv>"+serv+
     "</serv><valores>"+valores+"</valores>"+
     "</infDPS></DPS>";
