@@ -121,6 +121,10 @@
       if(!acoes||tipo!=="NFSE"||!Number.isSafeInteger(Number(id))||
          ["AUTORIZADA","PROCESSANDO","CANCELADA"].includes(status))return;
       if(acoes.querySelector("[data-sba-dps]"))return;
+      const btnPendencias=document.createElement("button");
+      btnPendencias.type="button";btnPendencias.className="btn btn-outline-secondary";
+      btnPendencias.dataset.sbaDps="pendencias";btnPendencias.dataset.id=String(id);
+      btnPendencias.textContent="Ver pendências DPS";
       const btn1=document.createElement("button");
       btn1.type="button";btn1.className="btn btn-outline-secondary";
       btn1.dataset.sbaDps="previa";btn1.dataset.id=String(id);
@@ -133,13 +137,41 @@
       btn3.type="button";btn3.className="btn btn-outline-info";
       btn3.dataset.sbaDps="xsd";btn3.dataset.id=String(id);
       btn3.textContent="Validar DPS no XSD oficial";
-      acoes.append(btn1,btn2,btn3);
+      acoes.append(btnPendencias,btn1,btn2,btn3);
     });
     document.getElementById("acoesDetalheFiscal")?.addEventListener("click",async event=>{
       const btn=event.target.closest("[data-sba-dps]");
       if(!btn)return;
       const id=Number(btn.dataset.id);
       if(!Number.isSafeInteger(id)||id<=0)return;
+      const pendencias=btn.dataset.sbaDps==="pendencias";
+      if(pendencias){
+        btn.disabled=true;
+        try{
+          const resposta=await fetch(API_URL+"/fiscal/sba/nfse/preparacao/"+id,{
+            headers:{Authorization:"Bearer "+token}
+          });
+          const data=await resposta.json().catch(()=>({}));
+          if(!resposta.ok)throw Error(data.error||"Não foi possível conferir a DPS.");
+          const erros=Array.isArray(data.pendencias)?data.pendencias:[];
+          const resultado=await Swal.fire({
+            icon:erros.length?"warning":"info",
+            title:erros.length?"Dados a revisar na DPS":"Cadastro básico preenchido",
+            html:erros.length
+              ?'<p class="text-start small">Confira todos os campos antes de validar no XSD:</p>'+
+                '<ol class="text-start">'+erros.map(e=>'<li class="mb-2">'+esc(e)+'</li>').join("")+'</ol>'
+              :'<p>A nota não tem pendências no preenchimento básico. Ainda precisa passar no XSD oficial e na SEFIN.</p>',
+            showCancelButton:erros.length>0,
+            cancelButtonText:"Fechar",
+            confirmButtonText:erros.length?"Editar rascunho":"Entendi",
+            width:650
+          });
+          if(erros.length && resultado.isConfirmed)
+            document.querySelector('[data-editar-nota="'+id+'"]')?.click();
+        }catch(e){await Swal.fire({icon:"error",title:"Erro na conferência DPS",text:e.message});}
+        finally{btn.disabled=false;}
+        return;
+      }
       const validar=btn.dataset.sbaDps==="xsd";
       const assinar=btn.dataset.sbaDps==="assinar";
       const rota="/fiscal/sba/nfse/preparacao/"+id+
