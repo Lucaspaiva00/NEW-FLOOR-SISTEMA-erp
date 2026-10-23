@@ -16,6 +16,7 @@ import * as usuario from "../controller/ctusuario";
 import * as vendedor from "../controller/ctvendedor";
 import * as fiscal from "../controller/ctfiscal";
 import * as integracaoFiscalSba from "../controller/ctintegracaoFiscalSba";
+import * as nfseNacionalSba from "../controller/ctnfseNacionalSba";
 import * as notasRecebidas from "../controller/ctnotasRecebidas";
 import * as financeiro from "../controller/ctfinanceiro";
 import * as empresa from "../controller/ctempresa";
@@ -188,6 +189,8 @@ routes.get("/fiscal/arquivos/:id/:tipo",auth,fornecedor.apenasSba,arquivoFiscal.
 // Módulo fiscal
 routes.get("/fiscal/dashboard", auth, fiscal.dashboard);
 routes.get("/fiscal/sba/integracoes/status", auth, integracaoFiscalSba.diagnosticoFiscalSba);
+routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.diagnosticarAssinatura);
+routes.get("/fiscal/sba/nfse/preparacao/:notaId",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.prepararNota);
 routes.get("/fiscal/recebidas",auth,requireRole(["ADMIN","SUPER_ADMIN","FINANCEIRO"]),notasRecebidas.listar);
 routes.post("/fiscal/recebidas/importar",auth,requireRole(["ADMIN","SUPER_ADMIN","FINANCEIRO"]),notasRecebidas.importarParaPagar);
 routes.route("/fiscal/empresas")
