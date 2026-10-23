@@ -14,7 +14,7 @@ function safePath(version,relative){
   if(!file.startsWith(resolve(base,"20261020")+sep))throw Error("Esquema fora da pasta");
   return file;
 }
-async function check(xml){
+async function check(xml,onlySchema=false){
   if(typeof xml!=="string"||xml.length>1024*1024||/<!DOCTYPE|<!ENTITY/i.test(xml)){
     return {valido:false,erro:"XML excede limite ou contém declaração proibida"};
   }
@@ -26,6 +26,7 @@ async function check(xml){
     // previamente obtidos em build. Não busca URLs do XML do usuário.
     schema=XmlDocument.fromBuffer(readFileSync(file),{url:pathToFileURL(file).href});
     validator=XsdValidator.fromDoc(schema);
+    if(onlySchema)return {valido:true,schemaCompilado:true,versao:manifest.versao,sha256:manifest.zipSha256};
     document=XmlDocument.fromString(xml);
     validator.validate(document);
     return {valido:true,versao:manifest.versao,sha256:manifest.zipSha256};
@@ -41,5 +42,5 @@ for await(const chunk of process.stdin){
   input+=chunk;
   if(input.length>1024*1024){input="";break;}
 }
-const result=await check(input);
+const result=await check(input,process.argv.includes("--schema-check"));
 process.stdout.write(JSON.stringify(result));
