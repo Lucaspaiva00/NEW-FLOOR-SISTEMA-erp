@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
-    "build": "if { [ -n \"$RENDER_INSTANCE_ID\" ] || [ \"$NODE_ENV\" = \"production\" ]; } && [ -f dist/server.js ]; then echo 'Usando build compilado no deploy da Render'; else node scripts/obter-xsd-nacional.mjs && prisma generate && npx puppeteer browsers install chrome && tsc && node --import tsx --test tests/dpsXmlSba.test.ts tests/dpsXsdOficialSba.test.ts; fi",
+    "build": "if { [ -n \"$RENDER_INSTANCE_ID\" ]; } && [ -f dist/server.js ]; then echo 'Usando build compilado no deploy da Render'; else node scripts/obter-xsd-nacional.mjs && prisma generate && npx puppeteer browsers install chrome && tsc && node --import tsx --test tests/dpsXmlSba.test.ts tests/dpsXsdOficialSba.test.ts; fi",
     "prisma:generate": "prisma generate",
     "postbuild": "node -e \"require('fs').cpSync('public','dist/public',{recursive:true})\"",
     "start": "node dist/server.js",
