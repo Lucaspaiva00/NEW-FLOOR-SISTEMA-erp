@@ -5,6 +5,7 @@ import { verificarCamposDpsSba, SEFIN_RESTRITA_DOCS, SEFIN_PRODUCAO_DOCS } from 
 import {montarDpsPreviaSba} from "../services/dpsXmlSba.service";
 import {assinarDpsXmlSba} from "../services/xmlAssinaturaDpsSba.service";
 import {validarDpsOficialSba,estadoXsdOficialSba} from "../services/validacaoXsdSba.service";
+import {testarCanalTlsSefinSba} from "../services/conexaoSefinSba.service";
 
 async function autorizarSba(req:Request) {
   if(req.configuracaoSistema?.perfil!=="SBA"||!req.empresaId)
@@ -158,4 +159,32 @@ export const validarXsdDps=async(req:Request,res:Response):Promise<void>=>{
     transmissaoHabilitada:false
   });
  }catch(e:any){erroSeguro(res,e);}
+};
+
+/**
+ * Teste de conectividade HTTPS/TLS mútua: operação sem efeito fiscal.
+ * O canal TLS não equivale a credenciamento/autorização de emissão.
+ */
+export const testarTlsSefin=async(req:Request,res:Response):Promise<void>=>{
+ try{
+  const empresaId=await autorizarSba(req);
+  const id=Number(req.params.emissoraId);
+  if(!Number.isSafeInteger(id)||id<=0){
+    res.status(400).json({error:"Emissora inválida."});return;
+  }
+  const emissora=await prisma.empresaFiscal.findFirst({
+    where:{empresaId,empresafiscalid:id,ativo:true},
+    select:{certificadoCriptografado:true}
+  });
+  if(!emissora)throw Object.assign(Error("Emissora fiscal não encontrada na SBA."),{statusCode:404});
+  if(!emissora.certificadoCriptografado)throw Object.assign(Error("Certificado A1 ainda não cadastrado."),{statusCode:422});
+  const resultado=await testarCanalTlsSefinSba(emissora.certificadoCriptografado,empresaId,id);
+  res.setHeader("Cache-Control","no-store");
+  res.json({...resultado,mensagem:"Canal TLS validado, mas a autorização de emissão do CNPJ e a aceitação da DPS ainda não foram verificadas."});
+ }catch(e:any){
+  // Erros operacionais conhecidos sem expor segredo ou mensagens OpenSSL.
+  const mensagem=String(e?.message||"Falha de conectividade.");
+  const permitido=/^Não foi possível|^A negociação TLS|^A identidade TLS|^Tempo esgotado|^Certificado A1|^Emissora fiscal/;
+  res.status(e?.statusCode||422).json({error:permitido.test(mensagem)?mensagem:"Falha ao testar conexão da SBA com a SEFIN."});
+ }
 };
