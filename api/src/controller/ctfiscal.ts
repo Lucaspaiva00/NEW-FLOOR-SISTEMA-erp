@@ -5,6 +5,7 @@ import {conferirNotaFiscal} from "../services/fiscalValidacao.service";
 import {resolverConfiguracao} from "../services/configuracaoSistema.service";
 import {metadataFaturamentoExterno} from "../services/faturamentoExterno.service";
 import {notaComMunicipioIBGE} from "../services/ibgeMunicipioFiscal.service";
+import {validarParametrosRascunhoSba} from "../services/parametrosDpsSba.service";
 
 import { randomUUID } from "crypto";
 import { Request, Response } from "express";
@@ -301,7 +302,9 @@ function notaData(body: any, cliente: any, itens: any[], empresaId?: number) {
     codigoObra: nullable(body.codigoObra),
     art: nullable(body.art),
     informacoesAdicionais: nullable(body.informacoesAdicionais),
-    payloadExtra: parseJson(body.payloadExtra),
+    payloadExtra: empresaId===2 && tipo==="NFSE"
+      ? validarParametrosRascunhoSba(parseJson(body.payloadExtra))
+      : parseJson(body.payloadExtra),
   };
 }
 
