@@ -5,6 +5,7 @@ import cors from "cors";
 import path from "path";
 import routes from "./routes/routes";
 import { garantirSchemaFinanceiro } from "./services/financeiroSchema.service";
+import { seedHomologacaoSba } from "./services/seedSbaHomologacao.service";
 
 import { garantirSchemaConfiguracao } from "./services/configuracaoSchema.service";
 import { testarFluxoObras } from "./services/obrasSmoke.service";
@@ -42,6 +43,20 @@ async function iniciarServidor() {
     // Não derruba toda a API caso o banco tenha alguma restrição inesperada.
     // Assim o deploy novo entra no ar e o erro real fica visível nos logs.
     console.error("⚠️ Não foi possível verificar a estrutura financeira:", error);
+  }
+
+  // Semente controlada e temporária, estritamente opt-in no perfil SBA.
+  // É idempotente e não gera transmissão fiscal nem faturamento.
+  if (process.env.SEED_SBA_HOMOLOGACAO_20261023 === "CRIAR_UMA_VEZ_SBA_RASCUNHO") {
+    try {
+      const resultado = await seedHomologacaoSba();
+      console.log("SBA: cenário de homologação verificado",{
+        propostaId:resultado.propostaId,numero:resultado.numero,
+        notaId:resultado.notaId,criado:resultado.criado
+      });
+    } catch (erro:any) {
+      console.error("SBA: cenário de homologação não criado:",String(erro?.message||erro).slice(0,200));
+    }
   }
 
   app.listen(PORT, () => {
