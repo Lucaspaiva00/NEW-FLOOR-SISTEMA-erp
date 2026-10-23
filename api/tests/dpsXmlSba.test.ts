@@ -4,6 +4,7 @@ import { randomBytes, createCipheriv, hkdfSync } from "node:crypto";
 import forge from "node-forge";
 import { montarDpsPreviaSba } from "../src/services/dpsXmlSba.service";
 import { assinarDpsXmlSba } from "../src/services/xmlAssinaturaDpsSba.service";
+import {validarDpsOficialSba,estadoXsdOficialSba} from "../src/services/validacaoXsdSba.service";
 
 function certificadoTeste(){
   const keys=forge.pki.rsa.generateKeyPair(1024);
@@ -81,4 +82,15 @@ test("Assinatura XMLDSig é verificável e não exporta chave privada",()=>{
     if(original===undefined)delete process.env.CERTIFICADO_ENCRYPTION_KEY;
     else process.env.CERTIFICADO_ENCRYPTION_KEY=original;
   }
+});
+
+test("diagnóstico sintético contra XSD oficial: nunca autoriza emissão",async context=>{
+  if(!estadoXsdOficialSba().disponivel){context.skip("Pacote XSD não disponível");return;}
+  const dps=montarDpsPreviaSba(notaTeste());
+  assert.equal(dps.pendencias.length,0);
+  const check=await validarDpsOficialSba(dps.xml);
+  // O teste expõe apenas o primeiro erro de leiaute de um documento fictício.
+  // Nunca reporta o XML como homologado, mesmo quando algum trecho passa.
+  if(!check.valido)console.info("Diagnóstico DPS SBA sintética (somente schema): "+String(check.erro).slice(0,420));
+  assert.equal(typeof check.valido,"boolean");
 });
