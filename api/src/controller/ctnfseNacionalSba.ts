@@ -59,7 +59,7 @@ export const prepararNota=async(req:Request,res:Response):Promise<void>=>{
     include:{empresaFiscal:true,itens:true,proposta:true}
   });
   if(!nota)throw Object.assign(Error("Nota fiscal não encontrada no perfil SBA."),{statusCode:404});
-  const dados=verificarCamposDpsSba(nota);
+  const dados=montarDpsPreviaSba(nota);
   res.setHeader("Cache-Control","no-store");
   res.json({
     notaId:id,perfil:"SBA",tipo:"NFS-e Nacional",ambiente:"PRODUCAO_RESTRITA",
