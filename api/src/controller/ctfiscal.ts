@@ -6,6 +6,7 @@ import {resolverConfiguracao} from "../services/configuracaoSistema.service";
 import {metadataFaturamentoExterno} from "../services/faturamentoExterno.service";
 import {notaComMunicipioIBGE} from "../services/ibgeMunicipioFiscal.service";
 import {validarParametrosRascunhoSba} from "../services/parametrosDpsSba.service";
+import {aplicarPadroesEmNotaSba} from "../services/padroesFiscaisSba.service";
 
 import { randomUUID } from "crypto";
 import { Request, Response } from "express";
@@ -640,7 +641,8 @@ export const criarNota = async (req: Request, res: Response): Promise<void> => {
 
     const referencia = `NF${Date.now()}${randomUUID().replace(/-/g, "").slice(0, 8)}`;
     await validarVinculosNota(req.body,empresaId,cliente.clienteid);
-    const data = notaData(req.body, cliente, itens, empresaId);
+    const corpoNota = req.configuracaoSistema?.perfil==="SBA" ? await aplicarPadroesEmNotaSba(empresaId,req.body) : req.body;
+    const data = notaData(corpoNota, cliente, itens, empresaId);
 
     const nota = await prisma.notaFiscal.create({
       data: {
@@ -687,7 +689,8 @@ export const atualizarNota = async (req: Request, res: Response): Promise<void> 
       return;
     }
     await validarVinculosNota(req.body,empresaId,cliente.clienteid);
-    const data = notaData(req.body, cliente, itens, empresaId);
+    const corpoNota = req.configuracaoSistema?.perfil==="SBA" ? await aplicarPadroesEmNotaSba(empresaId,req.body) : req.body;
+    const data = notaData(corpoNota, cliente, itens, empresaId);
 
     await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT notafiscalid FROM "NotaFiscal" WHERE notafiscalid=${id} AND "empresaId"=${empresaId} FOR UPDATE`;
