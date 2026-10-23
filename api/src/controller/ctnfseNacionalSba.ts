@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import prisma from "../prisma";
 import { testarAssinaturaA1ArmazenadoSba } from "../services/assinaturaA1Sba.service";
 import { verificarCamposDpsSba, SEFIN_RESTRITA_DOCS, SEFIN_PRODUCAO_DOCS } from "../services/dpsNacionalSba.service";
+import {montarDpsPreviaSba} from "../services/dpsXmlSba.service";
+import {assinarDpsXmlSba} from "../services/xmlAssinaturaDpsSba.service";
 
 async function autorizarSba(req:Request) {
   if(req.configuracaoSistema?.perfil!=="SBA"||!req.empresaId)
@@ -64,5 +66,48 @@ export const prepararNota=async(req:Request,res:Response):Promise<void>=>{
     assinaturaXmlValidada:false,xmlXsdValidado:false,transmissaoHabilitada:false,
     documentacao:{homologacao:SEFIN_RESTRITA_DOCS,producao:SEFIN_PRODUCAO_DOCS},
   });
+ }catch(e:any){erroSeguro(res,e);}
+};
+
+/**
+ * Geração de prévia XML de DPS para homologação. Sem envio à SEFIN.
+ * Assinatura separada em POST com verificação local obrigatória.
+ */
+export const baixarPreviaDps=async(req:Request,res:Response):Promise<void>=>{
+ try{
+  const empresaId=await autorizarSba(req);
+  const id=Number(req.params.notaId);
+  if(!Number.isSafeInteger(id)||id<=0){res.status(400).json({error:"Nota inválida."});return;}
+  const nota=await prisma.notaFiscal.findFirst({where:{empresaId,notafiscalid:id},
+    include:{empresaFiscal:true,itens:true,proposta:true}});
+  if(!nota)throw Object.assign(Error("Nota fiscal não encontrada no perfil SBA."),{statusCode:404});
+  if(nota.empresaFiscal.empresaId!==empresaId)throw Object.assign(Error("Emissora não pertence ao perfil SBA."),{statusCode:403});
+  const dps=montarDpsPreviaSba(nota);
+  if(dps.pendencias.length){res.status(422).json({error:"Ainda existem dados obrigatórios pendentes na DPS.",pendencias:dps.pendencias});return;}
+  res.setHeader("Cache-Control","no-store");
+  res.setHeader("Content-Disposition",'attachment; filename="dps-sba-previa-nao-validada.xml"');
+  res.setHeader("Content-Type","application/xml; charset=utf-8");
+  res.setHeader("X-DPS-XSD-Validado","nao");
+  res.send(dps.xml);
+ }catch(e:any){erroSeguro(res,e);}
+};
+export const baixarDpsAssinada=async(req:Request,res:Response):Promise<void>=>{
+ try{
+  const empresaId=await autorizarSba(req);
+  const id=Number(req.params.notaId);
+  if(!Number.isSafeInteger(id)||id<=0){res.status(400).json({error:"Nota inválida."});return;}
+  const nota=await prisma.notaFiscal.findFirst({where:{empresaId,notafiscalid:id},
+    include:{empresaFiscal:true,itens:true,proposta:true}});
+  if(!nota)throw Object.assign(Error("Nota fiscal não encontrada no perfil SBA."),{statusCode:404});
+  if(nota.empresaFiscal.empresaId!==empresaId)throw Object.assign(Error("Emissora não pertence ao perfil SBA."),{statusCode:403});
+  if(!nota.empresaFiscal.certificadoCriptografado)throw Object.assign(Error("Certificado A1 ainda não cadastrado."),{statusCode:422});
+  const dps=montarDpsPreviaSba(nota);
+  if(dps.pendencias.length){res.status(422).json({error:"Ainda existem dados fiscais pendentes na DPS.",pendencias:dps.pendencias});return;}
+  const documento=assinarDpsXmlSba(dps.xml,nota.empresaFiscal.certificadoCriptografado,empresaId,nota.empresaFiscalId);
+  res.setHeader("Cache-Control","no-store");
+  res.setHeader("Content-Disposition",'attachment; filename="dps-sba-assinada-nao-homologada.xml"');
+  res.setHeader("Content-Type","application/xml; charset=utf-8");
+  res.setHeader("X-DPS-XSD-Validado","nao");
+  res.send(documento.xmlAssinado);
  }catch(e:any){erroSeguro(res,e);}
 };
