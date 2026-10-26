@@ -1,0 +1,3 @@
+
+# Chrome usado pelo gerador de PDFs (instalado durante o build)
+api/.cache/
