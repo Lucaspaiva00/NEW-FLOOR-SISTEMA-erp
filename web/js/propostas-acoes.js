@@ -29,19 +29,41 @@ async function request(url, options = {}) {
   return data;
 }
 
-function visualizarPdfProposta(id) {
-  if (!id) {
-    alert("Selecione uma proposta.");
+async function visualizarPdfProposta(id, btn) {
+  if (!Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+    toastErro("Selecione uma proposta válida.");
     return;
   }
 
-  // Navegação de verdade (não blob) — assim o navegador recebe o
-  // Content-Disposition do servidor e usa o nome certo do arquivo
-  // se o usuário clicar em "Salvar" dentro do próprio visualizador de PDF.
-  window.open(
-    `${API_URL}/propostas/${id}/download?token=${encodeURIComponent(token)}`,
-    "_blank",
-  );
+  if (btn) btn.disabled = true;
+  try {
+    const resposta = await fetch(`${API_URL}/propostas/${encodeURIComponent(id)}/download`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!resposta.ok) {
+      const dados = await resposta.json().catch(() => ({}));
+      throw new Error(dados.error || "Não foi possível baixar a proposta.");
+    }
+    const arquivo = await resposta.blob();
+    if (!arquivo.size || arquivo.type.split(";")[0] !== "application/pdf") {
+      throw new Error("O servidor não retornou um PDF válido.");
+    }
+    const disposicao = resposta.headers.get("Content-Disposition") || "";
+    const nomeServidor = disposicao.match(/filename="([^"]+)"/i)?.[1];
+    const url = URL.createObjectURL(arquivo);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = (nomeServidor || `proposta-${id}.pdf`).replace(/[\\/]/g, "_");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    toastSucesso("PDF da proposta preparado para download.");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (erro) {
+    toastErro(erro.message || "Não foi possível baixar a proposta.");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 // Prévia de PDF por Bearer em nova aba, sem download forçado nem token na URL.
@@ -205,7 +227,7 @@ async function executarAcaoProposta(acao, id, btn) {
     } else if (acao === "visualizar") {
       await previsualizarProposta(id, btn);
     } else if (acao === "pdf") {
-      await visualizarPdfProposta(id);
+      await visualizarPdfProposta(id, btn);
     } else if (acao === "whatsapp") {
       await enviarWhatsappProposta(id, btn);
     } else if (acao === "email") {

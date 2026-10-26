@@ -9,43 +9,6 @@
     const empresa = await res.json();
     if (Number(empresa.empresaid) !== 1 || empresa.slug !== "new-floor") return;
 
-    // Download exclusivo da empresa New Floor, após confirmar o tenant na API.
-    window.visualizarPdfProposta = async function (id, btn) {
-      if (!Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
-        toastErro("Selecione uma proposta válida.");
-        return;
-      }
-
-      if (btn) btn.disabled = true;
-      try {
-        const resposta = await fetch(`${API_URL}/propostas/${encodeURIComponent(id)}/download`, {
-          headers: { Authorization: `Bearer ${tokenNewFloor}` }
-        });
-        if (!resposta.ok) {
-          const dados = await resposta.json().catch(() => ({}));
-          throw new Error(dados.error || "Não foi possível baixar a proposta.");
-        }
-        const arquivo = await resposta.blob();
-        if (!arquivo.size || arquivo.type.split(";")[0] !== "application/pdf") {
-          throw new Error("O servidor não retornou um PDF válido.");
-        }
-        const disposicao = resposta.headers.get("Content-Disposition") || "";
-        const nomeServidor = disposicao.match(/filename="([^"]+)"/i)?.[1];
-        const url = URL.createObjectURL(arquivo);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = (nomeServidor || `proposta-${id}.pdf`).replace(/[\\/]/g, "_");
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-      } catch (erro) {
-        toastErro(erro.message || "Não foi possível baixar a proposta.");
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    };
-
     for (const [formId, selectId, emailId, label] of [
       ["formNovaProposta", "clienteId", "emailDestinatario", "E-mail adicional para envio (opcional)"],
       ["formEditarProposta", "editarClienteId", "editarEmailDestinatario", "E-mail adicional para envio (opcional)"]
