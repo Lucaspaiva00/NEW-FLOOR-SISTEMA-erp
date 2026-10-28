@@ -353,7 +353,9 @@ function buildNfseNacionalPayload(nota: any): Record<string, any> {
       decimal(nota.aliquotaIss) ?? decimal(empresa.aliquotaIssPadrao),
   };
 
-  return compactObject(deepMerge(payload, nota.payloadExtra));
+  const merged = deepMerge(payload, nota.payloadExtra);
+  if(nota.empresaId===1 && merged.codigo_nbs) merged.codigo_nbs=onlyDigits(merged.codigo_nbs);
+  return compactObject(merged);
 }
 
 export function buildFocusPayload(nota: any): Record<string, any> {

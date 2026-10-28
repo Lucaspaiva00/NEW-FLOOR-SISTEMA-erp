@@ -66,7 +66,7 @@
     '<label class="col-12 col-sm-4">Classificação IBS/CBS (6 dígitos)<input id="nfIbsClasse" class="form-control" maxlength="6" inputmode="numeric" placeholder="Confirmar com contador"></label>'+
     '<label class="col-12 col-sm-4">Código NBS do serviço<input id="nfCodigoNbs" class="form-control" maxlength="16" placeholder="Conforme classificação"></label>'+
     '</div>'+
-    '<small class="text-muted d-block mt-2">Os códigos IBS/CBS não podem ser deduzidos do CNAE. A classificação e apuração do Simples devem ser confirmadas pela contabilidade antes da homologação.</small>';
+    '<small class="text-muted d-block mt-2">Os códigos IBS/CBS não podem ser deduzidos do CNAE. A classificação e apuração do Simples devem ser confirmadas pela contabilidade. Para federais e ISS dentro do Simples, IBS/CBS não são exigidos nas competências de 2026.</small>';
    nfseBloco.append(painel);
   }
   const camposTrib=[
@@ -120,7 +120,7 @@
       extra[key]=value;
     }else if(key==="codigo_nbs"){
       if(!/^[0-9.]{7,16}$/.test(value)){event.preventDefault();event.stopImmediatePropagation();alert("Informe o NBS válido conforme a classificação contábil.");return;}
-      extra[key]=value;
+      extra[key]=value.replace(/\D/g,"");
     }else{
       const numero=Number(value);
       if(!Number.isFinite(numero)||numero<0||numero>100){event.preventDefault();event.stopImmediatePropagation();alert("Revise os percentuais tributários informados.");return;}

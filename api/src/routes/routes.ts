@@ -1,3 +1,4 @@
+import * as padroesNewFloor from "../controller/ctpadroesNewFloor";
 import express from "express";
 import * as obra from "../controller/ctobra";
 import * as obraOperacao from "../controller/ctobraOperacao";
@@ -190,6 +191,8 @@ routes.get("/fiscal/arquivos/:id/:tipo",auth,fornecedor.apenasSba,arquivoFiscal.
 // Módulo fiscal
 routes.get("/fiscal/dashboard", auth, fiscal.dashboard);
 routes.get("/fiscal/sba/integracoes/status", auth, integracaoFiscalSba.diagnosticoFiscalSba);
+routes.get("/fiscal/newfloor/padroes/:id",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesNewFloor.ler);
+routes.put("/fiscal/newfloor/padroes/:id",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesNewFloor.salvar);
 routes.get("/fiscal/sba/padroes",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.listar);
 routes.put("/fiscal/sba/padroes/empresa/:id",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.salvarEmpresa);
 routes.post("/fiscal/sba/padroes/servico",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.criarServico);

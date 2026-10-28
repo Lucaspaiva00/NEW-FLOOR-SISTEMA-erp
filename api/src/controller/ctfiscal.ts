@@ -1,3 +1,4 @@
+import {notaComPadroesNewFloor} from "../services/newFloorFiscalPadroes.service";
 import {valoresNotaFinanceiro,sincronizarFinanceiroNota} from "../services/fiscalFinanceiro.service";
 import {validarPlanoRecebimento} from "../services/planoRecebimento.service";
 import {Prisma} from "@prisma/client";
@@ -322,7 +323,7 @@ async function notaCompleta(id: number, empresaId: number) {
   });
   // Só New Floor/NFS-e Nacional: resolve IBGE pelo município+UF
   // sem modificar o cadastro fiscal salvo no banco.
-  return encontrada ? await notaComMunicipioIBGE(encontrada) : null;
+  return encontrada ? await notaComPadroesNewFloor(await notaComMunicipioIBGE(encontrada)) : null;
 }
 
 async function registrarEvento(
