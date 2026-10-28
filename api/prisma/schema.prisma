@@ -8,6 +8,7 @@ datasource db {
 }
 
 model Empresa {
+  contasEmailUsuario EmailUsuario[]
   sequenciaCompras Int @default(0)
   compras Compra[]
   configuracaoSistema Json?
@@ -270,6 +271,7 @@ model Agenda {
 }
 
 model Usuario {
+  contaEmail EmailUsuario?
   usuarioid         Int       @id @default(autoincrement())
   empresaId         Int?
   empresa           Empresa?  @relation(fields: [empresaId], references: [empresaid])
@@ -897,4 +899,14 @@ model ImportacaoObra {
  dados Json
  createdAt DateTime @default(now())
  @@index([empresaId])
+}
+
+model EmailUsuario {
+  usuarioId Int @id
+  empresaId Int
+  configuracaoCriptografada String
+  updatedAt DateTime @updatedAt
+  usuario Usuario @relation(fields: [usuarioId], references: [usuarioid], onDelete: Cascade)
+  empresa Empresa @relation(fields: [empresaId], references: [empresaid], onDelete: Cascade)
+  @@index([empresaId])
 }

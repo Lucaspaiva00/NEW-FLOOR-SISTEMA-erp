@@ -1,3 +1,4 @@
+import {obterContaEmailUsuario} from "../services/emailUsuario.service";
 import { Prisma } from "@prisma/client";
 import { validarPlanoRecebimento } from "../services/planoRecebimento.service";
 import { metadataFaturamentoExterno } from "../services/faturamentoExterno.service";
@@ -1032,6 +1033,10 @@ export const enviarEmail = async (
     const destinatarios = req.empresaId === 1
       ? [...new Set([String(destinatario).trim(),extraNewFloor].filter(Boolean).map(e=>e.toLowerCase()))].join(", ")
       : destinatario;
+    // Remetente autenticado do usuário SBA; nunca cair no SMTP da New Floor.
+    const contaUsuario = usarModeloPdfSba(proposta.empresa)
+      ? await obterContaEmailUsuario(req.usuario!.id,req.empresaId!) : undefined;
+
     const resultado = await gerarPdfInterno(paramId(id), req.empresaId as number);
 
     const baseUrl =
@@ -1040,6 +1045,7 @@ export const enviarEmail = async (
     const linkDownload = `${baseUrl}/propostas/${proposta.propostaid}/download`;
 
     const modoEnvio = await enviarPropostaPorEmail({
+      contaUsuario,
       // A empresa vem da proposta consultada com o tenant autenticado.
       identidade: usarModeloPdfSba(proposta.empresa) ? {
         nome: "SBA",
@@ -1096,10 +1102,10 @@ export const enviarEmail = async (
 
       modoEnvio,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
 
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       error:
         error instanceof Error
           ? error.message

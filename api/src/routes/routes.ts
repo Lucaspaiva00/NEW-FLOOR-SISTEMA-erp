@@ -1,3 +1,4 @@
+import * as emailUsuario from "../controller/ctemailUsuario";
 import * as padroesNewFloor from "../controller/ctpadroesNewFloor";
 import express from "express";
 import * as obra from "../controller/ctobra";
@@ -66,6 +67,9 @@ routes.get("/", (_req, res) => {
     status: "API ONLINE",
   });
 });
+
+routes.get("/email-envio/me", auth, emailUsuario.status);
+routes.put("/email-envio/me", auth, emailUsuario.salvar);
 
 // --- Rotas públicas (sem token) ---
 routes.post("/usuarios/login", usuario.login);

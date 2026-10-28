@@ -22,15 +22,19 @@ for (const falhas of [0, 1, 2]) {
     process.env.SMTP_USER = "teste@example.invalid";
     delete process.env.EMAIL_SOMENTE_TEXTO;
     const mensagens: any[] = [];
-    t.mock.method(nodemailer, "createTransport", () => ({sendMail: async (mail: any) => {
+    t.mock.method(nodemailer, "createTransport", (config: any) => {
+      assert.equal(config.auth.user,"luis@example.invalid");
+      assert.equal(config.host,"smtp.example.invalid");
+      return ({sendMail: async (mail: any) => {
       mensagens.push(mail);
       if (mensagens.length <= falhas) throw new Error("falha simulada");
-    }}));
+    }}); });
     try {
       const modo = await enviarPropostaPorEmail({
         destinatario: "cliente@example.invalid", clienteNome: "Cliente & Cia", numeroProposta: "659",
         linkDownload: "https://erp.example.invalid/propostas/659/download", caminhoPdf: arquivo,
         nomeArquivoPdf: "proposta.pdf", assunto: "SBA - proposta 659", identidade,
+        contaUsuario: {email:"luis@example.invalid",nome:"Luis",host:"smtp.example.invalid",port:465,senha:"teste"},
       });
       assert.equal(modo, falhas === 2 ? "link" : "anexo");
       for (const mensagem of mensagens) {
@@ -38,6 +42,9 @@ for (const falhas of [0, 1, 2]) {
         assert.match(conteudo, /SBA/);
         assert.doesNotMatch(conteudo, /new.?floor|Pisos e Revestimentos/i);
         assert.equal(mensagem.bcc, undefined);
+        assert.deepEqual(mensagem.from, {name:"Luis",address:"luis@example.invalid"});
+        assert.deepEqual(mensagem.replyTo, mensagem.from);
+        assert.equal(mensagem.to, "cliente@example.invalid");
         if (mensagem.html) {
           assert.ok(conteudo.includes(identidade.logoUrl));
           assert.ok(conteudo.includes(identidade.corPrimaria));
@@ -60,3 +67,7 @@ test("New Floor preserva identidade padrão; SBA sem logo usa seu próprio nome"
   assert.doesNotMatch(html, /new.?floor/i);
   assert.doesNotMatch(templateEmailPropostaMinimo({...dados, identidade}), /new.?floor/i);
 });
+
+ test("SBA sem conta conectada bloqueia envio antes de gerar qualquer mensagem", async () => {
+ await assert.rejects(enviarPropostaPorEmail({destinatario:"cliente@example.invalid",clienteNome:"Cliente",numeroProposta:"1",linkDownload:"https://example.invalid",caminhoPdf:"inexistente.pdf",nomeArquivoPdf:"p.pdf",assunto:"Proposta",identidade}), /Conecte seu e-mail/);
+ });

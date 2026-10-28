@@ -1,3 +1,4 @@
+import {ContaEmailUsuario,transporteUsuario} from "./emailUsuario.service";
 import nodemailer from "nodemailer";
 import {
   templateEmailRecuperacaoSenha,
@@ -10,6 +11,7 @@ interface SendEmailOptions {
   to: string;
   subject: string;
   copiarAtendimento?: boolean;
+  contaUsuario?: ContaEmailUsuario;
   html?: string;
   text?: string;
   attachments?: nodemailer.SendMailOptions["attachments"];
@@ -83,18 +85,20 @@ export async function sendEmail({
   text,
   attachments,
   copiarAtendimento = true,
+  contaUsuario,
 }: SendEmailOptions): Promise<void> {
-  if (!process.env.SMTP_USER?.trim()) {
+  if (!contaUsuario && !process.env.SMTP_USER?.trim()) {
     throw new Error("SMTP_USER não configurado no .env");
   }
 
-  const from = remetente();
+  const from = contaUsuario ? { name: contaUsuario.nome, address: contaUsuario.email } : remetente();
   const assunto = normalizarAssunto(subject);
   const somenteTexto = usarSomenteTexto();
 
-  const bcc = copiarAtendimento ? ccoAtendimento(to) : undefined;
+  const bcc = !contaUsuario && copiarAtendimento ? ccoAtendimento(to) : undefined;
   const base = {
     from,
+    ...(contaUsuario ? {replyTo:{name:contaUsuario.nome,address:contaUsuario.email}} : {}),
     to,
     subject: assunto,
     attachments,
@@ -116,8 +120,8 @@ export async function sendEmail({
 
   let ultimoErro: unknown;
 
-  for (const porta of portasSmtp()) {
-    const transporter = criarTransporter(porta);
+  for (const porta of (contaUsuario ? [contaUsuario.port] : portasSmtp())) {
+    const transporter = contaUsuario ? transporteUsuario(contaUsuario) : criarTransporter(porta);
 
     for (const mail of mensagens) {
       try {

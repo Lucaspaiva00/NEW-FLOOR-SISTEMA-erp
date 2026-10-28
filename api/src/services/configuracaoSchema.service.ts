@@ -1,5 +1,12 @@
 import prisma from "../prisma";
 export async function garantirSchemaConfiguracao() {
+ await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmailUsuario" (
+ "usuarioId" INTEGER PRIMARY KEY REFERENCES "Usuario"("usuarioid") ON DELETE CASCADE,
+ "empresaId" INTEGER NOT NULL REFERENCES "Empresa"("empresaid") ON DELETE CASCADE,
+ "configuracaoCriptografada" TEXT NOT NULL,
+ "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);`);
+ await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmailUsuario_empresaId_idx" ON "EmailUsuario"("empresaId");`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "Proposta" ADD COLUMN IF NOT EXISTS "valorLiquidoFinanceiro" DECIMAL(14,2);`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "NotaFiscal" ADD COLUMN IF NOT EXISTS "valorRetencoes" DECIMAL(14,2) NOT NULL DEFAULT 0;`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "NotaFiscal" ADD COLUMN IF NOT EXISTS "planoRecebimento" JSONB;`);

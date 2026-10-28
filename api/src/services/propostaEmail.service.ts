@@ -1,3 +1,4 @@
+import type {ContaEmailUsuario} from "./emailUsuario.service";
 import fs from "fs";
 import type { IdentidadeEmail } from "../templates/emailLayout";
 import { sendEmail } from "./email.service";
@@ -17,6 +18,7 @@ interface EmailProposta {
   nomeArquivoPdf: string;
   assunto: string;
   identidade?: IdentidadeEmail;
+  contaUsuario?: ContaEmailUsuario;
 }
 
 async function enviarComLink(dados: {
@@ -26,10 +28,12 @@ async function enviarComLink(dados: {
   linkDownload: string;
   assunto: string;
   identidade?: IdentidadeEmail;
+  contaUsuario?: ContaEmailUsuario;
 }) {
   await sendEmail({
     to: dados.destinatario,
     subject: dados.assunto,
+    contaUsuario: dados.contaUsuario,
     copiarAtendimento: dados.identidade ? false : undefined,
     text: textoEmailProposta(dados),
     html: templateEmailProposta(dados),
@@ -45,7 +49,11 @@ export async function enviarPropostaPorEmail({
   nomeArquivoPdf,
   assunto,
   identidade,
+  contaUsuario,
 }: EmailProposta): Promise<"anexo" | "link"> {
+  if (identidade?.nome === "SBA" && !contaUsuario) {
+    throw Object.assign(new Error("Conecte seu e-mail de envio. A SBA não utiliza o remetente de outra empresa."), {statusCode:422});
+  }
   const dados = {
     destinatario,
     clienteNome,
@@ -53,6 +61,7 @@ export async function enviarPropostaPorEmail({
     linkDownload,
     assunto,
     identidade,
+    contaUsuario,
   };
   const pdfBuffer = fs.readFileSync(caminhoPdf);
   const anexo = {
@@ -65,6 +74,7 @@ export async function enviarPropostaPorEmail({
     await sendEmail({
       to: destinatario,
       subject: assunto,
+      contaUsuario,
       copiarAtendimento: identidade ? false : undefined,
       html: templateEmailPropostaComAnexo(dados),
       attachments: [anexo],
@@ -78,6 +88,7 @@ export async function enviarPropostaPorEmail({
       await sendEmail({
         to: destinatario,
         subject: assunto,
+        contaUsuario,
         copiarAtendimento: identidade ? false : undefined,
         text: textoEmailPropostaComAnexo(dados),
         attachments: [anexo],
