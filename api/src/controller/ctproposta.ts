@@ -112,7 +112,7 @@ async function buscarPropostaCompleta(id: string, empresaId: number) {
       vendedor: true,
       templateProposta: true,
       empresa: {
-        select: { nome: true, slug: true, logo: true, configuracaoSistema: true },
+        select: { nome: true, slug: true, logo: true, corPrimaria: true, corSecundaria: true, configuracaoSistema: true },
       },
       itens: {
         include: {
@@ -1040,6 +1040,15 @@ export const enviarEmail = async (
     const linkDownload = `${baseUrl}/propostas/${proposta.propostaid}/download`;
 
     const modoEnvio = await enviarPropostaPorEmail({
+      // A empresa vem da proposta consultada com o tenant autenticado.
+      identidade: usarModeloPdfSba(proposta.empresa) ? {
+        nome: "SBA",
+        rodape: proposta.empresa.nome,
+        logoUrl: proposta.empresa.logo,
+        corPrimaria: proposta.empresa.corPrimaria,
+        corSecundaria: proposta.empresa.corSecundaria,
+      } : undefined,
+
       destinatario: destinatarios,
 
       clienteNome:

@@ -9,6 +9,7 @@ const CCO_ATENDIMENTO_PADRAO = "atendimento@newfloorpisos.com.br";
 interface SendEmailOptions {
   to: string;
   subject: string;
+  copiarAtendimento?: boolean;
   html?: string;
   text?: string;
   attachments?: nodemailer.SendMailOptions["attachments"];
@@ -81,6 +82,7 @@ export async function sendEmail({
   html,
   text,
   attachments,
+  copiarAtendimento = true,
 }: SendEmailOptions): Promise<void> {
   if (!process.env.SMTP_USER?.trim()) {
     throw new Error("SMTP_USER não configurado no .env");
@@ -90,7 +92,7 @@ export async function sendEmail({
   const assunto = normalizarAssunto(subject);
   const somenteTexto = usarSomenteTexto();
 
-  const bcc = ccoAtendimento(to);
+  const bcc = copiarAtendimento ? ccoAtendimento(to) : undefined;
   const base = {
     from,
     to,

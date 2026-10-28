@@ -1,4 +1,5 @@
 import fs from "fs";
+import type { IdentidadeEmail } from "../templates/emailLayout";
 import { sendEmail } from "./email.service";
 import {
   templateEmailProposta,
@@ -15,6 +16,7 @@ interface EmailProposta {
   caminhoPdf: string;
   nomeArquivoPdf: string;
   assunto: string;
+  identidade?: IdentidadeEmail;
 }
 
 async function enviarComLink(dados: {
@@ -23,10 +25,12 @@ async function enviarComLink(dados: {
   numeroProposta: string;
   linkDownload: string;
   assunto: string;
+  identidade?: IdentidadeEmail;
 }) {
   await sendEmail({
     to: dados.destinatario,
     subject: dados.assunto,
+    copiarAtendimento: dados.identidade ? false : undefined,
     text: textoEmailProposta(dados),
     html: templateEmailProposta(dados),
   });
@@ -40,6 +44,7 @@ export async function enviarPropostaPorEmail({
   caminhoPdf,
   nomeArquivoPdf,
   assunto,
+  identidade,
 }: EmailProposta): Promise<"anexo" | "link"> {
   const dados = {
     destinatario,
@@ -47,6 +52,7 @@ export async function enviarPropostaPorEmail({
     numeroProposta,
     linkDownload,
     assunto,
+    identidade,
   };
   const pdfBuffer = fs.readFileSync(caminhoPdf);
   const anexo = {
@@ -59,6 +65,7 @@ export async function enviarPropostaPorEmail({
     await sendEmail({
       to: destinatario,
       subject: assunto,
+      copiarAtendimento: identidade ? false : undefined,
       html: templateEmailPropostaComAnexo(dados),
       attachments: [anexo],
     });
@@ -71,6 +78,7 @@ export async function enviarPropostaPorEmail({
       await sendEmail({
         to: destinatario,
         subject: assunto,
+        copiarAtendimento: identidade ? false : undefined,
         text: textoEmailPropostaComAnexo(dados),
         attachments: [anexo],
       });
