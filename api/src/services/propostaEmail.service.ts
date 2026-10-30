@@ -52,7 +52,7 @@ export async function enviarPropostaPorEmail({
   contaUsuario,
 }: EmailProposta): Promise<"anexo" | "link"> {
   if (identidade?.nome === "SBA" && !contaUsuario) {
-    throw Object.assign(new Error("Conecte seu e-mail de envio. A SBA não utiliza o remetente de outra empresa."), {statusCode:422});
+    throw Object.assign(new Error("O envio precisa ser habilitado pela administração da plataforma para o remetente do seu cadastro."), {statusCode:422});
   }
   const dados = {
     destinatario,

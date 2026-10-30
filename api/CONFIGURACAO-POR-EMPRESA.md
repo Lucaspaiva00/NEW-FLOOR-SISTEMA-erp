@@ -26,3 +26,11 @@ Para José, crie a empresa com PERSONALIZADO e habilite os recursos necessários
 ## Validação
 
 npm test, npx tsc --noEmit e verificação sintática dos scripts web. Testes usam mocks para banco e provedores; não enviam e-mails nem emitem documentos fiscais. Implantação e uso em produção devem ser verificados no ambiente real.
+
+## E-mail gerenciado SBA
+
+O cliente consulta seu remetente em Propostas > Remetente das propostas, sem preencher servidor, porta ou senha. A rota pública de gravação de SMTP foi removida. Contas individuais já autorizadas são preservadas como compatibilidade.
+
+A operação provisiona no ambiente da API as chaves `SMTP_EMPRESA_2_HOST`, `SMTP_EMPRESA_2_PORT` (465 ou 587), `SMTP_EMPRESA_2_USER` e `SMTP_EMPRESA_2_PASS`, sem versionar valores secretos. O usuário SMTP deve corresponder ao e-mail cadastrado do usuário que envia. Credenciais incompletas ou de outra identidade bloqueiam o envio; não há fallback para o SMTP global/New Floor. O prefixo por empresa impede reutilizar contas de outros tenants. A resolução gerenciada aceita outros IDs, mas o fluxo público atual permanece exclusivo SBA para preservar os demais perfis.
+
+Depois de provisionar, validar autenticação e uma entrega autorizada. O status “configurado” indica disponibilidade da configuração; não certifica entrega na caixa do destinatário. Sem autorização do provedor da caixa/domínio, não é possível garantir envio autenticado em nome do cliente apenas alterando o campo From.

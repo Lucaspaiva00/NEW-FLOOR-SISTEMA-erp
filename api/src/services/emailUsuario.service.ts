@@ -34,17 +34,38 @@ async function usuarioSba(usuarioId:number,empresaId:number){
  if(!usuario)throw erro("Usuário da SBA não encontrado.",403);
  return usuario;
 }
+/** Credenciais provisionadas pela operação, isoladas por empresa e remetente. */
+export function contaEmailGerenciada(
+ usuario:{email:string;nome:string},empresaId:number,env:NodeJS.ProcessEnv=process.env
+):ContaEmailUsuario|undefined{
+ const prefixo=`SMTP_EMPRESA_${empresaId}_`;
+ const host=env[prefixo+"HOST"],email=env[prefixo+"USER"],senha=env[prefixo+"PASS"];
+ if(!host&&!email&&!senha)return undefined;
+ if(!host||!email||!senha)throw erro("O envio de e-mail está em configuração pela administração da plataforma.");
+ if(email.trim().toLowerCase()!==usuario.email.trim().toLowerCase())
+  throw erro("O remetente cadastrado ainda não foi autorizado pela administração da plataforma.");
+ const dados=validarContaSmtp(host,env[prefixo+"PORT"]||465);
+ return {...dados,email:usuario.email.trim(),nome:usuario.nome,senha};
+}
 export async function statusEmailUsuario(usuarioId:number,empresaId:number){
- const u=await usuarioSba(usuarioId,empresaId);const row=await prisma.emailUsuario.findUnique({where:{usuarioId}});
- if(!row)return {email:u.email,nome:u.nome,configurado:false,host:"",port:465};
- const cfg=decifrarSmtp(row.configuracaoCriptografada,process.env.JWT_SECRET||"");
- return {email:u.email,nome:u.nome,configurado:cfg.email===u.email,host:cfg.host,port:cfg.port};
+ const u=await usuarioSba(usuarioId,empresaId);
+ try{
+  const conta=await obterContaEmailUsuario(usuarioId,empresaId);
+  return {email:u.email,nome:u.nome,configurado:!!conta,gerenciado:true};
+ }catch(e:any){
+  if(e.statusCode!==422)throw e;
+  return {email:u.email,nome:u.nome,configurado:false,gerenciado:true};
+ }
 }
 export async function obterContaEmailUsuario(usuarioId:number,empresaId:number):Promise<ContaEmailUsuario>{
- const u=await usuarioSba(usuarioId,empresaId);const row=await prisma.emailUsuario.findFirst({where:{usuarioId,empresaId}});
- if(!row)throw erro(`Conecte o e-mail ${u.email} em “Meu e-mail de envio”. A SBA não utiliza o remetente de outra empresa.`);
+ const u=await usuarioSba(usuarioId,empresaId);
+ const gerenciada=contaEmailGerenciada(u,empresaId);
+ if(gerenciada){await hostPublico(gerenciada.host);return gerenciada;}
+ // Preserva contas já autorizadas, sem exigir nova configuração ao usuário.
+ const row=await prisma.emailUsuario.findFirst({where:{usuarioId,empresaId}});
+ if(!row)throw erro("O envio de e-mail precisa ser habilitado pela administração da plataforma para o remetente do seu cadastro.");
  const cfg=decifrarSmtp(row.configuracaoCriptografada,process.env.JWT_SECRET||"");
- if(cfg.email!==u.email||!cfg.senha)throw erro("O e-mail do cadastro mudou. Reconecte sua conta de envio.");
+ if(cfg.email!==u.email||!cfg.senha)throw erro("O remetente cadastrado precisa ser atualizado pela administração da plataforma.");
  validarContaSmtp(cfg.host,cfg.port);await hostPublico(cfg.host);
  return {...cfg,email:u.email,nome:u.nome};
 }

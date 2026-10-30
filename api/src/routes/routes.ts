@@ -69,7 +69,7 @@ routes.get("/", (_req, res) => {
 });
 
 routes.get("/email-envio/me", auth, emailUsuario.status);
-routes.put("/email-envio/me", auth, emailUsuario.salvar);
+// Provisionamento SMTP é responsabilidade da operação, fora da tela do cliente.
 
 // --- Rotas públicas (sem token) ---
 routes.post("/usuarios/login", usuario.login);

@@ -69,5 +69,5 @@ test("New Floor preserva identidade padrão; SBA sem logo usa seu próprio nome"
 });
 
  test("SBA sem conta conectada bloqueia envio antes de gerar qualquer mensagem", async () => {
- await assert.rejects(enviarPropostaPorEmail({destinatario:"cliente@example.invalid",clienteNome:"Cliente",numeroProposta:"1",linkDownload:"https://example.invalid",caminhoPdf:"inexistente.pdf",nomeArquivoPdf:"p.pdf",assunto:"Proposta",identidade}), /Conecte seu e-mail/);
+ await assert.rejects(enviarPropostaPorEmail({destinatario:"cliente@example.invalid",clienteNome:"Cliente",numeroProposta:"1",linkDownload:"https://example.invalid",caminhoPdf:"inexistente.pdf",nomeArquivoPdf:"p.pdf",assunto:"Proposta",identidade}), /administração da plataforma/);
  });
