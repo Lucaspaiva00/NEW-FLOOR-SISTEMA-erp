@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
-    "build": "if { [ -n \"$RENDER_INSTANCE_ID\" ]; } && [ -f dist/server.js ]; then echo 'Usando build compilado no deploy da Render'; else node scripts/obter-xsd-nacional.mjs && prisma generate && npx puppeteer browsers install chrome && tsc && node --import tsx --test tests/dpsXmlSba.test.ts tests/dpsXsdOficialSba.test.ts tests/parametrosDpsSba.test.ts tests/padroesFiscaisSba.test.ts; fi",
+    "build": "if { [ -n \"$RENDER_INSTANCE_ID\" ]; } && [ -f dist/server.js ]; then echo 'Usando build compilado no deploy da Render'; else node scripts/obter-xsd-nacional.mjs && prisma generate && npx puppeteer browsers install chrome && tsc && node --import tsx --test tests/dpsXmlSba.test.ts tests/dpsXsdOficialSba.test.ts tests/parametrosDpsSba.test.ts tests/padroesFiscaisSba.test.ts tests/orcamentoSbaMultiplosServicos.test.ts; fi",
     "prisma:generate": "prisma generate",
     "postbuild": "node -e \"require('fs').cpSync('public','dist/public',{recursive:true})\"",
     "prestart": "node scripts/verificar-pdf.mjs",
