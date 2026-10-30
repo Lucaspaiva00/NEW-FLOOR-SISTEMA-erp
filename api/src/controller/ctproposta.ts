@@ -16,6 +16,7 @@ async function prepararBody(req: Request, res: Response): Promise<any> {
   body.planoRecebimento=validarPlanoRecebimento(body.planoRecebimento);
  }
  if(body.composicaoCustos != null) {
+   if(config.perfil!=="SBA"&&body.composicaoCustos&&typeof body.composicaoCustos==="object") delete body.composicaoCustos.servicos;
    body.composicaoCustos=calcularComposicao(body.composicaoCustos);
    if(config.perfil==='SBA')for(const m of body.composicaoCustos.materiais){if(m.servicoId&&!await prisma.servico.findFirst({where:{servicoid:m.servicoId,empresaId:req.empresaId!},select:{servicoid:true}}))throw Error('Material não encontrado nesta empresa.');}
    else for(const m of body.composicaoCustos.materiais)delete m.servicoId;
