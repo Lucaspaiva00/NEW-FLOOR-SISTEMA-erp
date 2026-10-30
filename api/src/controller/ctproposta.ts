@@ -19,7 +19,16 @@ async function prepararBody(req: Request, res: Response): Promise<any> {
    body.composicaoCustos=calcularComposicao(body.composicaoCustos);
    if(config.perfil==='SBA')for(const m of body.composicaoCustos.materiais){if(m.servicoId&&!await prisma.servico.findFirst({where:{servicoid:m.servicoId,empresaId:req.empresaId!},select:{servicoid:true}}))throw Error('Material não encontrado nesta empresa.');}
    else for(const m of body.composicaoCustos.materiais)delete m.servicoId;
-   body.itens=[{descricao:body.titulo || "Serviços e materiais",detalhes:body.descricao || "",unidade:"UN",quantidade:1,valorUnitario:body.composicaoCustos.preco,subtotal:body.composicaoCustos.preco,desconto:0,acrescimo:0}];
+   const servicosComerciais=config.perfil==="SBA"?body.composicaoCustos.servicos||[]:[];
+   // Cada serviço vira um ItemProposta real, preservado no PDF, na edição
+   // e no subtotal usado por faturamento. Outros perfis ficam intocados.
+   body.itens=servicosComerciais.length
+     ?servicosComerciais.map((s:any,index:number)=>({
+       descricao:s.descricao,detalhes:s.detalhes||null,unidade:s.unidade||"UN",
+       quantidade:s.quantidade,valorUnitario:s.valorUnitario,subtotal:s.subtotal,
+       desconto:0,acrescimo:0,ordem:index+1
+     }))
+     :[{descricao:body.titulo || "Serviços e materiais",detalhes:body.descricao || "",unidade:"UN",quantidade:1,valorUnitario:body.composicaoCustos.preco,subtotal:body.composicaoCustos.preco,desconto:0,acrescimo:0}];
  }
  if(body.clienteId === undefined && (body.emailDestinatario || body.contatoDestinatario) && req.params.id) {
  const existing=await prisma.proposta.findFirst({where:{propostaid:Number(req.params.id),empresaId:req.empresaId as number},select:{clienteId:true}});
