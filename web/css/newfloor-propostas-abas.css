@@ -1,0 +1,30 @@
+.nf-proposal-modal{font-family:Inter,Arial,sans-serif;color:#263e56}
+.nf-proposal-modal .modal-dialog{max-width:1250px}
+.nf-proposal-modal .modal-content{border:0;border-radius:20px;overflow:hidden}
+.nf-proposal-modal .modal-header{padding:22px 26px;border-bottom:1px solid #e4eaf1;background:#fff}
+.nf-proposal-modal .modal-title{font-size:20px;font-weight:750;color:#263e56}
+.nf-proposal-modal .modal-body{padding:22px;background:#f5f7fa}
+.nf-proposal-tabs{position:sticky;top:-22px;z-index:4;display:flex;flex-wrap:wrap;gap:6px;padding:12px;background:#fff;border:1px solid #e5ebf2;border-radius:12px;margin-bottom:18px}
+.nf-proposal-modal .nf-proposal-tab{border:1px solid transparent;background:#f0f4f9;color:#4d6178;border-radius:9px;padding:12px 15px;font-size:12px;font-weight:650;white-space:nowrap;flex:0 1 auto}
+.nf-proposal-modal .nf-proposal-tab.active{background:#e8f0ff;border-color:#bdd2ff;color:#2458ae}
+.nf-proposal-modal .nf-proposal-tab:focus-visible{outline:3px solid #96b8f1;outline-offset:2px}
+.nf-proposal-panel[hidden]{display:none!important}
+.nf-proposal-modal .form-step-panel,.nf-proposal-modal .form-section{padding:24px;margin:0 0 16px;background:#fff;border:1px solid #e0e8f1;border-radius:12px}
+.nf-proposal-modal .section-title{font-size:15px;font-weight:700;color:#2d4560}
+.nf-proposal-modal .section-subtitle{font-size:11px;color:#7c8fa4}
+.nf-proposal-modal label{font-size:11px;color:#60748c}
+.nf-proposal-modal .premium-input-light{border:1px solid #dce5ef;border-radius:7px;font-size:12px;background:#fff;color:#29435d}
+.nf-proposal-modal .section-header{margin-bottom:20px}
+.nf-proposal-modal .modal-footer,.nf-proposal-modal .nf-edit-actions{padding:16px 22px;background:white;border-top:1px solid #e0e8f1;gap:10px}
+.nf-proposal-modal .modal-footer{justify-content:flex-end}
+.nf-proposal-modal .modal-footer .btn-new{flex:0 0 auto!important;min-height:42px;height:auto;padding:12px 20px;border-radius:8px;font-size:12px}
+.nf-proposal-modal #btnStepProximoNovaProposta{display:none!important}
+.nf-proposal-modal #btnSalvarNovaProposta{display:inline-flex!important}
+.nf-proposal-modal .nf-cancelar{border:1px solid #dce5ee;background:#eff4f9;color:#466c8e;padding:12px 18px;border-radius:8px;font-size:12px;font-weight:650}
+.nf-proposal-modal .nf-edit-actions{position:sticky;bottom:-22px;z-index:4;margin:0 -22px -22px}
+.nf-proposal-modal .nf-edit-actions>.row{display:flex;justify-content:flex-end;gap:10px;margin:0;align-items:center}
+.nf-proposal-modal .nf-edit-actions>.row>div{width:auto;padding:0;margin:0}
+.nf-proposal-modal .nf-edit-actions .btn{height:auto;padding:12px 18px;font-size:12px;border-radius:8px}
+.nf-proposal-modal .nf-edit-actions .btn-new{height:auto;padding:12px 18px;font-size:12px;border-radius:8px;min-height:42px}
+body:has(.nf-proposal-modal.show) .mobile-menu-btn{visibility:hidden}
+@media(max-width:700px){.nf-proposal-modal .modal-body{padding:12px}.nf-proposal-modal .modal-header{padding:18px}.nf-proposal-modal .modal-title{font-size:18px}.nf-proposal-tabs{top:-12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:8px;gap:6px}.nf-proposal-modal .nf-proposal-tab{padding:10px 8px;font-size:11px;white-space:normal}.nf-proposal-modal .form-step-panel,.nf-proposal-modal .form-section{padding:16px}.nf-proposal-modal .modal-footer{padding:12px}.nf-proposal-modal .nf-edit-actions{bottom:-12px;margin:0 -12px -12px;padding:12px}.nf-proposal-modal .nf-edit-actions>.row{display:grid;grid-template-columns:1fr 1fr}.nf-proposal-modal .nf-edit-actions .nf-cancelar{grid-column:span 2}.nf-proposal-modal .nf-edit-actions>.row>div{width:100%;min-width:0}}

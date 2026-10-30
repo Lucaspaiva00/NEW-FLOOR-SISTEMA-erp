@@ -37,6 +37,9 @@
       } catch (_) {}
     });
 
+    const estilo=document.createElement("link");estilo.rel="stylesheet";estilo.href="css/newfloor-propostas-abas.css?v=20261030-abas";document.head.append(estilo);
+    window.montarAbasPropostasNewFloor();
+
     // Prévia da proposta passou a ser global em propostas-acoes.js.
 
   }
