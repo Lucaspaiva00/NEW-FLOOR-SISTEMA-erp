@@ -2,7 +2,7 @@
  * Orçamentos legados continuam usando custo/(1-margem) e 1 item no PDF.
  * Quando servicos[] está preenchido, o preço é a soma exata de suas linhas.
  */
-export function calcularComposicao(c: any) {
+function calcularComposicaoLegada(c: any) {
  const num=(v:any)=>{const n=Number(v);if(!Number.isFinite(n)||n<0||n>1e9)throw Error("Valor inválido na composição de custos.");return n};
  const round=(n:number)=>Math.round((n+Number.EPSILON)*100)/100;
  if(!c||!Array.isArray(c.materiais)||!Array.isArray(c.maoObra)||
@@ -48,4 +48,44 @@ export function calcularComposicao(c: any) {
  const margemRealizada=preco>0?round((preco-custoTotal)/preco):0;
  return {materiais,maoObra,servicos,margem,imposto,custoMateriais,custoMaoObra,
    custoTotal,preco,valorImposto,receitaAposImposto,lucro,margemRealizada};
+}
+
+/** v2: cada serviço possui seus próprios custos e condições de preço.
+ * As listas globais e totalizadores são derivados; nunca somados novamente.
+ */
+export function calcularComposicao(c:any):any {
+ if(c?.versao!==2)return calcularComposicaoLegada(c);
+ if(!Array.isArray(c.servicos)||!c.servicos.length||c.servicos.length>100)
+   throw Error("Inclua entre 1 e 100 serviços na proposta.");
+ const round=(n:number)=>Math.round((n+Number.EPSILON)*100)/100;
+ const servicos=c.servicos.map((s:any,index:number)=>{
+   if(!s||!Array.isArray(s.materiais)||!Array.isArray(s.maoObra))
+     throw Error("Informe os materiais e a mão de obra do serviço "+(index+1)+".");
+   const margem=s.margem??c.margem,imposto=s.imposto??c.imposto;
+   const modoPreco=s.modoPreco??"AUTOMATICO";
+   if(!["AUTOMATICO","MANUAL"].includes(modoPreco))throw Error("Modo de preço inválido.");
+   // Reutiliza validação/normalização de custos; preço provisório não é persistido.
+   const custos=calcularComposicaoLegada({materiais:s.materiais,maoObra:s.maoObra,
+     margem,imposto,servicos:[{...s,valorUnitario:1}]});
+   const valorUnitario=modoPreco==="AUTOMATICO"
+     ?round(custos.custoTotal/(1-custos.margem)/Number(s.quantidade))
+     :s.valorUnitario;
+   const resultado=calcularComposicaoLegada({...custos,servicos:[{...s,valorUnitario}]});
+   return {...resultado.servicos[0],modoPreco,margem:resultado.margem,imposto:resultado.imposto,
+     materiais:resultado.materiais,maoObra:resultado.maoObra,
+     custoMateriais:resultado.custoMateriais,custoMaoObra:resultado.custoMaoObra,
+     custoTotal:resultado.custoTotal,valorImposto:resultado.valorImposto,
+     receitaAposImposto:resultado.receitaAposImposto,lucro:resultado.lucro};
+ });
+ const materiais=servicos.flatMap((s:any)=>s.materiais),maoObra=servicos.flatMap((s:any)=>s.maoObra);
+ if(materiais.length>200||maoObra.length>100)throw Error("Limite total de 200 materiais e 100 linhas de mão de obra por proposta.");
+ const sum=(key:string)=>round(servicos.reduce((n:number,s:any)=>n+s[key],0));
+ const preco=sum("subtotal"),custoMateriais=sum("custoMateriais"),custoMaoObra=sum("custoMaoObra");
+ if(preco<=0||preco>99999999)throw Error("Preço do orçamento fora do limite.");
+ const custoTotal=round(custoMateriais+custoMaoObra),valorImposto=sum("valorImposto");
+ const receitaAposImposto=round(preco-valorImposto),lucro=round(receitaAposImposto-custoTotal);
+ const margemRealizada=(preco-custoTotal)/preco;
+ return {versao:2,servicos,materiais,maoObra,custoMateriais,custoMaoObra,custoTotal,
+   preco,valorImposto,receitaAposImposto,lucro,margem:margemRealizada,
+   imposto:valorImposto/preco,margemRealizada};
 }

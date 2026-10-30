@@ -34,3 +34,11 @@ O cliente consulta seu remetente em Propostas > Remetente das propostas, sem pre
 A operação provisiona no ambiente da API as chaves `SMTP_EMPRESA_2_HOST`, `SMTP_EMPRESA_2_PORT` (465 ou 587), `SMTP_EMPRESA_2_USER` e `SMTP_EMPRESA_2_PASS`, sem versionar valores secretos. O usuário SMTP deve corresponder ao e-mail cadastrado do usuário que envia. Credenciais incompletas ou de outra identidade bloqueiam o envio; não há fallback para o SMTP global/New Floor. O prefixo por empresa impede reutilizar contas de outros tenants. A resolução gerenciada aceita outros IDs, mas o fluxo público atual permanece exclusivo SBA para preservar os demais perfis.
 
 Depois de provisionar, validar autenticação e uma entrega autorizada. O status “configurado” indica disponibilidade da configuração; não certifica entrega na caixa do destinatário. Sem autorização do provedor da caixa/domínio, não é possível garantir envio autenticado em nome do cliente apenas alterando o campo From.
+
+## Composição por serviço (SBA)
+
+Novos orçamentos SBA usam `composicaoCustos.versao = 2`. Cada serviço contém suas listas `materiais` e `maoObra`, quantidade comercial, margem, imposto estimado e modo de preço `AUTOMATICO` ou `MANUAL`. As quantidades dos materiais e as jornadas de mão de obra representam a execução da quantidade total daquele serviço. O automático calcula custo ÷ (1 − margem) ÷ quantidade e arredonda o valor unitário em centavos antes do subtotal. Imposto estimado é descontado do resultado, preservando a regra comercial anterior.
+
+A API recalcula os custos e todos os valores; ignora totalizadores enviados pelo navegador. As listas globais são derivadas dos serviços para manter catálogo/fornecedores e validação de tenant, sem duplicar custos. Impostos são calculados por serviço e somados. O resumo geral usa margem e alíquota efetivas ponderadas. Os limites totais permanecem 100 serviços, 200 materiais e 100 linhas de mão de obra.
+
+Orçamentos sem versão 2 mantêm o editor e cálculo anteriores. A ação explícita “Organizar custos por serviço” preserva os preços manuais e coloca inicialmente os custos legados no primeiro serviço, com aviso visível para revisão da distribuição. Nenhuma proposta existente é alterada ao apenas abri-la. O PDF recebe somente os itens comerciais, sem materiais, mão de obra interna, margem ou lucro. Outros perfis mantêm o formato anterior.

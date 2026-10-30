@@ -16,7 +16,7 @@ async function prepararBody(req: Request, res: Response): Promise<any> {
   body.planoRecebimento=validarPlanoRecebimento(body.planoRecebimento);
  }
  if(body.composicaoCustos != null) {
-   if(config.perfil!=="SBA"&&body.composicaoCustos&&typeof body.composicaoCustos==="object") delete body.composicaoCustos.servicos;
+   if(config.perfil!=="SBA"&&body.composicaoCustos&&typeof body.composicaoCustos==="object") {delete body.composicaoCustos.servicos;delete body.composicaoCustos.versao;}
    body.composicaoCustos=calcularComposicao(body.composicaoCustos);
    if(config.perfil==='SBA')for(const m of body.composicaoCustos.materiais){if(m.servicoId&&!await prisma.servico.findFirst({where:{servicoid:m.servicoId,empresaId:req.empresaId!},select:{servicoid:true}}))throw Error('Material não encontrado nesta empresa.');}
    else for(const m of body.composicaoCustos.materiais)delete m.servicoId;
@@ -239,7 +239,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
     const numeroAutomatico = await gerarNumeroAutomaticoProposta(req.empresaId as number);
 
-    const subtotal = (body.itens || []).reduce(
+    const subtotal = body.composicaoCustos?.versao===2 ? body.composicaoCustos.preco : (body.itens || []).reduce(
       (total: number, item: any) => total + Number(item.subtotal || 0),
       0,
     );
@@ -430,7 +430,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     }
 
     const subtotal = temItensNoBody
-      ? body.itens.reduce(
+      ? body.composicaoCustos?.versao===2 ? body.composicaoCustos.preco : body.itens.reduce(
           (total: number, item: any) => total + Number(item.subtotal || 0),
           0,
         )

@@ -6,7 +6,7 @@
     return editorPromise;
   }
   async function montarEditor() {
-    const response = await fetch("orcamentos.html?v=20261030-sba-servicos");
+    const response = await fetch("orcamentos.html?v=20261030-custos-por-servico");
     if (!response.ok) throw new Error("Não foi possível carregar o formulário de orçamento.");
     const doc = new DOMParser().parseFromString(await response.text(), "text/html");
     const modal = doc.getElementById("modalOrcamento");
@@ -52,13 +52,13 @@
     const servicos=Array.isArray(c?.servicos)?c.servicos:[];
     const resumoServicos=servicos.length
       ?`<div><span>Serviços no orçamento</span><strong>${servicos.length}</strong></div><div><span>Total dos serviços</span><strong>${valor(proposta.subtotal)}</strong></div>`:"";
-    return `<div class="proposal-composition-summary"><span class="composition-caption">Composição do orçamento</span>${resumoServicos}<div><span>Materiais</span><strong>${valor(c.custoMateriais)}</strong></div><div><span>Mão de obra</span><strong>${valor(c.custoMaoObra)}</strong></div><div><span>Custo total</span><strong>${valor(c.custoTotal)}</strong></div><div><span>Margem / imposto estimado</span><strong>${textoSeguro((Number(c.margem)*100).toLocaleString("pt-BR",{maximumFractionDigits:2}))}% / ${textoSeguro((Number(c.imposto)*100).toLocaleString("pt-BR",{maximumFractionDigits:2}))}%</strong></div><div class="composition-profit ${Number(c.lucro)<0?"loss":""}"><span>Lucro estimado</span><strong>${valor(c.lucro)}</strong></div>${proposta.contatoDestinatario?`<p>Contato: ${textoSeguro(proposta.contatoDestinatario)}</p>`:""}${proposta.emailDestinatario?`<p>${textoSeguro(proposta.emailDestinatario)}</p>`:""}</div>`;
+    return `<div class="proposal-composition-summary"><span class="composition-caption">Composição do orçamento</span>${resumoServicos}<div><span>Materiais</span><strong>${valor(c.custoMateriais)}</strong></div><div><span>Mão de obra</span><strong>${valor(c.custoMaoObra)}</strong></div><div><span>Custo total</span><strong>${valor(c.custoTotal)}</strong></div><div><span>${c.versao===2?"Margem / imposto efetivos":"Margem / imposto estimado"}</span><strong>${textoSeguro((Number(c.margem)*100).toLocaleString("pt-BR",{maximumFractionDigits:2}))}% / ${textoSeguro((Number(c.imposto)*100).toLocaleString("pt-BR",{maximumFractionDigits:2}))}%</strong></div><div class="composition-profit ${Number(c.lucro)<0?"loss":""}"><span>Lucro estimado</span><strong>${valor(c.lucro)}</strong></div>${proposta.contatoDestinatario?`<p>Contato: ${textoSeguro(proposta.contatoDestinatario)}</p>`:""}${proposta.emailDestinatario?`<p>${textoSeguro(proposta.emailDestinatario)}</p>`:""}</div>`;
   };
   window.addEventListener("configuracao-sistema", ({detail:c}) => {
     if (!c.composicaoCustos) return;
     if(c.perfil==='SBA'&&!document.getElementById('sbaMobileStyles')){const css=document.createElement('link');css.id='sbaMobileStyles';css.rel='stylesheet';css.href='css/sba-mobile.css?v=20261012';document.head.append(css);}
     const css = document.createElement("link");
-    css.rel = "stylesheet";css.href = "css/orcamentos.css?v=20261030-sba-servicos";document.head.append(css);
+    css.rel = "stylesheet";css.href = "css/orcamentos.css?v=20261030-custos-por-servico";document.head.append(css);
     const button = document.querySelector('[data-bs-target="#modalNovaProposta"]');
     if (button) {
       button.removeAttribute("data-bs-toggle");button.removeAttribute("data-bs-target");
