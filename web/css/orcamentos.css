@@ -6,3 +6,15 @@
 .budget-empty{padding:35px;border:1px dashed #d5e0eb;border-radius:12px;text-align:center;color:#8695a7;font-size:12px;background:white}
 
 .proposal-composition-summary{margin:13px 0;padding:12px;border:1px solid #e0e9f1;border-radius:9px;background:#f6f9fc}.proposal-composition-summary .composition-caption{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#7790a6;font-weight:700;margin-bottom:9px}.proposal-composition-summary>div{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:#6f8294;line-height:1.8}.proposal-composition-summary strong{font-size:10px;color:#335774;white-space:nowrap}.proposal-composition-summary .composition-profit{margin-top:6px;padding-top:6px;border-top:1px solid #dfe8f0}.proposal-composition-summary .composition-profit strong{color:#328167}.proposal-composition-summary .composition-profit.loss strong{color:#b94454}.proposal-composition-summary p{font-size:9px;color:#8194a6;margin:7px 0 0;overflow-wrap:anywhere}.proposta-sba-editor .budget-actions>div{flex-wrap:wrap}
+
+
+/* SBA: múltiplos serviços por orçamento. Não modifica os modais de outros perfis. */
+.sba-row.servicos{grid-template-columns:minmax(140px,1.5fr) minmax(130px,1.2fr) minmax(80px,.55fr) minmax(68px,.4fr) minmax(115px,.85fr) minmax(115px,.85fr) auto}
+.sba-row.servicos .budget-servico-total{display:flex;flex-direction:column;gap:11px;min-width:0;padding-bottom:10px}
+.sba-row.servicos .budget-servico-total span{font-size:10px;color:#72879a;font-weight:600}
+.sba-row.servicos .budget-servico-total strong{font-size:13px;white-space:nowrap;color:#214b6f}
+.budget-servicos-resumo{display:flex;align-items:center;justify-content:space-between;padding:14px 17px;background:#eaf3fa;border-radius:8px;margin:14px 0;color:#244d70;font-weight:650;font-size:12px}
+.budget-servicos-resumo strong{font-size:18px}
+@media(max-width:1100px){.sba-row.servicos{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.sba-row.servicos{grid-template-columns:repeat(2,minmax(0,1fr))}.sba-row.servicos .budget-servico-total{justify-content:center}.budget-servicos-resumo strong{font-size:15px}}
+@media(max-width:420px){.sba-row.servicos [data-key="descricao"],.sba-row.servicos [data-key="detalhes"]{width:100%}.sba-row.servicos label:has([data-key="descricao"]),.sba-row.servicos label:has([data-key="detalhes"]){grid-column:span 2}}
