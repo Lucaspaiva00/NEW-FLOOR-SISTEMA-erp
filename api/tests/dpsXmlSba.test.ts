@@ -135,3 +135,13 @@ test("Modo percentual incompleto e IBS/CBS sem destinatário não produzem XML",
   assert.ok(previa.pendencias.some(p=>p.includes("pTotTribFed")));
   assert.ok(previa.pendencias.some(p=>p.includes("ibsCbsIndDest")));
 });
+
+
+test("dhEmi mantém o instante no fuso da SBA sem avançar a data local",()=>{
+ const agora=new Date("2026-11-05T01:25:30.000Z");
+ const dps=montarDpsPreviaSba(notaTeste(),agora);
+ assert.deepEqual(dps.pendencias,[]);
+ assert.match(dps.xml,/<dhEmi>2026-11-04T22:25:30-03:00<\/dhEmi>/);
+ const hora=dps.xml.match(/<dhEmi>([^<]+)<\/dhEmi>/)![1];
+ assert.equal(new Date(hora).getTime(),agora.getTime());
+});

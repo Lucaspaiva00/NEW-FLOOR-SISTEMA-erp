@@ -113,7 +113,9 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
   const valores="<vServPrest>"+tag("vServ",fmtValor(nota.valorServicos))+"</vServPrest>"+
     "<trib><tribMun>"+tag("tribISSQN",tribIss)+tag("tpRetISSQN",tipoRet)+"</tribMun>"+
     "<totTrib>"+totalTribXml+"</totTrib></trib>";
-  const hora=agora.toISOString().replace(/\.\d{3}Z$/,"+00:00");
+  // Mesmo instante no fuso da emissora SBA (Pedreira/SP), sem data futura
+  // aparente para as regras locais da SEFIN. Não altera a competência.
+  const hora=new Date(agora.getTime()-3*60*60*1000).toISOString().replace(/\.\d{3}Z$/,"-03:00");
   const xml='<?xml version="1.0" encoding="UTF-8"?>'+
     '<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">'+
     '<infDPS Id="'+id+'">'+
