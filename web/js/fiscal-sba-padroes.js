@@ -146,6 +146,7 @@
     el("sbaSalvarCfgServico").addEventListener("click",()=>salvar("servico"));
     el("sbaCriarTipoServico").addEventListener("click",async()=>{
       const resposta=await Swal.fire({
+        target:el("modalEmpresaFiscal"),
         title:"Cadastrar tipo de serviço fiscal",input:"text",
         inputLabel:"Nome do tipo de serviço prestado (não material)",
         inputPlaceholder:"Ex.: Instalação de estruturas metálicas",
