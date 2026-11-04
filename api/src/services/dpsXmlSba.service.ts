@@ -103,7 +103,7 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
     opt("email",nota.destinatarioEmail);
   const serv="<locPrest>"+tag("cLocPrestacao",digits(extra.cLocPrestacao))+"</locPrest>"+
     "<cServ>"+tag("cTribNac",cTribNac)+opt("cTribMun",extra.cTribMun)+
-    tag("xDescServ",descricao)+opt("cNBS",extra.cNBS)+"</cServ>"+
+    opt("cNBS",digits(extra.cNBS))+tag("xDescServ",descricao)+"</cServ>"+
     (nota.codigoObra?"<obra>"+tag("cObra",nota.codigoObra)+"</obra>":"");
   const totalTribXml=totalTrib==="PERCENTUAL"
     ?"<pTotTrib>"+["pTotTribFed","pTotTribEst","pTotTribMun"].map(k=>tag(k,Number(String(extra[k]).replace(",",".")).toFixed(2))).join("")+"</pTotTrib>"
