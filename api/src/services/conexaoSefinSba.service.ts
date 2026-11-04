@@ -4,6 +4,19 @@ import { validarCertificadoA1Sba } from "./certificadoA1Sba.service";
 
 const HOST="sefin.producaorestrita.nfse.gov.br";
 
+export function erroTlsSefinSeguro(err:unknown):Error{
+  const e=err as {code?:unknown;message?:unknown};
+  const code=String(e?.code||"");
+  // Mensagens OpenSSL não são devolvidas: podem conter dados do contêiner.
+  if(code==="ERR_OSSL_EVP_UNSUPPORTED"||String(e?.message)==="unsupported")
+    return Error("Não foi possível carregar o formato criptográfico do PFX no canal TLS (algoritmo legado). A assinatura XML permanece válida.");
+  if(/^E(?:TIMEDOUT|CONNRESET|CONNREFUSED|HOSTUNREACH|NETUNREACH|NOTFOUND|AI_AGAIN)$/.test(code))
+    return Error("Não foi possível alcançar a SEFIN pelo canal TLS ("+code+").");
+  if(["UNABLE_TO_GET_ISSUER_CERT_LOCALLY","UNABLE_TO_VERIFY_LEAF_SIGNATURE","SELF_SIGNED_CERT_IN_CHAIN","CERT_HAS_EXPIRED","ERR_TLS_CERT_ALTNAME_INVALID"].includes(code))
+    return Error("A identidade TLS do servidor SEFIN não foi validada ("+code+").");
+  return Error("A negociação TLS com a SEFIN foi recusada"+(/^[A-Z][A-Z0-9_]{2,70}$/.test(code)?" ("+code+")":"")+". Confirme habilitação e cadeia do certificado.");
+}
+
 /**
  * Somente teste de negociação TLS com a SEFIN em PRODUÇÃO RESTRITA.
  * NÃO chama POST /nfse, NÃO envia DPS e não confirma acesso ao emissor.
@@ -43,12 +56,13 @@ export async function testarCanalTlsSefinSba(
         socket.destroy();
         if(erro)reject(erro);else resolve(resultado);
       };
-      const socket=tlsConnect({
+      let socket:ReturnType<typeof tlsConnect>;
+      try{socket=tlsConnect({
         host:HOST,port:443,servername:HOST,
         pfx:arquivoCertificado,passphrase:senha,
         minVersion:"TLSv1.2",rejectUnauthorized:true,timeout:12000,
         ALPNProtocols:["http/1.1"]
-      });
+      });}catch(err){reject(erroTlsSefinSeguro(err));return;}
       socket.once("secureConnect",()=>{
         if(!socket.authorized){
           terminar(Error("A identidade TLS do servidor SEFIN não foi validada."));return;
@@ -60,11 +74,7 @@ export async function testarCanalTlsSefinSba(
       });
       socket.once("timeout",()=>terminar(Error("Tempo esgotado ao conectar à SEFIN de homologação.")));
       socket.once("error",err=>{
-        const code=String((err as any).code||"");
-        const reason=/^E(?:TIMEDOUT|CONNRESET|CONNREFUSED|HOSTUNREACH|NETUNREACH)$/.test(code)
-          ?"Não foi possível alcançar a SEFIN pelo canal TLS."
-          :"A negociação TLS com a SEFIN foi recusada. Confirme habilitação e cadeia do certificado.";
-        terminar(Error(reason));
+        terminar(erroTlsSefinSeguro(err));
       });
     });
   }finally{
