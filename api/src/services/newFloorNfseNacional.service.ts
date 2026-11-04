@@ -33,6 +33,23 @@ export function problemasNfseNacionalNewFloor(nota:any, payload:any): string[] {
   const municipio=String(payload.codigo_municipio_tomador||"").replace(/\D/g,"");
   if (cep && cep.length !== 8) errors.push("NFS-e Nacional: confira o CEP do cliente (8 dígitos).");
   if (cep && municipio.length !== 7) errors.push("NFS-e Nacional: informe o código IBGE do município do tomador (7 dígitos) antes de enviar o CEP.");
+  // E0370: grupo obra obrigatório para estes subitens da lista nacional.
+  const exigeObra=new Set(["070201","070202","070401","070501","070502","070601","070602","070701","070801","071701","071901","141403","141404"])
+    .has(String(payload.codigo_tributacao_nacional_iss||"").replace(/\D/g,""));
+  const codigoObra=String(payload.codigo_obra??"").trim();
+  const camposEndereco=["cep_obra","logradouro_obra","numero_obra","bairro_obra"];
+  const temEndereco=[...camposEndereco,"complemento_obra"].some(key=>String(payload[key]??"").trim());
+  if(exigeObra&&!codigoObra&&!temEndereco) errors.push("NFS-e Nacional: informe os dados da obra (CNO/CEI ou endereço da obra) antes de emitir. Este serviço exige o grupo de obra (E0370).");
+  if(codigoObra.length>30) errors.push("NFS-e Nacional: o CNO/CEI da obra deve ter no máximo 30 caracteres.");
+  if(codigoObra&&temEndereco) errors.push("NFS-e Nacional: escolha CNO/CEI ou endereço para identificar a obra, sem enviar as duas opções juntas.");
+  if(temEndereco){
+    if(!/^\d{8}$/.test(String(payload.cep_obra??""))) errors.push("NFS-e Nacional: informe o CEP da obra com 8 dígitos.");
+    for(const [key,label,max] of [["logradouro_obra","rua/avenida",255],["numero_obra","número",60],["bairro_obra","bairro",60],["complemento_obra","complemento",156]] as const){
+      const value=String(payload[key]??"").trim();
+      if((key!=="complemento_obra"&&!value)||value.length>max) errors.push(`NFS-e Nacional: confira ${label} da obra (máximo ${max} caracteres).`);
+    }
+  }
+  if((exigeObra||codigoObra||temEndereco)&&!/^\d{7}$/.test(String(payload.codigo_municipio_prestacao??""))) errors.push("NFS-e Nacional: informe o código IBGE do município onde o serviço foi executado (7 dígitos).");
   const descricao=textoDescricaoNacional(payload.descricao_servico);
   if (!descricao) errors.push("NFS-e Nacional: descreva o serviço prestado.");
   if (descricao.length > 2000) errors.push(

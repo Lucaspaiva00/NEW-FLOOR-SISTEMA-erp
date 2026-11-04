@@ -329,6 +329,8 @@ function buildNfseNacionalPayload(nota: any): Record<string, any> {
       onlyDigits(nota.destinatarioCodigoMunicipio) ||
       onlyDigits(empresa.codigoMunicipioIbge),
 
+    ...(nota.empresaId === 1 ? { codigo_obra: nota.codigoObra, codigo_documento_tecnico: nota.art } : {}),
+
     codigo_tributacao_nacional_iss: codigoTributacaoNacionalIss(nota),
     codigo_tributacao_municipal_iss:
       nota.codigoTributarioMunicipal || empresa.codigoTributarioMunicipal,
@@ -354,6 +356,8 @@ function buildNfseNacionalPayload(nota: any): Record<string, any> {
   };
 
   const merged = deepMerge(payload, nota.payloadExtra);
+  // Obra exige local de prestação explícito; não presumir o endereço de cobrança.
+  if(nota.empresaId===1 && (merged.codigo_obra || merged.cep_obra || merged.logradouro_obra) && !nota.payloadExtra?.codigo_municipio_prestacao) merged.codigo_municipio_prestacao=undefined;
   if(nota.empresaId===1 && merged.codigo_nbs) merged.codigo_nbs=onlyDigits(merged.codigo_nbs);
   return compactObject(merged);
 }

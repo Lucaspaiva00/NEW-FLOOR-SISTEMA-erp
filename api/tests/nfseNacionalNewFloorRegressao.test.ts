@@ -45,3 +45,24 @@ test("campos fiscais com formato de exemplo não apresentam erros de preenchimen
  const errors=problemasNfseNacionalNewFloor(input,buildFocusPayload(input));
  assert.deepEqual(errors,[]);
 });
+
+test("obra New Floor: bloqueia E0370 e aceita CNO ou endereço completo",()=>{
+ const n=nota(1);n.itemListaServico="070701";n.destinatarioCodigoMunicipio="3509502";
+ const erros=()=>problemasNfseNacionalNewFloor(n,buildFocusPayload(n)).filter(x=>/obra|CNO|executado/.test(x));
+ assert.ok(erros().some(x=>x.includes("E0370")));
+ n.codigoObra="123456789012";
+ n.payloadExtra={codigo_municipio_prestacao:"3509502"};
+ assert.equal(buildFocusPayload(n).codigo_obra,"123456789012");
+ assert.deepEqual(erros(),[]);
+ n.codigoObra=null;
+ n.payloadExtra={cep_obra:"13025270",logradouro_obra:"Rua de teste",numero_obra:"10",bairro_obra:"Centro",codigo_municipio_prestacao:"3509502"};
+ assert.deepEqual(erros(),[]);
+ assert.equal(buildFocusPayload(n).logradouro_obra,"Rua de teste");
+ delete n.payloadExtra.numero_obra;
+ assert.ok(erros().some(x=>x.includes("número")));
+ n.codigoObra="123456789012";
+ assert.ok(erros().some(x=>x.includes("duas opções")));
+});
+test("mapeamento de obra nacional não altera os outros perfis",()=>{
+ for(const id of [2,5]){const n=nota(id);n.codigoObra="123456789012";assert.equal(buildFocusPayload(n).codigo_obra,undefined);}
+});

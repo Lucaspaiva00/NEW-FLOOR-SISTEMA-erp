@@ -69,6 +69,42 @@
     '<small class="text-muted d-block mt-2">Os códigos IBS/CBS não podem ser deduzidos do CNAE. A classificação e apuração do Simples devem ser confirmadas pela contabilidade. Para federais e ISS dentro do Simples, IBS/CBS não são exigidos nas competências de 2026.</small>';
    nfseBloco.append(painel);
   }
+  // Dados da obra pertencem à operação, nunca aos padrões da empresa.
+  const camposObra=[
+   ["nfObraCep","cep_obra","CEP",9],
+   ["nfObraRua","logradouro_obra","Rua / avenida",255],
+   ["nfObraNumero","numero_obra","Número",60],
+   ["nfObraBairro","bairro_obra","Bairro",60],
+   ["nfObraComplemento","complemento_obra","Complemento (opcional)",156]
+  ];
+  if(nfseBloco){
+   const painel=document.createElement("section");
+   painel.id="nfObraNewFloor";painel.className="border rounded p-3 mt-3";
+   painel.innerHTML='<h6>Dados da obra — NFS-e Nacional</h6>'+
+    '<p class="small text-muted">Informe o local real da execução do serviço. Para serviços como polimento de pisos, identifique a obra pelo CNO/CEI ou pelo endereço. O endereço do cliente não é copiado automaticamente.</p>'+
+    '<div class="row g-3"><label class="col-12 col-sm-6">Identificação da obra<select id="nfObraModo" class="form-select"><option value="">Não informado</option><option value="codigo">CNO / CEI</option><option value="endereco">Endereço da obra</option></select></label>'+
+    '<label class="col-12 col-sm-6">Município da prestação (código IBGE)<input id="nfObraMunicipio" class="form-control" inputmode="numeric" maxlength="7" placeholder="7 dígitos do município onde o serviço ocorreu"></label></div>'+
+    '<div id="nfObraCodigoGrupo" class="row g-3 mt-1"></div>'+
+    '<div id="nfObraEnderecoGrupo" class="row g-3 mt-1">'+camposObra.map(([id,,label,max])=>'<label class="col-12 col-sm-6">'+label+'<input id="'+id+'" class="form-control" maxlength="'+max+'"></label>').join("")+'</div>';
+   nfseBloco.append(painel);
+   const codigo=$("nfCodigoObra");
+   if(codigo){codigo.maxLength=30;codigo.closest("div").querySelector("label").textContent="CNO / CEI da obra";$("nfObraCodigoGrupo").append(codigo.closest("div"));}
+   function mostrarObra(){
+    $("nfObraCodigoGrupo").hidden=$("nfObraModo").value!=="codigo";
+    $("nfObraEnderecoGrupo").hidden=$("nfObraModo").value!=="endereco";
+   }
+   $("nfObraModo").addEventListener("change",mostrarObra);
+   $("modalNotaFiscal").addEventListener("shown.bs.modal",()=>{
+    let extra={};try{extra=JSON.parse($("nfPayloadExtra").value||"{}");}catch(_){return;}
+    camposObra.forEach(([id,key])=>$(id).value=extra[key]??"");
+    // JSON legado também pode conter o código da obra.
+    if(!codigo.value)codigo.value=extra.codigo_obra??"";
+    $("nfObraMunicipio").value=extra.codigo_municipio_prestacao??"";
+    $("nfObraModo").value=codigo.value?"codigo":camposObra.some(([,key])=>extra[key])?"endereco":"";
+    mostrarObra();
+   });
+   mostrarObra();
+  }
   const camposTrib=[
    ["nfTribPis","situacao_tributaria_pis_cofins"],
    ["nfTribFederal","percentual_total_tributos_federais"],
@@ -126,6 +162,19 @@
       if(!Number.isFinite(numero)||numero<0||numero>100){event.preventDefault();event.stopImmediatePropagation();alert("Revise os percentuais tributários informados.");return;}
       extra[key]=numero;
     }
+   }
+   if($("nfTipo").value==="NFSE" && $("nfObraModo")){
+    const modo=$("nfObraModo").value;
+    for(const [id,key]of camposObra){
+     const value=$(id).value.trim();
+     if(modo==="endereco" && value)extra[key]=key==="cep_obra"?value.replace(/\D/g,""):value;
+     else delete extra[key];
+    }
+    delete extra.codigo_obra;
+    if(modo!=="codigo")$("nfCodigoObra").value="";
+    const municipio=$("nfObraMunicipio").value.trim();
+    if(municipio)extra.codigo_municipio_prestacao=municipio;
+    else delete extra.codigo_municipio_prestacao;
    }
    json.value=Object.keys(extra).length?JSON.stringify(extra):"";
   },true);
