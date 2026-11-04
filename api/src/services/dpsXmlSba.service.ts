@@ -1,3 +1,4 @@
+import {validarParametrosRascunhoSba} from "./parametrosDpsSba.service";
 import { verificarCamposDpsSba } from "./dpsNacionalSba.service";
 
 /**
@@ -55,7 +56,22 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
   if(!/^[0-9]$/.test(regEsp))pendencias.push("Confirme o regime especial tributário (regEspTrib) da operação com o contador.");
   if(!/^[0-9]$/.test(tribIss))pendencias.push("Confirme tribISSQN (tributação municipal) para a operação.");
   if(!/^[0-9]$/.test(tipoRet))pendencias.push("Confirme tpRetISSQN (retenção do ISSQN) da operação.");
-  if(!/^[0-9]$/.test(totalTrib))pendencias.push("Confirme indTotTrib (indicador de tributos totais) conforme o enquadramento.");
+  if(!/^(0|PERCENTUAL)$/.test(totalTrib))pendencias.push("Confirme o modo de informação dos tributos totais.");
+  try{validarParametrosRascunhoSba(extra);}catch(err:any){pendencias.push(err.message);}
+  if(totalTrib==="PERCENTUAL"){
+    for(const key of ["pTotTribFed","pTotTribEst","pTotTribMun"]){
+      const v=extra[key];
+      if(v==null||String(v).trim()===""||!Number.isFinite(Number(String(v).replace(",",".")))||Number(String(v).replace(",","."))<0||Number(String(v).replace(",","."))>100)
+        pendencias.push("Informe "+key+" (percentual aproximado entre 0 e 100).");
+    }
+  }
+  const temIbsCbs=["ibsCbsCst","ibsCbsClassTrib","ibsCbsIndOp","ibsCbsIndDest"].some(k=>extra[k]!=null&&extra[k]!=="");
+  if(temIbsCbs){
+    for(const [key,re] of [["ibsCbsCst",/^\d{3}$/],["ibsCbsClassTrib",/^\d{6}$/],["ibsCbsIndOp",/^\d{6}$/],["ibsCbsIndDest",/^[01]$/]] as const){
+      if(!re.test(String(extra[key]??"")))pendencias.push("Confirme "+key+" para os dados IBS/CBS desta nota.");
+    }
+    if(extra.ibsCbsIndDest==="1")pendencias.push("Destinatário diferente do tomador exige cadastro específico; esta integração ainda não monta esse grupo.");
+  }
   if(fiscal.optanteSimplesNacional&&![1,2,3].includes(regAp))
     pendencias.push("Confirme regime de apuração do Simples (1, 2 ou 3) para a SBA.");
   if(digits(nota?.destinatarioCep).length!==8)
@@ -89,9 +105,14 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
     "<cServ>"+tag("cTribNac",cTribNac)+opt("cTribMun",extra.cTribMun)+
     tag("xDescServ",descricao)+opt("cNBS",extra.cNBS)+"</cServ>"+
     (nota.codigoObra?"<obra>"+tag("cObra",nota.codigoObra)+"</obra>":"");
+  const totalTribXml=totalTrib==="PERCENTUAL"
+    ?"<pTotTrib>"+["pTotTribFed","pTotTribEst","pTotTribMun"].map(k=>tag(k,Number(String(extra[k]).replace(",",".")).toFixed(2))).join("")+"</pTotTrib>"
+    :tag("indTotTrib","0");
+  const ibsCbs=temIbsCbs?"<IBSCBS>"+tag("cIndOp",extra.ibsCbsIndOp)+tag("indDest",extra.ibsCbsIndDest)+
+    "<valores><trib>"+tag("CST",extra.ibsCbsCst)+tag("cClassTrib",extra.ibsCbsClassTrib)+"</trib></valores></IBSCBS>":"";
   const valores="<vServPrest>"+tag("vServ",fmtValor(nota.valorServicos))+"</vServPrest>"+
     "<trib><tribMun>"+tag("tribISSQN",tribIss)+tag("tpRetISSQN",tipoRet)+"</tribMun>"+
-    "<totTrib>"+tag("indTotTrib",totalTrib)+"</totTrib></trib>";
+    "<totTrib>"+totalTribXml+"</totTrib></trib>";
   const hora=agora.toISOString().replace(/\.\d{3}Z$/,"+00:00");
   const xml='<?xml version="1.0" encoding="UTF-8"?>'+
     '<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">'+
@@ -101,7 +122,7 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
     tag("dCompet",dataCompetencia(nota.dataEmissao))+
     tag("tpEmit","1")+tag("finNFSe","0")+tag("cLocEmi",municipio)+
     "<prest>"+prest+"</prest><toma>"+toma+"</toma><serv>"+serv+
-    "</serv><valores>"+valores+"</valores>"+
+    "</serv><valores>"+valores+"</valores>"+ibsCbs+
     "</infDPS></DPS>";
   return {
     xml,id,pendencias:[],

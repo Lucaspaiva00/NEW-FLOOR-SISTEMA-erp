@@ -27,3 +27,10 @@ test("SBA impede campos inválidos sem impedir salvar rascunhos incompletos",()=
   assert.throws(()=>validarParametrosRascunhoSba({opSimpNac:"2",regEspTrib:"4"}),/MEI/);
   assert.throws(()=>validarParametrosRascunhoSba([]),/objeto JSON/);
 });
+
+test("Percentuais aceitam vírgula, preservam zeros e rejeitam excesso",()=>{
+  assert.deepEqual(validarParametrosRascunhoSba({indTotTrib:"PERCENTUAL",pTotTribFed:0,pTotTribEst:"0",pTotTribMun:"4,28",ibsCbsCst:"000",ibsCbsClassTrib:"000001",ibsCbsIndOp:"050101"}),
+    {indTotTrib:"PERCENTUAL",pTotTribFed:"0.00",pTotTribEst:"0.00",pTotTribMun:"4.28",ibsCbsCst:"000",ibsCbsClassTrib:"000001",ibsCbsIndOp:"050101"});
+  for(const value of ["100.01","-1","NaN","4.285"]){assert.throws(()=>validarParametrosRascunhoSba({pTotTribMun:value}));}
+  assert.throws(()=>validarParametrosRascunhoSba({ibsCbsCst:"0"}));
+});

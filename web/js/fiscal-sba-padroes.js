@@ -2,13 +2,15 @@
 (() => {
   const el=id=>document.getElementById(id);
   const escapeHtml=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const empresaFields=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib"];
+  const empresaFields=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib","pTotTribFed","pTotTribEst","pTotTribMun"];
   // tribISSQN e regEspTrib já aparecem em Padrões NFS-e do modal da empresa.
-  const empresaCamposAdicionais=["opSimpNac","tpRetISSQN","indTotTrib"];
-  const servicoFields=["cTribNac","itemListaServico","cTribMun","cNBS"];
+  const empresaCamposAdicionais=["opSimpNac","tpRetISSQN","indTotTrib","pTotTribFed","pTotTribEst","pTotTribMun"];
+  const servicoFields=["cTribNac","itemListaServico","cTribMun","cNBS","ibsCbsCst","ibsCbsClassTrib","ibsCbsIndOp"];
   const labels={
     opSimpNac:"Opção pelo Simples Nacional",regEspTrib:"Regime especial municipal",
     tribISSQN:"Tributação ISSQN",tpRetISSQN:"Retenção ISSQN",
+    pTotTribFed:"Tributos aproximados federais (%)",pTotTribEst:"Tributos aproximados estaduais (%)",pTotTribMun:"Tributos aproximados municipais (%)",
+    ibsCbsCst:"CST IBS/CBS",ibsCbsClassTrib:"Classificação tributária IBS/CBS",ibsCbsIndOp:"Indicador de operação IBS/CBS",
     indTotTrib:"Indicador tributos totais",cLocPrestacao:"Município prestação (IBGE)",
     cTribNac:"Código nacional do serviço (cTribNac)",
     itemListaServico:"Item da lista de serviços",cTribMun:"Tributação municipal",cNBS:"NBS"
@@ -20,7 +22,7 @@
       ["5","5 — Autônomo"],["6","6 — Sociedade de profissionais"],["9","9 — Outros"]],
     tribISSQN:[["1","1 — Tributável"],["2","2 — Imune"],["3","3 — Exportação"],["4","4 — Não incidência"]],
     tpRetISSQN:[["1","1 — Não retido"],["2","2 — Tomador"],["3","3 — Intermediário"]],
-    indTotTrib:[["0","0 — Não informar estimativa"]]
+    indTotTrib:[["0","Não informar estimativa"],["PERCENTUAL","Percentual — tributos aproximados"]]
   };
   let dados={emissoras:[],servicos:[]};
   let token="";
@@ -202,7 +204,7 @@
         const escolhido=dados.servicos.find(x=>String(x.id)===select.value);
         if(escolhido){
           extra.sbaServicoId=escolhido.id;
-          for(const key of ["cTribNac","cTribMun","cNBS"]){
+          for(const key of ["cTribNac","cTribMun","cNBS","ibsCbsCst","ibsCbsClassTrib","ibsCbsIndOp"]){
             const input=el("sbaDps_"+key);
             if(input)input.value=escolhido.padroes?.[key]||"";
           }
@@ -230,7 +232,7 @@
     if(select)select.value=dados.servicos.some(x=>String(x.id)===String(id))?String(id):"";
     const servico=dados.servicos.find(x=>String(x.id)===select?.value);
     const defaults={...(fiscal?.padroes||{}),...(servico?.padroes||{})};
-    for(const key of [...empresaFields,"cTribNac","cTribMun","cNBS"]){
+    for(const key of [...empresaFields,"cTribNac","cTribMun","cNBS","ibsCbsCst","ibsCbsClassTrib","ibsCbsIndOp"]){
       const field=el("sbaDps_"+key);
       if(field && !field.value && extra[key]==null && defaults[key]!=null){
         field.value=String(defaults[key]);

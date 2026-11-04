@@ -9,7 +9,15 @@ export const CAMPOS_DPS_SBA = {
   regEspTrib:/^[01234569]$/,
   tribISSQN:/^[1234]$/,
   tpRetISSQN:/^[123]$/,
-  indTotTrib:/^0$/,
+  // PERCENTUAL é um modo interno do formulário; no XML gera pTotTrib, nunca indTotTrib.
+  indTotTrib:/^(0|PERCENTUAL)$/,
+  pTotTribFed:/^\d{1,3}(?:[.,]\d{1,2})?$/,
+  pTotTribEst:/^\d{1,3}(?:[.,]\d{1,2})?$/,
+  pTotTribMun:/^\d{1,3}(?:[.,]\d{1,2})?$/,
+  ibsCbsCst:/^\d{3}$/,
+  ibsCbsClassTrib:/^\d{6}$/,
+  ibsCbsIndOp:/^\d{6}$/,
+  ibsCbsIndDest:/^[01]$/,
   cLocPrestacao:/^\d{7}$/,
   cTribMun:/^[A-Za-z0-9.-]{1,20}$/,
   cNBS:/^[0-9.]{7,16}$/,
@@ -21,6 +29,13 @@ export const ROTULOS_DPS_SBA: Record<keyof typeof CAMPOS_DPS_SBA,string> = {
   tribISSQN:"Tributação ISSQN (tribISSQN)",
   tpRetISSQN:"Retenção ISSQN (tpRetISSQN)",
   indTotTrib:"Indicador de tributos totais (indTotTrib)",
+  pTotTribFed:"Tributos aproximados federais (%)",
+  pTotTribEst:"Tributos aproximados estaduais (%)",
+  pTotTribMun:"Tributos aproximados municipais (%)",
+  ibsCbsCst:"CST IBS/CBS",
+  ibsCbsClassTrib:"Classificação tributária IBS/CBS",
+  ibsCbsIndOp:"Indicador de operação IBS/CBS",
+  ibsCbsIndDest:"Destinatário IBS/CBS",
   cLocPrestacao:"Município de prestação IBGE (cLocPrestacao)",
   cTribMun:"Tributação municipal (cTribMun)",
   cNBS:"Classificação NBS (cNBS)",
@@ -40,7 +55,11 @@ export function validarParametrosRascunhoSba(extra:unknown):Record<string,unknow
     const texto=String(valor).trim();
     if(!CAMPOS_DPS_SBA[key].test(texto))
       throw Object.assign(new Error(ROTULOS_DPS_SBA[key]+": código fora do formato aceito. Revise com a contabilidade."),{statusCode:400});
-    dados[key]=texto;
+    if(["pTotTribFed","pTotTribEst","pTotTribMun"].includes(key)){
+      const percentual=Number(texto.replace(",","."));
+      if(percentual>100)throw Object.assign(Error(ROTULOS_DPS_SBA[key]+": informe entre 0 e 100."),{statusCode:400});
+      dados[key]=percentual.toFixed(2);
+    }else dados[key]=texto;
   }
   if(["2","3","4"].includes(String(dados.tribISSQN)) &&
     ["2","3"].includes(String(dados.tpRetISSQN)))

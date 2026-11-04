@@ -23,8 +23,17 @@
       ["1","1 — Não retido"],["2","2 — Retido pelo tomador"],
       ["3","3 — Retido pelo intermediário"]
     ]],
-    ["indTotTrib","Indicador de tributos totais", "select",/^0$/,"",[
-      ["0","0 — Optou por não informar estimativa de tributos"]
+    ["indTotTrib","Indicador de tributos totais", "select",/^(0|PERCENTUAL)$/,"",[
+      ["0","Não informar estimativa de tributos"],["PERCENTUAL","Percentual — tributos aproximados"]
+    ]],
+    ["pTotTribFed","Tributos aproximados federais (%)", "text",/^\d{1,3}(?:[.,]\d{1,2})?$/,"Ex.: 0,00"],
+    ["pTotTribEst","Tributos aproximados estaduais (%)", "text",/^\d{1,3}(?:[.,]\d{1,2})?$/,"Ex.: 0,00"],
+    ["pTotTribMun","Tributos aproximados municipais (%)", "text",/^\d{1,3}(?:[.,]\d{1,2})?$/,"Ex.: 4,28 — não é a alíquota do ISS"],
+    ["ibsCbsCst","CST IBS/CBS", "text",/^\d{3}$/,"3 dígitos"],
+    ["ibsCbsClassTrib","Classificação tributária IBS/CBS", "text",/^\d{6}$/,"6 dígitos"],
+    ["ibsCbsIndOp","Indicador de operação IBS/CBS", "text",/^\d{6}$/,"6 dígitos"],
+    ["ibsCbsIndDest","Destinatário IBS/CBS desta nota", "select",/^[01]$/,"",[
+      ["0","O próprio tomador/adquirente"],["1","Outra pessoa ou estabelecimento — exige dados específicos"]
     ]],
     ["cLocPrestacao","Município de prestação (IBGE)", "text",/^\d{7}$/,"7 dígitos do local real do serviço"],
     ["cTribMun","Código municipal do serviço (se aplicável)", "text",/^[A-Za-z0-9.-]{1,20}$/,"Confirmar na legislação municipal"],
@@ -103,7 +112,11 @@
         const value=String(input?.value||"").trim();
         if(!value){delete dados[key];continue;}
         if(!regexp.test(value))throw Error(label+": valor inválido. Confira antes de salvar.");
-        dados[key]=value;
+        if(["pTotTribFed","pTotTribEst","pTotTribMun"].includes(key)){
+          const p=Number(value.replace(",","."));
+          if(p>100)throw Error(label+": informe entre 0 e 100.");
+          dados[key]=p.toFixed(2);
+        }else dados[key]=value;
       }
       if(["2","3","4"].includes(dados.tribISSQN)&&["2","3"].includes(dados.tpRetISSQN))
         throw Error("ISSQN imune, exportação ou não incidência não permite retenção. Confirme com o contador.");

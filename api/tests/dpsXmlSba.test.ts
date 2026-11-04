@@ -106,3 +106,31 @@ test("DPS exige município explícito da operação, sem copiar prestador ou tom
  nota.payloadExtra.cLocPrestacao="3537107";
  assert.match(montarDpsPreviaSba(nota).xml,/<cLocPrestacao>3537107<\/cLocPrestacao>/);
 });
+
+test("Percentuais aproximados e IBS/CBS confirmados geram grupos exclusivos válidos no XSD",async()=>{
+  const nota=notaTeste();
+  Object.assign(nota.payloadExtra,{indTotTrib:"PERCENTUAL",pTotTribFed:"0",pTotTribEst:"0.00",pTotTribMun:"4,28",
+    ibsCbsCst:"000",ibsCbsClassTrib:"000001",ibsCbsIndOp:"050101",ibsCbsIndDest:"0"});
+  const previa=montarDpsPreviaSba(nota);
+  assert.deepEqual(previa.pendencias,[]);
+  assert.match(previa.xml,/<pTotTrib><pTotTribFed>0.00<\/pTotTribFed><pTotTribEst>0.00<\/pTotTribEst><pTotTribMun>4.28<\/pTotTribMun><\/pTotTrib>/);
+  assert.doesNotMatch(previa.xml,/<indTotTrib>|<pAliq>/);
+  assert.match(previa.xml,/<IBSCBS><cIndOp>050101<\/cIndOp><indDest>0<\/indDest><valores><trib><CST>000<\/CST><cClassTrib>000001<\/cClassTrib>/);
+  assert.equal(estadoXsdOficialSba().disponivel,true,"Pacote oficial necessário para validar estes grupos");
+  const segredo=process.env.CERTIFICADO_ENCRYPTION_KEY;
+  try{
+    process.env.CERTIFICADO_ENCRYPTION_KEY="segredo-teste-percentual-sba";
+    const cert=certificadoTeste();
+    const assinado=assinarDpsXmlSba(previa.xml,envelopeTeste(cert.arquivo,cert.senha),2,9);
+    const check=await validarDpsOficialSba(assinado.xmlAssinado);
+    assert.equal(check.valido,true,String(check.erro||""));
+  }finally{if(segredo===undefined)delete process.env.CERTIFICADO_ENCRYPTION_KEY;else process.env.CERTIFICADO_ENCRYPTION_KEY=segredo;}
+});
+test("Modo percentual incompleto e IBS/CBS sem destinatário não produzem XML",()=>{
+  const nota=notaTeste();
+  Object.assign(nota.payloadExtra,{indTotTrib:"PERCENTUAL",pTotTribMun:"4.28",ibsCbsCst:"000",ibsCbsClassTrib:"000001",ibsCbsIndOp:"050101"});
+  const previa=montarDpsPreviaSba(nota);
+  assert.equal(previa.xml,"");
+  assert.ok(previa.pendencias.some(p=>p.includes("pTotTribFed")));
+  assert.ok(previa.pendencias.some(p=>p.includes("ibsCbsIndDest")));
+});

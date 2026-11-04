@@ -2,8 +2,8 @@ import {randomUUID} from "node:crypto";
 import prisma from "../prisma";
 import {validarParametrosRascunhoSba,mesclarPadroesDpsSba} from "./parametrosDpsSba.service";
 
-const EMPRESA_KEYS=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib"] as const;
-const SERVICO_KEYS=["cTribNac","cTribMun","cNBS"] as const;
+const EMPRESA_KEYS=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib","pTotTribFed","pTotTribEst","pTotTribMun"] as const;
+const SERVICO_KEYS=["cTribNac","cTribMun","cNBS","ibsCbsCst","ibsCbsClassTrib","ibsCbsIndOp"] as const;
 const PREFIXO_SERVICO="sbaDpsServicoFiscal_";
 const isObj=(x:unknown):x is Record<string,unknown>=>!!x&&typeof x==="object"&&!Array.isArray(x);
 const nomeSeguro=(x:unknown)=>{
@@ -27,8 +27,7 @@ function campos(input:unknown,allowService=false):Record<string,unknown>{
     if(!/^[0-9.]{1,12}$/.test(v))throw Object.assign(Error("Item da lista de serviços inválido."),{statusCode:400});
     d.itemListaServico=v;
   }
-  validarParametrosRascunhoSba(d);
-  return d;
+  return validarParametrosRascunhoSba(d)||{};
 }
 async function tenant(id:number){
   const e=await prisma.empresa.findFirst({where:{empresaid:id,slug:"sba",ativo:true},
