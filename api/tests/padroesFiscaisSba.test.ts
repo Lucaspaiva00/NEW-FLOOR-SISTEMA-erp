@@ -25,3 +25,9 @@ test("SBA: configurações incompatíveis não podem passar silenciosamente",()=
   assert.throws(()=>mesclarPadroesDpsSba({tribISSQN:"4",tpRetISSQN:"2"},{},{}),/retenção/);
   assert.throws(()=>mesclarPadroesDpsSba({}, {cTribNac:"invalid"}, {}),/cTribNac/);
 });
+
+
+test("município da prestação não é herdado de padrões antigos",()=>{
+ assert.equal(mesclarPadroesDpsSba({cLocPrestacao:"3537107"},{cLocPrestacao:"3509502"},{})?.cLocPrestacao,undefined);
+ assert.equal(mesclarPadroesDpsSba({cLocPrestacao:"3537107"},{},{cLocPrestacao:"3524709"})?.cLocPrestacao,"3524709");
+});

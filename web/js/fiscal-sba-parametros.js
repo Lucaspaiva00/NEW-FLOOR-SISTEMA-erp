@@ -30,7 +30,7 @@
     ["cTribMun","Código municipal do serviço (se aplicável)", "text",/^[A-Za-z0-9.-]{1,20}$/,"Confirmar na legislação municipal"],
     ["cNBS","NBS (se aplicável)", "text",/^[0-9.]{7,16}$/,"Conforme classificação do serviço"]
   ];
-  const chavesObrigatorias=new Set(["cTribNac","opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib"]);
+  const chavesObrigatorias=new Set(["cTribNac","opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib","cLocPrestacao"]);
   const esc=valor=>String(valor??"").replace(/[&<>"']/g,c=>({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   })[c]);
@@ -41,7 +41,7 @@
     painel.className="border rounded p-3 mt-3";
     painel.innerHTML='<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">'+
       '<div><h3 class="h6 mb-1">DPS Nacional · Parâmetros fiscais SBA</h3>'+
-      '<p class="small text-muted mb-0">Informações da operação para o Portal Nacional. Não há envio de notas neste formulário.</p></div>'+
+      '<p class="small text-muted mb-0">Informações desta nota para o Portal Nacional. Informe o município onde este serviço foi executado; ele pode ser diferente do endereço do cliente. Salvar o rascunho não transmite a nota.</p></div>'+
       '<span id="sbaCamposConferidos" class="small text-muted" role="status" aria-live="polite"></span></div>'+
       '<div class="alert alert-warning py-2 small" role="note">Não preencha códigos por tentativa. Utilize os dados confirmados pelo contador e a lista nacional vigente. É possível salvar o rascunho incompleto.</div>'+
       '<div class="row g-3">'+campos.map(([key,label,tipo,,,opcoes])=>

@@ -2,9 +2,9 @@
 (() => {
   const el=id=>document.getElementById(id);
   const escapeHtml=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const empresaFields=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib","cLocPrestacao"];
+  const empresaFields=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib"];
   // tribISSQN e regEspTrib já aparecem em Padrões NFS-e do modal da empresa.
-  const empresaCamposAdicionais=["opSimpNac","tpRetISSQN","indTotTrib","cLocPrestacao"];
+  const empresaCamposAdicionais=["opSimpNac","tpRetISSQN","indTotTrib"];
   const servicoFields=["cTribNac","itemListaServico","cTribMun","cNBS"];
   const labels={
     opSimpNac:"Opção pelo Simples Nacional",regEspTrib:"Regime especial municipal",
@@ -81,7 +81,7 @@
     panel.innerHTML=
       '<summary class="fw-semibold" style="cursor:pointer">Configurações complementares NFS-e Nacional · SBA</summary>'+
       '<div class="mt-3">'+
-        '<p class="small text-muted">Configure os dados confirmados pela contabilidade uma vez no cadastro da empresa. Estes padrões apenas preenchem rascunhos: cada nota ainda precisa de conferência.</p>'+
+        '<p class="small text-muted">Configure os dados confirmados pela contabilidade uma vez no cadastro da empresa. Estes padrões apenas preenchem rascunhos: cada nota ainda precisa de conferência. O município da prestação é informado em cada nota, conforme o local real do serviço.</p>'+
         '<div class="alert alert-warning py-2 small">A tributação do ISS e o regime especial ficam nos campos <strong>Padrões NFS-e</strong>, logo acima. Os demais parâmetros são informados aqui. Não preencha códigos por tentativa.</div>'+
         '<div class="mb-3"><span class="small text-muted">Emissora em edição:</span> <strong id="sbaCfgEmissoraNome" class="small"></strong></div>'+
         '<div class="row g-3">'+empresaCamposAdicionais.map(key=>campo(key,"sbaCfgE_")).join("")+'</div>'+

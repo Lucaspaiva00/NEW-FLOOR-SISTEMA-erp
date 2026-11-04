@@ -49,6 +49,7 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
   const totalTrib=String(extra.indTotTrib??"").trim();
   if(!/^\d{1,5}$/.test(serie))pendencias.push("Informe série DPS numérica (1 a 5 dígitos) em Padrões NFS-e da SBA.");
   if(!Number.isSafeInteger(numero)||numero<=0||numero>999999999999999)pendencias.push("Número interno da nota inválido para numeração provisória da DPS.");
+  if(!/^\d{7}$/.test(String(extra.cLocPrestacao||"")))pendencias.push("Informe o município real da prestação (IBGE, 7 dígitos) nesta nota.");
   if(!/^\d{6}$/.test(cTribNac))pendencias.push("Informe cTribNac (6 dígitos) conforme classificação oficial do serviço.");
   if(!/^[123]$/.test(opSimpNac))pendencias.push("Confirme a opção Simples Nacional (opSimpNac: 1, 2 ou 3) com os dados fiscais da SBA.");
   if(!/^[0-9]$/.test(regEsp))pendencias.push("Confirme o regime especial tributário (regEspTrib) da operação com o contador.");
@@ -84,7 +85,7 @@ export function montarDpsPreviaSba(nota:any,agora=new Date()):DpsSbaPrevia{
     tag("xLgr",nota.destinatarioEndereco)+tag("nro",nota.destinatarioNumero)+
     opt("xCpl",nota.destinatarioComplemento)+tag("xBairro",nota.destinatarioBairro)+"</end>"+
     opt("email",nota.destinatarioEmail);
-  const serv="<locPrest>"+tag("cLocPrestacao",digits(extra.cLocPrestacao||municipio))+"</locPrest>"+
+  const serv="<locPrest>"+tag("cLocPrestacao",digits(extra.cLocPrestacao))+"</locPrest>"+
     "<cServ>"+tag("cTribNac",cTribNac)+opt("cTribMun",extra.cTribMun)+
     tag("xDescServ",descricao)+opt("cNBS",extra.cNBS)+"</cServ>"+
     (nota.codigoObra?"<obra>"+tag("cObra",nota.codigoObra)+"</obra>":"");

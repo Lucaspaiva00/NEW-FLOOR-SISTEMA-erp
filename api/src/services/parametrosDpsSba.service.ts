@@ -55,5 +55,8 @@ export function validarParametrosRascunhoSba(extra:unknown):Record<string,unknow
  */
 export function mesclarPadroesDpsSba(empresa:unknown,servico:unknown,nota:unknown){
   const obj=(v:unknown):Record<string,unknown>=>v&&typeof v==="object"&&!Array.isArray(v)?v as Record<string,unknown>:{};
-  return validarParametrosRascunhoSba({...obj(empresa),...obj(servico),...obj(nota)});
+  const padraoEmpresa={...obj(empresa)},padraoServico={...obj(servico)};
+  // Local da operação nunca é herdado de um cadastro global legado.
+  delete padraoEmpresa.cLocPrestacao;delete padraoServico.cLocPrestacao;
+  return validarParametrosRascunhoSba({...padraoEmpresa,...padraoServico,...obj(nota)});
 }

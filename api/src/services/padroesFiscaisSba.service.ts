@@ -2,7 +2,7 @@ import {randomUUID} from "node:crypto";
 import prisma from "../prisma";
 import {validarParametrosRascunhoSba,mesclarPadroesDpsSba} from "./parametrosDpsSba.service";
 
-const EMPRESA_KEYS=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib","cLocPrestacao"] as const;
+const EMPRESA_KEYS=["opSimpNac","regEspTrib","tribISSQN","tpRetISSQN","indTotTrib"] as const;
 const SERVICO_KEYS=["cTribNac","cTribMun","cNBS"] as const;
 const PREFIXO_SERVICO="sbaDpsServicoFiscal_";
 const isObj=(x:unknown):x is Record<string,unknown>=>!!x&&typeof x==="object"&&!Array.isArray(x);

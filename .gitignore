@@ -1,3 +1,6 @@
 
 # Chrome usado pelo gerador de PDFs (instalado durante o build)
 api/.cache/
+
+# Esquemas oficiais obtidos e verificados durante o build
+api/nfse-xsds/

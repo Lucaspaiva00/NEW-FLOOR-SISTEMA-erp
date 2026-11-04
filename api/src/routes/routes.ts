@@ -1,3 +1,4 @@
+import * as transmissaoSba from "../controller/cttransmissaoSba";
 import * as emailUsuario from "../controller/ctemailUsuario";
 import * as padroesNewFloor from "../controller/ctpadroesNewFloor";
 import express from "express";
@@ -203,6 +204,9 @@ routes.post("/fiscal/sba/padroes/servico",auth,requireRole(["ADMIN","SUPER_ADMIN
 routes.put("/fiscal/sba/padroes/servico/:id",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.salvarServico);
 routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.diagnosticarAssinatura);
 routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar-sefin",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.testarTlsSefin);
+routes.post("/fiscal/sba/nfse/notas/:id/transmitir-homologacao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),transmissaoSba.transmitirHomologacaoSba);
+routes.post("/fiscal/sba/nfse/notas/:id/consultar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),transmissaoSba.consultarHomologacaoSba);
+routes.get("/fiscal/sba/nfse/notas/:id/xml",auth,requireRole(["ADMIN","SUPER_ADMIN"]),transmissaoSba.xmlAutorizadoSba);
 routes.get("/fiscal/sba/nfse/preparacao/:notaId",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.prepararNota);
 routes.get("/fiscal/sba/nfse/preparacao/:notaId/xml",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.baixarPreviaDps);
 routes.post("/fiscal/sba/nfse/preparacao/:notaId/assinar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.baixarDpsAssinada);

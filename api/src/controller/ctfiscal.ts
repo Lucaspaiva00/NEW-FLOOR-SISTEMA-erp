@@ -1,3 +1,5 @@
+import {montarDpsPreviaSba} from "../services/dpsXmlSba.service";
+import {consultarHomologacaoSba} from "./cttransmissaoSba";
 import {notaComPadroesNewFloor} from "../services/newFloorFiscalPadroes.service";
 import {valoresNotaFinanceiro,sincronizarFinanceiroNota} from "../services/fiscalFinanceiro.service";
 import {validarPlanoRecebimento} from "../services/planoRecebimento.service";
@@ -760,7 +762,16 @@ export const visualizarPayload = async (req: Request, res: Response): Promise<vo
 
 export const conferirNota = async(req:Request,res:Response)=>{
  if (req.configuracaoSistema?.perfil === "SBA") {
-   res.json({podeEmitir:false,erros:["A emissão direta da SBA ainda não está habilitada. NFS-e: Portal Nacional em preparação; NF-e de materiais: integração SIEG pendente."],avisos:[]});
+   try{
+    const nota=await notaCompleta(intOr(req.params.id),req.empresaId!);
+    if(!nota){res.status(404).json({error:"Nota não encontrada na SBA."});return;}
+    if(nota.tipo!=="NFSE"){res.json({podeEmitir:false,erros:["NF-e de materiais via SIEG ainda não habilitada."],avisos:[]});return;}
+    const atualizada=await aplicarPadroesEmNotaSba(req.empresaId!,{...nota});
+    const dps=montarDpsPreviaSba({...nota,...atualizada});
+    const erros=[...dps.pendencias];
+    if((nota.ambienteEmissao||nota.empresaFiscal.ambiente)!=="HOMOLOGACAO")erros.push("Produção SBA bloqueada. Utilize homologação.");
+    res.json({podeEmitir:erros.length===0,erros,avisos:["Envio disponível somente pelo botão Transmitir em homologação. A assinatura e o XSD serão verificados antes da transmissão."]});
+   }catch(e:any){res.status(422).json({error:e.message||"Não foi possível conferir a DPS SBA."});}
    return;
  }
  try{const nota=await notaCompleta(intOr(req.params.id),req.empresaId!);if(!nota){res.status(404).json({error:'Nota fiscal não encontrada.'});return;}res.json(conferirNotaFiscal(nota));}catch(e:any){res.status(400).json({error:e.message||'Não foi possível conferir os dados.'});}
@@ -832,6 +843,7 @@ export const enviarEmailsNewFloor = async (req: Request, res: Response): Promise
 };
 
 export const consultarNota = async (req: Request, res: Response): Promise<void> => {
+  if(req.configuracaoSistema?.perfil==="SBA")return consultarHomologacaoSba(req,res);
   const id = intOr(req.params.id);
   let notaConsultada:any;
   try {
@@ -871,6 +883,7 @@ export const consultarNota = async (req: Request, res: Response): Promise<void> 
 };
 
 export const cancelarNota = async (req: Request, res: Response): Promise<void> => {
+  if(req.configuracaoSistema?.perfil==="SBA"){res.status(422).json({error:"Cancelamento direto SBA ainda não habilitado. Nenhuma chamada enviada à Focus."});return;}
   const id = intOr(req.params.id);
   try {
     const justificativa = String(req.body.justificativa || "").trim();

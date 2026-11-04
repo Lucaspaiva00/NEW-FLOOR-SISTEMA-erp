@@ -25,8 +25,8 @@
       if (!provedor || !padrao) return;
       const field = provedor.closest(".col-md-4");
       const label = field?.querySelector("label");
-      if (label) label.textContent = "Serviços: integração planejada";
-      provedor.value = "Portal Nacional — em preparação";
+      if (label) label.textContent = "Serviços: integração direta";
+      provedor.value = "Portal Nacional — homologação";
       provedor.readOnly = true;
       padrao.value = "NACIONAL";
       padrao.disabled = true; // fiscal.js lê .value normalmente.
@@ -42,7 +42,7 @@
         const aviso = document.createElement("div");
         aviso.id = "avisoCadastroSbaSemFocus";
         aviso.className = "col-12";
-        aviso.innerHTML = '<div class="alert alert-info mb-0" role="status"><strong>SBA:</strong> a NFS-e de serviços será integrada diretamente ao Portal Nacional. Para notas de materiais, a integração pretendida é o SIEG Emissor. <strong>Não é necessário preencher tokens Focus.</strong> Essas emissões ainda não estão habilitadas no ERP. Cadastre os dados fiscais e o certificado A1 para avançar na configuração.</div>';
+        aviso.innerHTML = '<div class="alert alert-info mb-0" role="status"><strong>SBA:</strong> a NFS-e de serviços será integrada diretamente ao Portal Nacional. Para notas de materiais, a integração pretendida é o SIEG Emissor. <strong>Não é necessário preencher tokens Focus.</strong> A transmissão de NFS-e em homologação exige DPS completa, assinatura e XSD. Produção e NF-e de materiais ainda não estão habilitadas. Cadastre os dados fiscais e o certificado A1 para avançar na configuração.</div>';
         area.appendChild(aviso);
       }
       const note = document.querySelector(".fiscal-certificate-section .certificate-note");

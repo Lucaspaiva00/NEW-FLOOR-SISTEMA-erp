@@ -42,7 +42,7 @@ function notaTeste(){
     destinatarioCodigoMunicipio:"3509502",destinatarioCep:"13000000",
     destinatarioEndereco:"Avenida Laboratorio",destinatarioNumero:"10",destinatarioBairro:"Centro",
     valorServicos:150.2,itens:[{descricao:"Instalacao & manutencao"}],
-    payloadExtra:{cTribNac:"010101",opSimpNac:"3",regEspTrib:"0",tribISSQN:"1",tpRetISSQN:"1",indTotTrib:"0"},
+    payloadExtra:{cLocPrestacao:"3509502",cTribNac:"010101",opSimpNac:"3",regEspTrib:"0",tribISSQN:"1",tpRetISSQN:"1",indTotTrib:"0"},
     proposta:{status:"PENDENTE",planoRecebimento:null}
   };
 }
@@ -97,4 +97,12 @@ test("diagnóstico sintético contra XSD oficial: nunca autoriza emissão",async
   // Nunca reporta o XML como homologado, mesmo quando algum trecho passa.
   if(!check.valido)console.info("Diagnóstico DPS SBA sintética (somente schema): "+String(check.erro).slice(0,420));
   assert.equal(typeof check.valido,"boolean");
+});
+
+test("DPS exige município explícito da operação, sem copiar prestador ou tomador",()=>{
+ const nota=notaTeste();delete (nota.payloadExtra as any).cLocPrestacao;
+ const previa=montarDpsPreviaSba(nota);
+ assert.equal(previa.xml,"");assert.ok(previa.pendencias.some(p=>p.includes("município real da prestação")));
+ nota.payloadExtra.cLocPrestacao="3537107";
+ assert.match(montarDpsPreviaSba(nota).xml,/<cLocPrestacao>3537107<\/cLocPrestacao>/);
 });
