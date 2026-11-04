@@ -6,6 +6,7 @@ import forge from 'node-forge';
 import {validarCertificadoA1Sba} from './certificadoA1Sba.service';
 
 export const SEFIN_RESTRITA_BASE='https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional';
+import {prepararPfxTlsSba} from './pfxTlsSba.service';
 const NS='http://www.sped.fazenda.gov.br/nfse';
 const erro=(message:string,statusCode=422)=>Object.assign(Error(message),{statusCode});
 
@@ -22,7 +23,7 @@ export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promi
  validarDestinoSba(nota);
  const segredo=process.env.CERTIFICADO_ENCRYPTION_KEY||process.env.JWT_SECRET;
  if(!segredo)throw erro('Chave de criptografia do A1 indisponível no servidor.');
- let claro:Buffer|undefined,pfx:Buffer|undefined,senha='';
+ let claro:Buffer|undefined,pfx:Buffer|undefined,pfxTls:Buffer|undefined,senha='';
  try{
   try{
    const env=JSON.parse(nota.empresaFiscal.certificadoCriptografado||'');
@@ -57,8 +58,9 @@ export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promi
    if(e.message==='O CNPJ titular do A1 não corresponde à emissora SBA.')throw e;
    throw erro('Não foi possível validar o A1 armazenado da emissora SBA. Confira validade, senha e vínculo.');
   }
-  return await usar(pfx!,senha);
- }finally{claro?.fill(0);pfx?.fill(0);senha='';}
+  pfxTls=prepararPfxTlsSba(pfx!,senha);
+  return await usar(pfxTls,senha);
+ }finally{claro?.fill(0);pfxTls?.fill(0);pfx?.fill(0);senha='';}
 }
 
 export async function solicitarSefinSba(nota:any,method:'GET'|'POST',path:string,body?:any):Promise<{httpStatus:number,data:any}>{

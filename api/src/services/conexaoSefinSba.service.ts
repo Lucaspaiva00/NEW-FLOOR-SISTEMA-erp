@@ -2,6 +2,8 @@ import { createDecipheriv, hkdfSync } from "node:crypto";
 import { connect as tlsConnect } from "node:tls";
 import { validarCertificadoA1Sba } from "./certificadoA1Sba.service";
 
+import {prepararPfxTlsSba} from "./pfxTlsSba.service";
+
 const HOST="sefin.producaorestrita.nfse.gov.br";
 
 export function erroTlsSefinSeguro(err:unknown):Error{
@@ -33,6 +35,7 @@ export async function testarCanalTlsSefinSba(
   if(!segredo)throw Error("Chave do servidor indisponível.");
   let buffer:Buffer|undefined;
   let arquivoCertificado:Buffer|undefined;
+  let pfxTls:Buffer|undefined;
   let senha="";
   try{
     const obj=JSON.parse(envelopeCriptografado);
@@ -48,6 +51,7 @@ export async function testarCanalTlsSefinSba(
   }catch{throw Error("Não foi possível utilizar o A1 da emissora SBA.");}
   finally{buffer?.fill(0);}
   try{
+    pfxTls=prepararPfxTlsSba(arquivoCertificado!,senha);
     return await new Promise((resolve,reject)=>{
       let concluido=false;
       const terminar=(erro?:Error,resultado?:any)=>{
@@ -59,7 +63,7 @@ export async function testarCanalTlsSefinSba(
       let socket:ReturnType<typeof tlsConnect>;
       try{socket=tlsConnect({
         host:HOST,port:443,servername:HOST,
-        pfx:arquivoCertificado,passphrase:senha,
+        pfx:pfxTls,passphrase:senha,
         minVersion:"TLSv1.2",rejectUnauthorized:true,timeout:12000,
         ALPNProtocols:["http/1.1"]
       });}catch(err){reject(erroTlsSefinSeguro(err));return;}
@@ -78,6 +82,6 @@ export async function testarCanalTlsSefinSba(
       });
     });
   }finally{
-    arquivoCertificado?.fill(0);senha="";
+    pfxTls?.fill(0);arquivoCertificado?.fill(0);senha="";
   }
 }
