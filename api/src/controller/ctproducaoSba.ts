@@ -1,3 +1,4 @@
+import {gerarDanfseSba} from '../services/danfseSba.service';
 import {Request,Response} from 'express';
 import prisma from '../prisma';
 import {aplicarPadroesEmNotaSba} from '../services/padroesFiscaisSba.service';
@@ -126,5 +127,17 @@ export const prepararProducaoSba=async(req:Request,res:Response):Promise<void>=>
   if(!xsd.valido){res.status(422).json({error:'XML não aprovado no XSD de produção.',erroXsd:xsd.erro});return;}
   const consulta=await etapasSba.solicitar(nota,'GET','/dps/'+dps.id);
   res.status(consulta.httpStatus===404?200:409).json({notaId:nota.notafiscalid,ambiente:'PRODUCAO',validadoXsdOficial:true,idDps:dps.id,identificacaoDisponivel:consulta.httpStatus===404,httpConsulta:consulta.httpStatus,notaTransmitida:false,mensagem:consulta.httpStatus===404?'XML de produção e assinatura validados. Identificação da DPS ainda não utilizada. Nenhuma nota emitida.':'Identificação não confirmada como disponível; emissão bloqueada.'});
+ }catch(e:any){erro(res,e);}
+};
+
+export const pdfAutorizadoProducaoSba=async(req:Request,res:Response):Promise<void>=>{
+ try{
+  const nota=await carregar(req);
+  if(nota.status!=='AUTORIZADA'||nota.payloadEnviado?.provedor!==PROVEDOR)throw falha('Documento ainda não autorizado em produção.');
+  const parsed=lerRetornoSefinSba({httpStatus:200,data:nota.retornoProvedor},nota.payloadEnviado.idDps,"PRODUCAO");
+  if(parsed.status!=='AUTORIZADA'||parsed.chave!==nota.chave||String(parsed.numero)!==String(nota.numero))throw falha('XML autorizado indisponível ou divergente. Consulte a DPS.');
+  const pdf=await gerarDanfseSba(parsed.xml!,nota.chave);
+  res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition',`attachment; filename="nfse-sba-${parsed.numero}.pdf"`);res.send(pdf);
  }catch(e:any){erro(res,e);}
 };

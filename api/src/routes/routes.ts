@@ -208,6 +208,7 @@ routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar-sefin",auth,require
 routes.post("/fiscal/sba/nfse/notas/:id/preparar-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),producaoSba.prepararProducaoSba);
 routes.post("/fiscal/sba/nfse/notas/:id/transmitir-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),producaoSba.transmitirProducaoSba);
 routes.post("/fiscal/sba/nfse/notas/:id/consultar-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),producaoSba.consultarProducaoSba);
+routes.get("/fiscal/sba/nfse/notas/:id/pdf-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),producaoSba.pdfAutorizadoProducaoSba);
 routes.get("/fiscal/sba/nfse/notas/:id/xml-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),producaoSba.xmlAutorizadoProducaoSba);
 routes.post("/fiscal/sba/nfse/notas/:id/transmitir-homologacao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),transmissaoSba.transmitirHomologacaoSba);
 routes.post("/fiscal/sba/nfse/notas/:id/consultar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),transmissaoSba.consultarHomologacaoSba);

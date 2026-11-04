@@ -20,7 +20,7 @@
     btn('transmitir-producao','Emitir R$ 1,00 em produção');
    }
    if(testeProducaoSba&&['PROCESSANDO','AUTORIZADA','REJEITADA'].includes(status))btn('consultar-producao','Consultar produção');
-   if(testeProducaoSba&&status==='AUTORIZADA')btn('xml-producao','Baixar XML da nota');
+   if(testeProducaoSba&&status==='AUTORIZADA'){btn('pdf-producao','Baixar PDF da nota');btn('xml-producao','Baixar XML da nota');}
   }
   if(ambiente==='HOMOLOGACAO' &&['RASCUNHO','ERRO','REJEITADA'].includes(status))btn('transmitir-homologacao','Transmitir em homologação');
   if(diretaSba&&['PROCESSANDO','AUTORIZADA'].includes(status)){
@@ -42,9 +42,10 @@
   }
   b.disabled=true;
   try{
-   const r=await fetch(API_URL+'/fiscal/sba/nfse/notas/'+id+'/'+acao,{method:acao.startsWith('xml')?'GET':'POST',headers:{...headers,...(acao==='transmitir-producao'?{'Content-Type':'application/json'}:{})},...(acao==='transmitir-producao'?{body:JSON.stringify({confirmacao:'EMITIR_NOTA_REAL_R1'})}:{})});
-   if(acao.startsWith('xml')&&r.ok){
-    const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download=acao==='xml-producao'?'nfse-sba-producao.xml':'nfse-sba-homologacao.xml';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;
+   const download=acao.startsWith('xml')||acao==='pdf-producao';
+   const r=await fetch(API_URL+'/fiscal/sba/nfse/notas/'+id+'/'+acao,{method:download?'GET':'POST',headers:{...headers,...(acao==='transmitir-producao'?{'Content-Type':'application/json'}:{})},...(acao==='transmitir-producao'?{body:JSON.stringify({confirmacao:'EMITIR_NOTA_REAL_R1'})}:{})});
+   if(download&&r.ok){
+    const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download=acao==='pdf-producao'?'nfse-sba.pdf':acao==='xml-producao'?'nfse-sba-producao.xml':'nfse-sba-homologacao.xml';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;
    }
    const d=await r.json().catch(()=>({}));
    const pendencias=[...(d.pendencias||[]),...(d.erroXsd?[d.erroXsd]:[])];
