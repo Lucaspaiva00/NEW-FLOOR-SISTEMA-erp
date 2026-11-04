@@ -116,9 +116,9 @@
 
     // Só o perfil SBA recebe botões de preparação de DPS, nunca de emissão.
     window.addEventListener("sba-nota-detalhe",event=>{
-      const {id,tipo,status}=event.detail||{};
+      const {id,tipo,status,ambiente}=event.detail||{};
       const acoes=document.getElementById("acoesDetalheFiscal");
-      if(!acoes||tipo!=="NFSE"||!Number.isSafeInteger(Number(id))||
+      if(ambiente==="PRODUCAO"||!acoes||tipo!=="NFSE"||!Number.isSafeInteger(Number(id))||
          ["AUTORIZADA","PROCESSANDO","CANCELADA"].includes(status))return;
       if(acoes.querySelector("[data-sba-dps]"))return;
       const btnPendencias=document.createElement("button");
