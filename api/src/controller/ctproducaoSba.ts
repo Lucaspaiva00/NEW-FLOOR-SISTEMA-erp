@@ -1,3 +1,5 @@
+import {sincronizarFinanceiroNota} from '../services/fiscalFinanceiro.service';
+import {resolverConfiguracao} from '../services/configuracaoSistema.service';
 import {gerarDanfseSba} from '../services/danfseSba.service';
 import {Request,Response} from 'express';
 import prisma from '../prisma';
@@ -8,7 +10,7 @@ import {validarDpsProducaoSba as validarDpsOficialSba} from '../services/validac
 import {compactarDpsXmlAssinado} from '../services/dpsNacionalSba.service';
 import {validarDestinoSba,comA1Sba,solicitarSefinSba,lerRetornoSefinSba} from '../services/sefinTransmissaoSba.service';
 // Etapas isoladas para exercitar falhas e concorrência sem transmissão real em testes.
-export const etapasSba={padroes:aplicarPadroesEmNotaSba,preparar:montarDpsPreviaSba,assinar:assinarDpsXmlSba,validar:validarDpsOficialSba,certificado:comA1Sba,solicitar:solicitarSefinSba};
+export const etapasSba={padroes:aplicarPadroesEmNotaSba,preparar:montarDpsPreviaSba,assinar:assinarDpsXmlSba,validar:validarDpsOficialSba,certificado:comA1Sba,solicitar:solicitarSefinSba,financeiro:sincronizarFinanceiroNota};
 const PROVEDOR='SEFIN_NACIONAL_DIRETO_PRODUCAO';
 const falha=(message:string,statusCode=422)=>Object.assign(Error(message),{statusCode});
 async function carregar(req:Request):Promise<any>{
@@ -28,20 +30,35 @@ async function evento(notaId:number,tipo:string,status:string,descricao:string){
  await prisma.eventoNotaFiscal.create({data:{notaFiscalId:notaId,tipo,status,descricao}});
 }
 async function guardar(nota:any,retorno:any,parseado:any){
- // Ensaio aprovado de R$ 1,00: documento fiscal real, sem faturar proposta ou criar cobrança automática.
+ // Primeiro preserva o retorno fiscal. Falha financeira nunca transforma autorização em rejeição.
  const saved=await prisma.notaFiscal.update({where:{notafiscalid:nota.notafiscalid},data:{
   status:parseado.status,retornoProvedor:retorno,
   mensagemRetorno:parseado.mensagem,
-  ...(parseado.chave?{chave:parseado.chave,numero:parseado.numero,dataAutorizacao:new Date()}:{}),
+  ...(parseado.chave?{chave:parseado.chave,numero:parseado.numero,dataAutorizacao:nota.dataAutorizacao||new Date()}:{}),
  }});
+ let pendenciaFinanceira=false;
+ if(saved.status==='AUTORIZADA'&&nota.payloadExtra?.sbaTesteProducao!==true){
+  try{
+   await prisma.$transaction(async tx=>{
+    await tx.$queryRaw`SELECT propostaid FROM "Proposta" WHERE propostaid=${nota.propostaId} AND "empresaId"=${nota.empresaId} FOR UPDATE`;
+    const p=await tx.proposta.findFirst({where:{propostaid:nota.propostaId,empresaId:nota.empresaId}});
+    if(!p||p.clienteId!==nota.clienteId||Math.round((Number(p.subtotal)+Number(p.frete||0))*100)!==Math.round(Number(nota.valorTotal)*100))throw Error('Proposta alterada após emissão.');
+    if(resolverConfiguracao(nota.empresa?.configuracaoSistema).modulos.financeiro)return etapasSba.financeiro({...nota,...saved},tx);
+    return tx.proposta.updateMany({where:{propostaid:nota.propostaId,empresaId:nota.empresaId},data:{status:'FATURADA',dataFaturamento:nota.proposta?.dataFaturamento||saved.dataAutorizacao,colunaKanbanId:null}});
+   });
+  }catch(_){pendenciaFinanceira=true;await evento(nota.notafiscalid,'PENDENCIA_FINANCEIRA','AUTORIZADA','Nota autorizada. Sincronização financeira pendente; consulte novamente para reconciliar.').catch(()=>{});}
+ }
  await evento(nota.notafiscalid,'RETORNO_SEFIN_PRODUCAO',saved.status,parseado.mensagem);
- return {notaId:saved.notafiscalid,status:saved.status,mensagem:saved.mensagemRetorno,ambiente:'PRODUCAO',chave:saved.chave,numero:saved.numero};
+ return {notaId:saved.notafiscalid,status:saved.status,mensagem:saved.mensagemRetorno,ambiente:'PRODUCAO',chave:saved.chave,numero:saved.numero,pendenciaFinanceira};
 }
 export const transmitirProducaoSba=async(req:Request,res:Response):Promise<void>=>{
  let reservada:any=null;
  try{
-  if(req.body?.confirmacao!=="EMITIR_NOTA_REAL_R1")throw falha("Confirme expressamente a emissão real desta nota de R$ 1,00.");
   const original=await carregar(req);
+  const teste=original.payloadExtra?.sbaTesteProducao===true;
+  if(req.body?.confirmacao!==(teste?'EMITIR_NOTA_REAL_R1':'EMITIR_NOTA_REAL'))throw falha('Confirme expressamente a emissão real desta nota.');
+  if(!teste&&req.body?.versaoConfirmada!==original.updatedAt.toISOString())throw falha('A nota foi alterada. Reabra e confira antes de confirmar.',409);
+  if(!teste&&(!Number.isFinite(Number(req.body?.valorConfirmado))||Math.round(Number(req.body.valorConfirmado)*100)!==Math.round(Number(original.valorTotal)*100)))throw falha('O valor da nota mudou. Reabra e confirme o valor atual.',409);
   if(!['RASCUNHO','REJEITADA','ERRO'].includes(original.status))throw falha('Documento já enviado. Consulte a DPS antes de reenviar.',409);
   const ajustes=await etapasSba.padroes(original.empresaId,{...original});
   const nota={...original,...ajustes};
@@ -58,7 +75,10 @@ export const transmitirProducaoSba=async(req:Request,res:Response):Promise<void>
    // Serializa também rascunhos distintos da mesma proposta.
    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${nota.empresaId}::int, ${nota.propostaId||-nota.notafiscalid}::int)`;
    if(nota.propostaId){
-    const ativa=await tx.notaFiscal.count({where:{empresaId:nota.empresaId,propostaId:nota.propostaId,notafiscalid:{not:nota.notafiscalid},status:{in:['PROCESSANDO','AUTORIZADA']}}});
+    await tx.$queryRaw`SELECT propostaid FROM "Proposta" WHERE propostaid=${nota.propostaId} AND "empresaId"=${nota.empresaId} FOR UPDATE`;
+    const atual=await tx.proposta.findFirst({where:{propostaid:nota.propostaId,empresaId:nota.empresaId}});
+    if(!atual||atual.clienteId!==nota.clienteId||Math.round((Number(atual.subtotal)+Number(atual.frete||0))*100)!==Math.round(Number(nota.valorTotal)*100)||['RECUSADA','CANCELADA'].includes(atual.status)||(atual.planoRecebimento as any)?.origemFaturamento==='EXTERNO')throw falha('A proposta foi alterada. Reabra e confira antes de emitir.',409);
+    const ativa=await tx.notaFiscal.count({where:{empresaId:nota.empresaId,propostaId:nota.propostaId,notafiscalid:{not:nota.notafiscalid},status:{in:['PROCESSANDO','AUTORIZADA']},OR:[{ambienteEmissao:'PRODUCAO'},{ambienteEmissao:null,empresaFiscal:{ambiente:'PRODUCAO'}}]}});
     if(ativa)throw falha('A proposta já possui outra nota ativa. Consulte antes de transmitir.',409);
    }
    const lock=await tx.notaFiscal.updateMany({where:{notafiscalid:nota.notafiscalid,empresaId:nota.empresaId,status:{in:['RASCUNHO','REJEITADA','ERRO']},updatedAt:original.updatedAt},data:{

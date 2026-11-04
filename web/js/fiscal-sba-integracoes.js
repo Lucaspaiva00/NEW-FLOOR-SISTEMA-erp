@@ -42,11 +42,11 @@
         const aviso = document.createElement("div");
         aviso.id = "avisoCadastroSbaSemFocus";
         aviso.className = "col-12";
-        aviso.innerHTML = '<div class="alert alert-info mb-0" role="status"><strong>SBA:</strong> a NFS-e de serviços será integrada diretamente ao Portal Nacional. Para notas de materiais, a integração pretendida é o SIEG Emissor. <strong>Não é necessário preencher tokens Focus.</strong> A transmissão de NFS-e em homologação exige DPS completa, assinatura e XSD. Produção e NF-e de materiais ainda não estão habilitadas. Cadastre os dados fiscais e o certificado A1 para avançar na configuração.</div>';
+        aviso.innerHTML = '<div class="alert alert-info mb-0" role="status"><strong>SBA:</strong> a NFS-e de serviços será integrada diretamente ao Portal Nacional. Para notas de materiais, a integração pretendida é o SIEG Emissor. <strong>Não é necessário preencher tokens Focus.</strong> A transmissão de NFS-e em homologação exige DPS completa, assinatura e XSD. NFS-e em produção está disponível nas notas vinculadas às propostas. NF-e de materiais via SIEG ainda está em preparação. Cadastre os dados fiscais e o certificado A1 para avançar na configuração.</div>';
         area.appendChild(aviso);
       }
       const note = document.querySelector(".fiscal-certificate-section .certificate-note");
-      if (note) note.textContent = "Certificado A1 armazenado de forma criptografada para preparar a integração direta da SBA; nenhum documento será transmitido antes da homologação.";
+      if (note) note.textContent = "Certificado A1 armazenado de forma criptografada para preparar a integração direta da SBA; cada emissão exige conferência e confirmação explícita.";
     };
     modalEmpresa?.addEventListener("show.bs.modal", aplicarCadastroDireto);
     modalEmpresa?.addEventListener("shown.bs.modal", aplicarCadastroDireto);
@@ -229,7 +229,7 @@
         '<button type="button" id="fiscalSbaAssinatura" class="btn-secondary-fiscal" disabled>Testar assinatura do A1</button>' +
         '<button type="button" id="fiscalSbaTls" class="btn-secondary-fiscal" disabled>Testar conexão SEFIN (sem emissão)</button>' +
       '</div>' +
-      '<p class="small text-muted mt-3 mb-0">A emissão direta no ERP ainda não está habilitada. Não use “Emitir agora” para uma nota SBA como se o Portal Nacional estivesse integrado. Continue emitindo nos portais oficiais até a homologação.</p>';
+      '<p class="small text-muted mt-3 mb-0">NFS-e: abra a nota vinculada à proposta, confira os dados e use “Emitir NFS-e em produção”. Município e classificação fiscal devem corresponder ao serviço. Operações com retenções ou composição fiscal ainda não suportada ficam bloqueadas. NF-e de materiais: integração SIEG em preparação.</p>';
     area.after(section);
     section.querySelector("#fiscalSbaCadastro")?.addEventListener("click", () =>
       document.querySelector('[data-fiscal-tab="empresas"]')?.click());
@@ -294,7 +294,7 @@
             const faltam = Object.entries(e.dados).filter(([k,v]) => !v && nomes[k]).map(([k]) => nomes[k]);
             return '<p class="mb-1"><strong>' + esc(e.razaoSocial) + ' · CNPJ final ' + esc(e.identificacaoCnpj) + '</strong> — ' +
               (faltam.length ? '<span class="text-warning">Pendências: ' + esc(faltam.join(", ")) + '</span>' :
-                '<span class="text-success">Cadastro preliminar preenchido; emissão direta ainda não homologada.</span>') + '</p>';
+                '<span class="text-success">Cadastro preenchido. NFS-e em produção disponível mediante validação de cada nota.</span>') + '</p>';
           }).join("");
         }
       } catch (erro) {

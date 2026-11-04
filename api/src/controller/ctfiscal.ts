@@ -1,3 +1,4 @@
+import {montarDpsProducaoSba} from '../services/dpsProducaoSba.service';
 import {montarDpsPreviaSba} from "../services/dpsXmlSba.service";
 import {consultarHomologacaoSba} from "./cttransmissaoSba";
 import {notaComPadroesNewFloor} from "../services/newFloorFiscalPadroes.service";
@@ -767,10 +768,10 @@ export const conferirNota = async(req:Request,res:Response)=>{
     if(!nota){res.status(404).json({error:"Nota não encontrada na SBA."});return;}
     if(nota.tipo!=="NFSE"){res.json({podeEmitir:false,erros:["NF-e de materiais via SIEG ainda não habilitada."],avisos:[]});return;}
     const atualizada=await aplicarPadroesEmNotaSba(req.empresaId!,{...nota});
-    const dps=montarDpsPreviaSba({...nota,...atualizada});
+    const producao=(nota.ambienteEmissao||nota.empresaFiscal.ambiente)==='PRODUCAO';
+    const dps=producao?montarDpsProducaoSba({empresa:{slug:'sba'},...nota,...atualizada}):montarDpsPreviaSba({...nota,...atualizada});
     const erros=[...dps.pendencias];
-    if((nota.ambienteEmissao||nota.empresaFiscal.ambiente)!=="HOMOLOGACAO")erros.push("Produção SBA bloqueada. Utilize homologação.");
-    res.json({podeEmitir:erros.length===0,erros,avisos:["Envio disponível somente pelo botão Transmitir em homologação. A assinatura e o XSD serão verificados antes da transmissão."]});
+    res.json({podeEmitir:erros.length===0,erros,avisos:["Use o botão de transmissão do ambiente selecionado. Assinatura, XSD e confirmação serão verificados antes do envio."]});
    }catch(e:any){res.status(422).json({error:e.message||"Não foi possível conferir a DPS SBA."});}
    return;
  }
@@ -779,7 +780,7 @@ export const conferirNota = async(req:Request,res:Response)=>{
 export const emitirNota = async (req: Request, res: Response): Promise<void> => {
  // Guarda do servidor: jamais encaminhar documento SBA à Focus por engano.
  if (req.configuracaoSistema?.perfil === "SBA") {
-   res.status(422).json({error:"Emissão pela SBA ainda não habilitada: NFS-e Nacional direta e SIEG Emissor em preparação. Nenhum documento foi transmitido à Focus."});
+   res.status(422).json({error:"Para NFS-e SBA use Emitir NFS-e em produção ou Transmitir em homologação. NF-e via SIEG ainda em preparação. Nenhum documento foi transmitido à Focus."});
    return;
  }
  const id=intOr(req.params.id),empresaId=req.empresaId!;let envioIniciado=false;

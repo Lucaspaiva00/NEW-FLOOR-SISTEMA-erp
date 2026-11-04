@@ -32,8 +32,8 @@ export const diagnosticoFiscalSba = async (req: Request, res: Response): Promise
     res.setHeader("Cache-Control", "no-store");
     res.json({
       perfil: "SBA",
-      nfsen: { destino: "SEFIN_NACIONAL_DIRETO", operacional: false, homologacaoDisponivel: true,
-        mensagem: "Transmissão em homologação disponível após completar a DPS, validar assinatura e XSD. Produção permanece bloqueada; não há envio automático." },
+      nfsen: { destino: "SEFIN_NACIONAL_DIRETO", operacional: true, homologacaoDisponivel: true, producaoDisponivel: true,
+        mensagem: "NFS-e em produção disponível para propostas da SBA após conferência dos dados, assinatura A1, XSD e confirmação explícita. Sem reenvio automático." },
       materiais: { destino: "SIEG_EMISSOR", operacional: false,
         mensagem: "É necessário confirmar se o contrato da SBA habilita API de emissão de NF-e; API de documentos do SIEG Hüb não equivale à API do Emissor." },
       emissoras: emissoras.map(f => ({

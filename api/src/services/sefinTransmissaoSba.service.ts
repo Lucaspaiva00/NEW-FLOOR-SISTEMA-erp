@@ -10,13 +10,17 @@ import {prepararPfxTlsSba} from './pfxTlsSba.service';
 const NS='http://www.sped.fazenda.gov.br/nfse';
 const erro=(message:string,statusCode=422)=>Object.assign(Error(message),{statusCode});
 
-/** Transporte restrito à homologação SBA. Nunca aceita URL/host vindo do cliente. */
+/** Transporte exclusivo da SBA. Nunca aceita URL/host vindo do cliente. */
 export function validarDestinoSba(nota:any,permitirProducao=false){
  if(nota?.empresa?.slug!=='sba'||nota.empresaId!==2||nota.tipo!=='NFSE'||
     nota.empresaFiscal?.empresaId!==nota.empresaId||nota.empresaFiscal?.provedor!=='PORTAL_NACIONAL_DIRETO'||
     nota.empresaFiscal?.padraoNfse!=='NACIONAL')throw erro('Transmissão direta exclusiva da NFS-e Nacional da SBA.',403);
  const ambiente=nota.ambienteEmissao||nota.empresaFiscal.ambiente;
- if(ambiente==='PRODUCAO'&&permitirProducao){validarTesteProducaoSba(nota);return;}
+ if(ambiente==='PRODUCAO'&&permitirProducao){
+  const serie=Number(nota.empresaFiscal?.serieNfse);
+  if(!Number.isInteger(serie)||serie<1||serie>49999)throw erro('Informe uma série DPS da faixa de aplicativo próprio (1 a 49999).');
+  return;
+ }
  if(ambiente!=='HOMOLOGACAO')throw erro('A transmissão da SBA está disponível somente em homologação.');
 }
 
