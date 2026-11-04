@@ -1,3 +1,4 @@
+import * as producaoSba from "../controller/ctproducaoSba";
 import * as transmissaoSba from "../controller/cttransmissaoSba";
 import * as emailUsuario from "../controller/ctemailUsuario";
 import * as padroesNewFloor from "../controller/ctpadroesNewFloor";
@@ -204,6 +205,10 @@ routes.post("/fiscal/sba/padroes/servico",auth,requireRole(["ADMIN","SUPER_ADMIN
 routes.put("/fiscal/sba/padroes/servico/:id",auth,requireRole(["ADMIN","SUPER_ADMIN"]),padroesSba.salvarServico);
 routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.diagnosticarAssinatura);
 routes.post("/fiscal/sba/nfse/certificado/:emissoraId/testar-sefin",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.testarTlsSefin);
+routes.post("/fiscal/sba/nfse/notas/:id/preparar-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),producaoSba.prepararProducaoSba);
+routes.post("/fiscal/sba/nfse/notas/:id/transmitir-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),producaoSba.transmitirProducaoSba);
+routes.post("/fiscal/sba/nfse/notas/:id/consultar-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),producaoSba.consultarProducaoSba);
+routes.get("/fiscal/sba/nfse/notas/:id/xml-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),producaoSba.xmlAutorizadoProducaoSba);
 routes.post("/fiscal/sba/nfse/notas/:id/transmitir-homologacao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),transmissaoSba.transmitirHomologacaoSba);
 routes.post("/fiscal/sba/nfse/notas/:id/consultar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),transmissaoSba.consultarHomologacaoSba);
 routes.get("/fiscal/sba/nfse/notas/:id/xml",auth,requireRole(["ADMIN","SUPER_ADMIN"]),transmissaoSba.xmlAutorizadoSba);

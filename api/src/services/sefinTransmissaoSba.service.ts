@@ -11,16 +11,31 @@ const NS='http://www.sped.fazenda.gov.br/nfse';
 const erro=(message:string,statusCode=422)=>Object.assign(Error(message),{statusCode});
 
 /** Transporte restrito à homologação SBA. Nunca aceita URL/host vindo do cliente. */
-export function validarDestinoSba(nota:any){
+export function validarDestinoSba(nota:any,permitirProducao=false){
  if(nota?.empresa?.slug!=='sba'||nota.empresaId!==2||nota.tipo!=='NFSE'||
     nota.empresaFiscal?.empresaId!==nota.empresaId||nota.empresaFiscal?.provedor!=='PORTAL_NACIONAL_DIRETO'||
     nota.empresaFiscal?.padraoNfse!=='NACIONAL')throw erro('Transmissão direta exclusiva da NFS-e Nacional da SBA.',403);
- if((nota.ambienteEmissao||nota.empresaFiscal.ambiente)!=='HOMOLOGACAO')throw erro('A transmissão da SBA está disponível somente em homologação.');
+ const ambiente=nota.ambienteEmissao||nota.empresaFiscal.ambiente;
+ if(ambiente==='PRODUCAO'&&permitirProducao){validarTesteProducaoSba(nota);return;}
+ if(ambiente!=='HOMOLOGACAO')throw erro('A transmissão da SBA está disponível somente em homologação.');
+}
+
+/** Liberação inicial de produção limitada ao ensaio aprovado pelo administrador. */
+export function validarTesteProducaoSba(nota:any){
+ if(nota.empresaId!==2||nota.empresa?.slug!=='sba'||nota.tipo!=='NFSE'||nota.propostaId||
+    nota.payloadExtra?.sbaTesteProducao!==true||nota.payloadExtra?.testeHomologacao||
+    String(nota.destinatarioCnpj||'').replace(/\D/g,'')!=='47051253000158'||
+    Number(nota.valorServicos)!==1||Number(nota.valorTotal)!==1||
+    nota.itens?.length!==1||nota.itens[0].descricao!=='Teste de emissão'||
+    Number(nota.itens[0].quantidade)!==1||Number(nota.itens[0].valorUnitario)!==1)
+  throw erro('Produção SBA liberada apenas para o teste aprovado de R$ 1,00, sem proposta e para o tomador autorizado.');
+ const serie=Number(nota.empresaFiscal?.serieNfse);
+ if(!Number.isInteger(serie)||serie<1||serie>49999)throw erro('Informe uma série DPS da faixa de aplicativo próprio (1 a 49999).');
 }
 
 /** PFX permanece em memória e nunca integra retorno, logs ou banco de auditoria. */
 export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promise<T>):Promise<T>{
- validarDestinoSba(nota);
+ validarDestinoSba(nota,true);
  const segredo=process.env.CERTIFICADO_ENCRYPTION_KEY||process.env.JWT_SECRET;
  if(!segredo)throw erro('Chave de criptografia do A1 indisponível no servidor.');
  let claro:Buffer|undefined,pfx:Buffer|undefined,pfxTls:Buffer|undefined,senha='';
@@ -64,11 +79,12 @@ export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promi
 }
 
 export async function solicitarSefinSba(nota:any,method:'GET'|'POST',path:string,body?:any):Promise<{httpStatus:number,data:any}>{
- validarDestinoSba(nota);
+ validarDestinoSba(nota,true);
  if(!((method==='POST'&&path==='/nfse')||(method==='GET'&&/^\/(?:dps\/DPS\d{42}|nfse\/\d{50})$/.test(path))))throw erro('Operação SEFIN não permitida.');
  return comA1Sba(nota,(pfx,senha)=>new Promise((resolve,reject)=>{
   const texto=body===undefined?undefined:JSON.stringify(body);
-  const req=request(SEFIN_RESTRITA_BASE+path,{
+  const base=(nota.ambienteEmissao||nota.empresaFiscal.ambiente)==='PRODUCAO'?'https://sefin.nfse.gov.br/SefinNacional':SEFIN_RESTRITA_BASE;
+  const req=request(base+path,{
    method,pfx,passphrase:senha,minVersion:'TLSv1.2',rejectUnauthorized:true,
    headers:{Accept:'application/json',...(texto?{'Content-Type':'application/json','Content-Length':Buffer.byteLength(texto)}:{})}
   },res=>{
@@ -87,7 +103,7 @@ export async function solicitarSefinSba(nota:any,method:'GET'|'POST',path:string
  }));
 }
 
-export function lerRetornoSefinSba(result:{httpStatus:number,data:any},idDps:string){
+export function lerRetornoSefinSba(result:{httpStatus:number,data:any},idDps:string,ambiente='HOMOLOGACAO'){
  const data=result.data||{};
  const erros=Array.isArray(data.erros)?data.erros:[];
  const mensagem=erros.map((e:any)=>[e.Codigo||e.codigo,e.Descricao||e.descricao,e.Complemento||e.complemento].filter(Boolean).join(' — ')).join('; ').slice(0,1800);
@@ -102,8 +118,8 @@ export function lerRetornoSefinSba(result:{httpStatus:number,data:any},idDps:str
  const chave=String(data.chaveAcesso||'');
  if(doc.documentElement?.localName!=='NFSe'||infs.length!==1||dpss.length!==1||
     dpss[0].getAttribute('Id')!==idDps||!/^\d{50}$/.test(chave)||infs[0].getAttribute('Id')!=='NFS'+chave||
-    doc.getElementsByTagNameNS(NS,'tpAmb')[0]?.textContent!=='2')throw erro('A NFS-e retornada não corresponde à DPS de homologação enviada.',502);
+    doc.getElementsByTagNameNS(NS,'tpAmb')[0]?.textContent!==(ambiente==='PRODUCAO'?'1':'2'))throw erro('A NFS-e retornada não corresponde à DPS de homologação enviada.',502);
  const numero=doc.getElementsByTagNameNS(NS,'nNFSe')[0]?.textContent||undefined;
  if(!/^\d+$/.test(numero||''))throw erro('Número da NFS-e retornada inválido.',502);
- return {status:'AUTORIZADA' as const,chave,numero,xml,mensagem:'NFS-e autorizada em homologação, sem faturamento financeiro.'};
+ return {status:'AUTORIZADA' as const,chave,numero,xml,mensagem:ambiente==='PRODUCAO'?'NFS-e autorizada em produção.':'NFS-e autorizada em homologação, sem faturamento financeiro.'};
 }
