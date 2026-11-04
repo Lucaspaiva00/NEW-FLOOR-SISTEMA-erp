@@ -66,3 +66,14 @@ test("obra New Floor: bloqueia E0370 e aceita CNO ou endereço completo",()=>{
 test("mapeamento de obra nacional não altera os outros perfis",()=>{
  for(const id of [2,5]){const n=nota(id);n.codigoObra="123456789012";assert.equal(buildFocusPayload(n).codigo_obra,undefined);}
 });
+
+
+test("E0120: omissão explícita retira IM do envio sem apagar o cadastro",()=>{
+ const n=nota(1);n.empresaFiscal.inscricaoMunicipal="16704";
+ assert.equal(buildFocusPayload(n).inscricao_municipal_prestador,"16704");
+ n.payloadExtra={inscricao_municipal_prestador:null};
+ assert.equal(Object.hasOwn(buildFocusPayload(n),"inscricao_municipal_prestador"),false);
+ assert.equal(n.empresaFiscal.inscricaoMunicipal,"16704");
+ n.payloadExtra=null;
+ assert.equal(buildFocusPayload(n).inscricao_municipal_prestador,"16704");
+});

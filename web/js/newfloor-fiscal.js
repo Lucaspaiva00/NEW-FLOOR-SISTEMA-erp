@@ -105,6 +105,11 @@
    });
    mostrarObra();
   }
+  if(nfseBloco){
+   const campo=document.createElement("div");campo.className="border rounded p-3 mt-3";
+   campo.innerHTML='<label class="d-flex gap-2 align-items-start"><input id="nfOmitirImNacional" type="checkbox" class="form-check-input"><span>Não enviar inscrição municipal do prestador nesta NFS-e Nacional</span></label><small class="text-muted">Use quando o retorno for E0120 (ausência de cadastro complementar no CNC). A inscrição municipal permanece no cadastro da empresa.</small>';
+   nfseBloco.append(campo);
+  }
   const camposTrib=[
    ["nfTribPis","situacao_tributaria_pis_cofins"],
    ["nfTribFederal","percentual_total_tributos_federais"],
@@ -118,6 +123,7 @@
    let extra={};
    try{extra=JSON.parse($("nfPayloadExtra")?.value||"{}");}catch(_){return;}
    for(const [id,key]of camposTrib){const input=$(id);if(input)input.value=extra[key]??"";}
+   if($("nfOmitirImNacional"))$("nfOmitirImNacional").checked=Object.prototype.hasOwnProperty.call(extra,"inscricao_municipal_prestador") && extra.inscricao_municipal_prestador===null;
    const info=$("nfInformacoesAdicionais");
    if(info){
     const plain=String(info.value||"").replace(/<[^>]*>/g,"").trim();
@@ -175,6 +181,10 @@
     const municipio=$("nfObraMunicipio").value.trim();
     if(municipio)extra.codigo_municipio_prestacao=municipio;
     else delete extra.codigo_municipio_prestacao;
+   }
+   if($("nfTipo").value==="NFSE" && $("nfOmitirImNacional")){
+    if($("nfOmitirImNacional").checked)extra.inscricao_municipal_prestador=null;
+    else if(extra.inscricao_municipal_prestador===null)delete extra.inscricao_municipal_prestador;
    }
    json.value=Object.keys(extra).length?JSON.stringify(extra):"";
   },true);
