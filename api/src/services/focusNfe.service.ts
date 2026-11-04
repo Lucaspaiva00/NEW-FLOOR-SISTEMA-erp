@@ -499,7 +499,8 @@ export function parseFocusResult(baseUrl: string, data: any) {
         data?.caminho_pdf ||
         data?.url_danfe ||
         data?.url_pdf ||
-        data?.caminho_danfse,
+        data?.caminho_danfse ||
+        data?.url_danfse,
     ),
     mensagem,
   };

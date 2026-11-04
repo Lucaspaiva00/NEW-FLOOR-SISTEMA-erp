@@ -1002,6 +1002,18 @@
       <div class="fiscal-section-title mt-4">Histórico fiscal</div>
       <div class="fiscal-event-list">${eventos || `<div class="text-muted">Sem eventos registrados.</div>`}</div>`;
 
+    // Recupera também documentos já autorizados antes de reconhecer url_danfse.
+    const pdfInformado = n.caminhoPdf || n.retornoProvedor?.url_danfse;
+    let pdfDownload = null;
+    try {
+      if (pdfInformado) {
+        const url = new URL(pdfInformado, n.caminhoXml || API_URL);
+        if (["https:", "http:"].includes(url.protocol)) {
+          url.searchParams.set("download", "1");
+          pdfDownload = url.href;
+        }
+      }
+    } catch (_) { /* Retorno inválido não vira link executável. */ }
     const editavel = ["RASCUNHO", "ERRO", "REJEITADA"].includes(n.status);
     const consultavel = n.status !== "RASCUNHO";
     $("acoesDetalheFiscal").innerHTML = `
@@ -1010,7 +1022,7 @@
       ${editavel ? `<button type="button" class="btn btn-outline-danger" data-excluir-nota="${n.notafiscalid}">Excluir rascunho</button>` : ""}
       ${editavel ? `<button type="button" class="btn btn-outline-primary" data-editar-nota="${n.notafiscalid}">Editar</button>` : ""}
       ${n.caminhoXml ? `<a class="btn btn-outline-success" target="_blank" rel="noopener" href="${esc(n.caminhoXml)}">XML</a>` : ""}
-      ${n.caminhoPdf ? `<a class="btn btn-outline-success" target="_blank" rel="noopener" href="${esc(n.caminhoPdf)}">PDF</a>` : ""}
+      ${pdfDownload ? `<a class="btn btn-outline-success" target="_blank" rel="noopener" download href="${esc(pdfDownload)}">Baixar PDF</a>` : ""}
       ${editavel ? `<button type="button" class="btn btn-outline-primary" data-conferir-nota="${n.notafiscalid}">Conferir dados</button>` : ""}
       ${consultavel ? `<button type="button" class="btn btn-outline-dark" data-consultar-nota="${n.notafiscalid}">Consultar</button>` : ""}
       ${n.status === "AUTORIZADA" && n.tipo === "NFE" ? `<button type="button" class="btn btn-outline-primary" data-carta-correcao="${n.notafiscalid}">Carta de correção</button>` : ""}

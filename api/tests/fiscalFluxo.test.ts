@@ -52,3 +52,13 @@ test('Uma proposta não recebe segunda nota ativa, mesmo com rascunhos diferente
  (prisma.notaFiscal as any).findFirst=async()=>({...base(),propostaId:8});(prisma as any).$transaction=async(fn:any)=>fn({$queryRaw:async()=>{locks++;return [];},notaFiscal:{findFirst:async({where}:any)=>{assert.equal(where.empresaId,7);assert.equal(where.propostaId,8);assert.equal(where.notafiscalid.not,1);return {notafiscalid:9};}}});global.fetch=(async()=>{posts++;throw Error('Não deveria enviar');}) as any;
  try{const r=res();await emitirNota({params:{id:'1'},empresaId:7} as any,r);assert.equal(r.code,409);assert.equal(posts,0);assert.equal(locks,1);}finally{prisma.notaFiscal.findFirst=original.find;prisma.$transaction=original.transaction;global.fetch=original.fetch;}
 });
+
+
+test('PDF oficial da NFS-e: reconhece url_danfse e mantém os formatos anteriores',()=>{
+ const base='https://api.focusnfe.com.br';
+ const pdf=base+'/arquivos/exemplo/DANFSEs/nota.pdf';
+ assert.equal(parseFocusResult(base,{status:'autorizado',url_danfse:pdf}).caminhoPdf,pdf);
+ assert.equal(parseFocusResult(base,{status:'autorizado',url_danfse:'/arquivos/nota.pdf'}).caminhoPdf,base+'/arquivos/nota.pdf');
+ assert.equal(parseFocusResult(base,{status:'autorizado',caminho_danfe:'/nfe.pdf'}).caminhoPdf,base+'/nfe.pdf');
+ assert.equal(parseFocusResult(base,{status:'processando_autorizacao'}).caminhoPdf,undefined);
+});
