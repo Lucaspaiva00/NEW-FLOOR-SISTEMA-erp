@@ -89,7 +89,7 @@ function garantirLinkEmpresas() {
 
   const link = document.createElement("a");
   link.href = "empresas.html";
-  link.textContent = "Empresas";
+  link.textContent = "Painel do desenvolvedor";
   menu.appendChild(link);
 }
 

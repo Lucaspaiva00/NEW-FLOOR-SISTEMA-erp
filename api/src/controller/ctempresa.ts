@@ -62,9 +62,10 @@ export const create = async (req: Request, res: Response): Promise<void> => {
           },
         },
       },
-      include: { usuarios: true },
+      include: { usuarios: {select:{usuarioid:true,nome:true,email:true,role:true,ativo:true}} },
     });
 
+    res.locals.auditEmpresaId=empresa.empresaid;
     res.status(201).json(empresa);
   } catch (error) {
     console.log(error);
@@ -97,7 +98,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     // pode voltar sua configuração para PERSONALIZADO/PADRAO.
     const atual = req.body.configuracaoSistema === undefined ? null : await prisma.empresa.findUnique({
       where: { empresaid: Number(id) },
-      select: { slug: true },
+      select: { slug: true, configuracaoSistema:true },
     });
     const configuracaoInformada = atual?.slug?.toLowerCase() === "sba"
       ? { ...req.body.configuracaoSistema, perfil: "SBA" }
@@ -109,6 +110,8 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       data: { configuracaoSistema, nome, logo, corPrimaria, corSecundaria, emailContato, telefoneContato, ativo },
     });
 
+    res.locals.auditEmpresaId=empresa.empresaid;
+    if(configuracaoSistema)res.locals.auditDetalhes={configuracaoAntes:resolverConfiguracao(atual?.configuracaoSistema),configuracaoDepois:configuracaoSistema};
     res.json(empresa);
   } catch (error) {
     console.log(error);
@@ -189,6 +192,7 @@ export const updateMe = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
+    res.locals.auditEmpresaId=empresa.empresaid;
     res.json(empresa);
   } catch (error) {
     console.log(error);

@@ -27,3 +27,5 @@
 .obras-editor .jose-check{display:flex;flex-direction:row;align-items:center;gap:10px;padding:8px 0}
 .obras-editor .jose-check input{width:auto;flex-shrink:0}
 .jose-equipe{border:1px solid #dfe5ed;border-radius:12px;padding:16px;max-height:260px;overflow:auto}
+
+.obra-proposta-fields{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:18px 0}.obra-proposta-summary{padding:16px;background:#f0f5fa;border-radius:12px}.obra-proposta-summary h3{font-size:17px}.obras-editor:has(#obraProposta) #camposEditor{display:block}.obras-editor:has(#obraProposta) #obraPropostaDados{margin-top:16px}.obras-editor #obraPropostaDados p{font-size:12px;color:#687e92;line-height:1.6;margin:12px 0}@media(max-width:600px){.obra-proposta-fields{grid-template-columns:1fr}}
