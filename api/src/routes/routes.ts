@@ -40,6 +40,7 @@ const routes = express.Router();
 routes.use('/superadmin',auth,superadmin.somenteSuperAdmin);
 routes.get('/superadmin/resumo',superadmin.resumo);
 routes.get('/superadmin/logs',superadmin.logs);
+routes.get('/superadmin/pendencias',superadmin.pendencias);
 routes.patch('/superadmin/empresas/:id',superadmin.editar);
 routes.patch('/superadmin/perfil',superadmin.meuPerfil);
 routes.use('/obras', auth, obra.acesso);

@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/vendedores.css"><link rel="stylesheet" href="css/superadmin.css?v=20261105-1">
+    <link rel="stylesheet" href="css/vendedores.css"><link rel="stylesheet" href="css/superadmin.css?v=20261105-kpis">
     <link rel="stylesheet" href="css/menu-mobile.css">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -62,9 +62,10 @@
           <header class="sa-header"><div><p>PAIVA TECH · ADMINISTRAÇÃO</p><h1>Painel do desenvolvedor</h1><p>Empresas, usuários, uso do sistema e diagnóstico de operações.</p></div><div class="sa-actions"><button id="saMeuPerfil" type="button">Meu perfil</button><button id="saAtualizar" type="button">Atualizar</button><button class="sa-primary" data-bs-toggle="modal" data-bs-target="#modalEmpresa">+ Nova empresa</button></div></header>
           <p id="saStatus" role="status" aria-live="polite"></p>
           <section id="saKpis" class="sa-kpis" aria-label="Indicadores da plataforma"></section>
-          <section class="sa-panel"><div class="sa-section-head"><div><h2>Empresas e perfis</h2><p>Uso operacional dos clientes, sem misturar seus dados.</p></div><label>Pesquisar empresa ou administrador<input id="saBusca" type="search" placeholder="Nome, e-mail ou identificador"></label></div><div class="sa-scroll"><table><thead><tr><th>Empresa</th><th>Administradores</th><th>Uso e cadastros</th><th>Atenção</th><th>Último acesso</th><th>Ações</th></tr></thead><tbody id="listaEmpresas"></tbody></table></div></section>
+          <section class="sa-panel sa-uso"><div class="sa-section-head"><div><h2>Uso dos módulos · 30 dias</h2><p>Requisições concluídas dos clientes. Não inclui acessos do superadmin; não equivale a cliques ou horas de uso.</p></div></div><div id="saModulos" class="sa-modulos"></div><p id="saCobertura" class="sa-note"></p></section>
+          <section class="sa-panel" id="saEmpresas"><div class="sa-section-head"><div><h2>Empresas e perfis</h2><p>Uso operacional dos clientes, sem misturar seus dados.</p></div><label>Pesquisar empresa ou administrador<input id="saBusca" type="search" placeholder="Nome, e-mail ou identificador"></label></div><div class="sa-company-filter"><label>Mostrar<select id="saSituacao"><option value="">Todas as empresas</option><option value="ativas">Empresas habilitadas</option><option value="usuarios30">Empresas com logins em 30 dias</option><option value="recentes">Uso nos últimos 7 dias</option><option value="sem7">Sem atividade há pelo menos 7 dias</option><option value="sem30">Sem atividade há pelo menos 30 dias</option><option value="semHistorico">Sem histórico suficiente</option><option value="alertas">Com alertas operacionais</option></select></label><span id="saContagem"></span><button id="saLimparEmpresas" type="button">Limpar filtros</button></div><div class="sa-scroll"><table><thead><tr><th>Empresa</th><th>Administradores</th><th>Uso e cadastros</th><th>Atenção</th><th>Último acesso</th><th>Ações</th></tr></thead><tbody id="listaEmpresas"></tbody></table></div></section>
           <section class="sa-panel" id="saAuditoria"><div class="sa-section-head"><div><h2>Atividade e logs</h2><p id="saDesde">Acessos e operações registrados a partir da implantação da auditoria. O último login anterior continua disponível.</p></div></div>
-          <form id="saFiltros" class="sa-filters"><label>Empresa<select id="saEmpresa"><option value="">Todas</option></select></label><label>Usuário<select id="saUsuario"><option value="">Todos</option></select></label><label>Módulo<select id="saModulo"><option value="">Todos</option><option value="usuarios">Acessos e usuários</option><option value="empresas">Empresas e perfis</option><option value="clientes">Clientes</option><option value="propostas">Propostas</option><option value="obras">Obras</option><option value="fiscal">Fiscal</option><option value="financeiro">Financeiro</option></select></label><label>De<input id="saInicio" type="date"></label><label>Até<input id="saFim" type="date"></label><label class="sa-checkbox"><input id="saErros" type="checkbox">Somente falhas</label><button class="sa-primary" type="submit">Filtrar</button></form>
+          <form id="saFiltros" class="sa-filters"><label>Empresa<select id="saEmpresa"><option value="">Todas</option></select></label><label>Usuário<select id="saUsuario"><option value="">Todos</option></select></label><label>Módulo<select id="saModulo"><option value="">Todos</option><option value="usuarios">Acessos e usuários</option><option value="empresas">Empresas e perfis</option><option value="clientes">Clientes</option><option value="propostas">Propostas</option><option value="obras">Obras</option><option value="fiscal">Fiscal</option><option value="financeiro">Financeiro</option></select></label><label>De<input id="saInicio" type="date"></label><label>Até<input id="saFim" type="date"></label><label class="sa-checkbox"><input id="saErros" type="checkbox">Somente falhas</label><label class="sa-checkbox"><input id="saServidor" type="checkbox">Somente erros 5xx</label><button class="sa-primary" type="submit">Filtrar</button></form>
           <div class="sa-scroll"><table><thead><tr><th>Quando</th><th>Empresa / usuário</th><th>Operação</th><th>Resultado</th><th>Duração</th><th>Detalhes</th></tr></thead><tbody id="saLogs"></tbody></table></div>
           <footer class="sa-pagination"><button id="saAnterior" type="button">Anterior</button><span id="saPagina"></span><button id="saProxima" type="button">Próxima</button></footer></section>
         </main>
@@ -144,7 +145,7 @@
 
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
-    <script src="js/empresas.js?v=20261105-admin"></script>
+    <script src="js/empresas.js?v=20261105-kpis"></script>
 
     <script src="js/menu-mobile.js"></script>
     <script src="js/sidebar.js"></script>

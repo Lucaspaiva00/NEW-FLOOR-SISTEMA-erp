@@ -17,6 +17,7 @@ test('painel do desenvolvedor e modais reais ficam centralizados no desktop e ce
  if(r.method()==='OPTIONS')return r.respond({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'authorization,content-type','access-control-allow-methods':'GET,POST,PATCH,PUT,DELETE,OPTIONS'}});
  if(url.hostname==='cdn.jsdelivr.net'&&url.pathname.endsWith('bootstrap.min.css'))return r.respond({contentType:'text/css',body:bootstrapCss});
  if(url.pathname==='/superadmin/resumo')return r.respond({headers:{'access-control-allow-origin':'*'},contentType:'application/json',body:JSON.stringify({perfil:{nome:'Lucas'},geradoEm:new Date(),kpis:{ativas:3,empresas:4,usuarios:8,usuarios30dias:6,erros24h:1,notasComProblema:2},empresas:[empresa]})});
+ if(url.pathname==='/superadmin/pendencias')return r.respond({headers:{'access-control-allow-origin':'*'},contentType:'application/json',body:JSON.stringify({linhas:[{id:25,empresaId:5,titulo:'NF-e 25',descricao:'Cliente de teste',status:'REJEITADA',quando:'2026-11-05',valor:100}],total:1,pagina:1,paginas:1})});
  if(url.pathname==='/superadmin/logs')return r.respond({headers:{'access-control-allow-origin':'*'},contentType:'application/json',body:JSON.stringify({linhas:[],total:0,pagina:1,paginas:1})});
  if(url.hostname==='cdn.jsdelivr.net'&&url.pathname.endsWith('bootstrap.bundle.min.js'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(web,'vendor/bootstrap/bootstrap.bundle.min.js'))});
  if(url.hostname==='erp.test'){
@@ -29,6 +30,8 @@ test('painel do desenvolvedor e modais reais ficam centralizados no desktop e ce
  for(const [width,height] of [[1440,1000],[390,844]]){
   await page.setViewport({width,height});await page.goto('https://erp.test/empresas.html',{waitUntil:'networkidle0'});await page.waitForSelector('[data-sa-editar]',{timeout:10000}).catch(async e=>{throw Error(String(e)+' · '+errors.join('; ')+' · '+await page.$eval('#saStatus',e=>e.textContent));});
   assert.equal(await page.$eval('body',e=>e.scrollWidth<=innerWidth),true);
+  assert.equal(await page.$$eval('[data-sa-kpi]',e=>e.length),12);
+  await page.locator('[data-sa-kpi="notas"]').click();await page.waitForSelector('.sa-detail-table');await centralizado('dialog[open]');await page.locator('dialog header [data-fechar]').click();
   await page.click('[data-sa-editar]');await centralizado('dialog[open]');await page.click('dialog [data-fechar]');
   await page.click('[data-sa-config]');await centralizado('dialog[open]');await page.$eval('dialog',e=>e.close());
   await page.click('[data-bs-target="#modalEmpresa"]');await page.waitForSelector('#modalEmpresa.show');
