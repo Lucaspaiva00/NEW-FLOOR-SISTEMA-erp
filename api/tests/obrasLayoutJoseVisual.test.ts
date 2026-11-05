@@ -33,10 +33,10 @@ test('gestão de obras do José tem barra compacta, ações contextuais e modais
   assert.equal(await page.$eval('body',e=>e.scrollWidth<=innerWidth),true);
   assert.equal(await page.$$eval('.toolbar>button',bs=>bs.filter(b=>b.getClientRects().length).length),1);
   assert.equal(await page.$eval('#joseObraFiltros',e=>(e as HTMLDetailsElement).open),false);
-  await page.click('#joseObraEquipeAcoes>summary');await page.click('#equipe');await page.waitForSelector('#editor[open]');await centro();await page.click('#cancelarEditor');
-  await page.click('[data-tab="medicoes"]');await page.waitForFunction(()=>document.querySelector('.section-head')?.contains(document.getElementById('abrirPlanilhasMedicaoJose')));
-  await page.click('[data-tab="custos"]');await page.waitForFunction(()=>document.getElementById('joseObraGuardar')?.contains(document.getElementById('abrirPlanilhasMedicaoJose')));
-  await page.click('#joseObraMais>summary');await page.click('#importarPlanilha');await page.waitForSelector('#arquivoImportacao');await centro();await page.click('#cancelarEditor');
+  await page.locator('#joseObraEquipeAcoes>summary').click();await page.locator('#equipe').click();await page.waitForSelector('#editor[open]');await centro();await page.locator('#cancelarEditor').click();
+  await page.locator('[data-tab="medicoes"]').click();await page.waitForFunction(()=>document.querySelector('.section-head')?.contains(document.getElementById('abrirPlanilhasMedicaoJose')));
+  await page.locator('[data-tab="custos"]').click();await page.waitForFunction(()=>document.getElementById('joseObraGuardar')?.contains(document.getElementById('abrirPlanilhasMedicaoJose')));
+  await page.locator('#joseObraMais>summary').click();await page.waitForSelector('#importarPlanilha',{visible:true,timeout:5000}).catch(async e=>{throw Error(String(e)+' · '+JSON.stringify(await page.evaluate(()=>({menu:document.getElementById('joseObraMais')?.outerHTML,errors:document.getElementById('mensagem')?.textContent}))));});await page.locator('#importarPlanilha').click();await page.waitForSelector('#arquivoImportacao');await centro();await page.locator('#cancelarEditor').click();
  }
  assert.deepEqual(writes,[]);assert.deepEqual(errors,[]);
  }finally{await browser.close();}
