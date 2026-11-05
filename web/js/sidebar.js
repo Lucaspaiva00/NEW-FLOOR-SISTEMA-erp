@@ -362,6 +362,7 @@ function aplicarPerfilEmpresa(c) {
  }
 
  const menu=document.querySelector('.menu');
+ const somentePropostasJose=Number(window.__empresaAtual?.empresaid)===5&&window.__empresaAtual?.slug==='construarty';
  for(const [pagina,nome] of [['fornecedores','Fornecedores'],['compras','Compras']]){
   if(menu&&!menu.querySelector(`a[href="${pagina}.html"]`)){const link=document.createElement('a');link.href=pagina+'.html';link.textContent=nome;menu.querySelector('a[href="clientes.html"]')?.after(link);}
   MENU_ICONS[pagina]=MENU_ICONS.empresas;
@@ -390,9 +391,13 @@ function aplicarPerfilEmpresa(c) {
  const script=document.createElement("script");script.id="subjectTabsScript";script.src="js/modal-tabs.js";document.body.append(script);
  }
  const link=document.querySelector('.menu a[href="servicos.html"]');
- if(link){link.href="orcamentos.html";link.textContent="Orçamentos";const material=document.createElement("a");material.href="materiais.html";material.textContent="Materiais";link.after(material);}
+ if(link){const material=document.createElement("a");material.href="materiais.html";material.textContent="Materiais";if(!menu?.querySelector('a[href="materiais.html"]'))link.after(material);if(somentePropostasJose)link.remove();else{link.href="orcamentos.html";link.textContent="Orçamentos";}}
  prepararItensMenu();
- if(location.pathname.endsWith("/servicos.html")) location.replace("orcamentos.html");
+ if(!somentePropostasJose&&location.pathname.endsWith("/servicos.html")) location.replace("orcamentos.html");
+ }
+ if(somentePropostasJose){
+  menu?.querySelectorAll('a[href="orcamentos.html"],a[href="servicos.html"]').forEach(link=>link.remove());
+  if(['/orcamentos.html','/servicos.html'].some(p=>location.pathname.endsWith(p))){location.replace("propostas.html");return;}
  }
  const pagina=location.pathname.split("/").pop().replace(".html","");
  const modulo=["orcamentos","materiais"].includes(pagina)?"servicos":pagina;
