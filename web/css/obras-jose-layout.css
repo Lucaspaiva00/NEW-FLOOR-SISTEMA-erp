@@ -1,0 +1,34 @@
+/* A tela operacional do José mostra primeiro as ações da área selecionada. */
+body.jose-obras-organizada .obras-page>header{padding:0;background:none;border-radius:0;overflow:visible;margin-bottom:20px;color:#172b43}
+body.jose-obras-organizada .obras-page>header>p:first-child{display:none}
+body.jose-obras-organizada .obras-page>header h1{font-size:28px;letter-spacing:-.7px;margin:0 0 7px;color:#172b43}
+body.jose-obras-organizada .obras-page>header>p:last-child{font-size:13px;color:#728097}
+body.jose-obras-organizada .obras-page .toolbar{padding:18px 20px;border-radius:15px;gap:12px;align-items:end;margin-bottom:18px}
+body.jose-obras-organizada .obras-page .toolbar>label{flex:1;max-width:580px;min-width:200px;margin-right:auto}
+body.jose-obras-organizada .obras-page .toolbar .jose-obra-primary{background:#172b43;white-space:nowrap}
+body.jose-obras-organizada .obras-page .kpis{gap:12px;margin-bottom:18px}
+body.jose-obras-organizada .obras-page .kpis>div{padding:16px 18px;border-radius:14px;font-size:11px}
+body.jose-obras-organizada .obras-page .kpis>div:before{height:3px}
+body.jose-obras-organizada .obras-page .kpis strong{font-size:22px;margin-top:8px}
+body.jose-obras-organizada .obras-page .tabs{gap:7px;margin:16px 0 12px}
+body.jose-obras-organizada .obras-page .tabs button{font-size:12px;padding:10px 15px;border-radius:9px}
+body.jose-obras-organizada .obras-page #conteudo{border-radius:15px;padding:22px}
+body.jose-obras-organizada .obras-page .section-head{margin-bottom:16px}
+body.jose-obras-organizada .obras-page .section-head h2{font-size:18px}
+body.jose-obras-organizada .obras-page .jose-mao-resumo{font-size:12px;padding:12px 15px}
+body.jose-obras-organizada .obras-page .jose-obra-acoes{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:end}
+body.jose-obras-organizada .jose-obra-menu{position:relative;flex:none}
+body.jose-obras-organizada .jose-obra-menu>summary{display:flex;align-items:center;justify-content:center;gap:12px;list-style:none;cursor:pointer;border:1px solid #dfe6ee;background:white;color:#52647b;border-radius:9px;padding:12px 15px;font-size:12px;font-weight:650;white-space:nowrap;min-height:42px}
+body.jose-obras-organizada .jose-obra-menu>summary::-webkit-details-marker{display:none}
+body.jose-obras-organizada .jose-obra-menu>summary:after{content:'⌄';font-size:14px;color:#8a98aa}
+body.jose-obras-organizada .jose-obra-menu>summary:focus-visible{outline:2px solid #4775bd;outline-offset:3px}
+body.jose-obras-organizada .jose-obra-menu-items{position:absolute;right:0;top:calc(100% + 7px);z-index:30;width:270px;max-width:calc(100vw - 40px);padding:7px;background:white;border:1px solid #e0e7ef;border-radius:12px;box-shadow:0 12px 32px #172b431c}
+body.jose-obras-organizada .obras-page .jose-obra-menu-items>button{display:block;width:100%;text-align:left;font-size:12px;padding:12px;background:white!important;color:#30465e!important;border-radius:7px;font-weight:550;white-space:normal}
+body.jose-obras-organizada .obras-page .jose-obra-menu-items>button:hover{background:#f1f5f9!important}
+body.jose-obras-organizada .obras-page .jose-obra-menu-items>button[hidden]{display:none}
+body.jose-obras-organizada .jose-obra-filtros{border:1px solid #e3e9f0;border-radius:12px;background:white;margin-bottom:12px}
+body.jose-obras-organizada .jose-obra-filtros>summary{padding:13px 18px;font-size:12px;font-weight:600;color:#6c7c92;cursor:pointer}
+body.jose-obras-organizada .jose-obra-filtros.tem-filtro>summary{color:#24548d}
+body.jose-obras-organizada .jose-obra-filtros #filtros{border:0;border-top:1px solid #edf0f5;border-radius:0;margin:0;padding:16px 18px}
+body.jose-obras-organizada .obras-page .jose-obra-secondary{background:#edf2f7;color:#39556f}
+@media(max-width:700px){body.jose-obras-organizada .obras-page .toolbar{padding:15px;gap:10px}body.jose-obras-organizada .obras-page .toolbar>label{flex-basis:100%;max-width:none;min-width:0}body.jose-obras-organizada .obras-page .toolbar>.jose-obra-menu{flex:1}body.jose-obras-organizada .obras-page .toolbar>.jose-obra-primary{flex:1}body.jose-obras-organizada .obras-page .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}body.jose-obras-organizada .obras-page .kpis>div{padding:13px}body.jose-obras-organizada .obras-page .kpis strong{font-size:19px}body.jose-obras-organizada .obras-page .section-head{gap:12px}body.jose-obras-organizada .obras-page .jose-obra-acoes{justify-content:start;width:100%;gap:8px}body.jose-obras-organizada .obras-page .jose-obra-acoes>*{flex:1}body.jose-obras-organizada .jose-obra-acoes .jose-obra-menu-items{right:auto;left:0}body.jose-obras-organizada .obras-page #conteudo{padding:17px}body.jose-obras-organizada .obras-page>header h1{font-size:25px}}
