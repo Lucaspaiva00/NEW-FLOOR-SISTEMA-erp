@@ -41,6 +41,7 @@
    const equipe=mover('equipe',menu.lastElementChild);if(equipe)equipe.textContent=u.admin?'Gerenciar equipe':'Consultar equipe';
    const fechar=mover('fechar',menu.lastElementChild);if(fechar)fechar.textContent='Enviar diárias ao financeiro';
    if([...menu.lastElementChild.children].some(b=>!b.hidden))acoes.prepend(menu);
+   if(u.admin){const novo=document.createElement('button');novo.type='button';novo.id='novoColaboradorDireto';novo.className='jose-obra-secondary';novo.textContent='+ Novo colaborador';novo.onclick=()=>u.abrirColaborador();acoes.prepend(novo);}
   }
   if(u.tab==='medicoes'){
    const planilhas=mover('abrirPlanilhasMedicaoJose',acoes);if(planilhas){planilhas.textContent='Planilhas da engenharia';planilhas.classList.add('jose-obra-secondary');}

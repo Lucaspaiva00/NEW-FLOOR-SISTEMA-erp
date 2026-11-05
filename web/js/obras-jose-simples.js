@@ -21,7 +21,7 @@
   };
   function lancar(){
    const obra=u.obra, pessoas=u.pessoas.filter(c=>c.ativo), hoje=new Date().toLocaleDateString('en-CA');
-   if(!pessoas.length){u.abrir('Mão de obra','<p class="wide">Cadastre a equipe no botão “Cadastrar equipe” para informar as diárias.</p>',null);return;}
+   if(!pessoas.length){u.abrirColaborador();return;}
    u.abrir('Lançar mão de obra · '+obra.nome,
     u.campo('inicio','Primeiro dia','date',hoje,'required')+u.campo('fim','Último dia','date',hoje,'required')+
     '<label class="wide jose-check"><input id="joseUteis" type="checkbox" checked> Somente segunda a sexta (desmarque para incluir sábado e domingo)</label>'+

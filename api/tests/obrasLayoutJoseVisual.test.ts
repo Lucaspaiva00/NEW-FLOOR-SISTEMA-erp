@@ -33,6 +33,7 @@ test('gestão de obras do José tem barra compacta, ações contextuais e modais
   assert.equal(await page.$eval('body',e=>e.scrollWidth<=innerWidth),true);
   assert.equal(await page.$$eval('.toolbar>button',bs=>bs.filter(b=>b.getClientRects().length).length),1);
   assert.equal(await page.$eval('#joseObraFiltros',e=>(e as HTMLDetailsElement).open),false);
+  await page.locator('#novoColaboradorDireto').click();await page.waitForSelector('#editor[open]');assert.equal(await page.$eval('#tituloEditor',e=>e.textContent),'Novo colaborador');assert.ok(await page.$('#editor input[name="nome"]'));await centro();await page.locator('#cancelarEditor').click();
   await page.locator('#joseObraEquipeAcoes>summary').click();await page.locator('#equipe').click();await page.waitForSelector('#editor[open]');await centro();await page.locator('#cancelarEditor').click();
   await page.locator('[data-tab="medicoes"]').click();await page.waitForFunction(()=>document.querySelector('.section-head')?.contains(document.getElementById('abrirPlanilhasMedicaoJose')));
   await page.locator('[data-tab="custos"]').click();await page.waitForFunction(()=>document.getElementById('joseObraGuardar')?.contains(document.getElementById('abrirPlanilhasMedicaoJose')));
