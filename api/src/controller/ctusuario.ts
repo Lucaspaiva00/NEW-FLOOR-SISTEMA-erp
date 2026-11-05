@@ -76,6 +76,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    res.locals.auditActor = {id:usuario.usuarioid,nome:usuario.nome,role:usuario.role,empresaId:usuario.empresaId};
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
     if (!senhaValida) {
@@ -109,10 +110,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       data: { ultimoLogin: new Date() },
     });
 
-    res.json({
-      usuario,
-      token,
-    });
+    const {senha: _senha,codigoRecuperacao: _codigo,codigoExpiraEm: _expira,...publico}=usuario;
+    res.json({ usuario:publico, token });
   } catch (error) {
     console.log(error);
     res.status(500).json({

@@ -1,174 +1,48 @@
-const token = JSON.parse(
-    localStorage.getItem("usuarioLogado")
-)?.token;
-
-if (!token) {
-    window.location.href = "login.html";
+const sessaoAdmin=JSON.parse(localStorage.getItem('usuarioLogado')||'null'),token=sessaoAdmin?.token;
+let empresasCache=[],saDados=null,saPagina=1,saPaginas=1,saSequencia=0;
+const sa$=id=>document.getElementById(id),saEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const saData=v=>v?new Date(v).toLocaleString('pt-BR'):'Nunca acessou';
+function saStatus(msg,erro=false){sa$('saStatus').textContent=msg;sa$('saStatus').classList.toggle('sa-error',erro);}
+async function saApi(path,method='GET',body){const r=await fetch(API_URL+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});const d=await r.json();if(r.status===403){saStatus('Acesso exclusivo do superadmin.',true);}if(!r.ok)throw Error(d.error||'Não foi possível concluir.');return d;}
+async function carregarEmpresas(){
+ try{saDados=await saApi('/superadmin/resumo');empresasCache=saDados.empresas;
+ sa$('saKpis').innerHTML=[['Empresas ativas',saDados.kpis.ativas+' / '+saDados.kpis.empresas,'Contas habilitadas'],['Usuários',saDados.kpis.usuarios,'Cadastros das empresas'],['Acessaram em 30 dias',saDados.kpis.usuarios30dias,'Usuários com login no período'],['Falhas em 24h',saDados.kpis.erros24h,'Operações com HTTP 400 ou superior'],['Notas com pendência',saDados.kpis.notasComProblema,'Situação atual: erro ou rejeitada']].map(([l,v,t])=>'<article><span>'+l+'</span><strong>'+v+'</strong><small>'+t+'</small></article>').join('');
+ renderizarEmpresas();const anterior=sa$('saEmpresa').value;
+ sa$('saEmpresa').innerHTML='<option value="">Todas</option>'+empresasCache.map(e=>'<option value="'+e.empresaid+'">'+saEsc(e.nome)+'</option>').join('');sa$('saEmpresa').value=anterior;saUsuarios();
+ saStatus('Atualizado em '+saData(saDados.geradoEm));
+ }catch(e){saStatus(e.message,true);}
 }
-
-const listaEmpresas = document.getElementById("listaEmpresas");
-const formEmpresa = document.getElementById("formEmpresa");
-
-let empresasCache = [];
-
-async function carregarEmpresas() {
-
-    try {
-
-        const response = await fetch(`${API_URL}/empresas`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-
-            if (response.status === 403) {
-                alert("Sua conta não tem permissão de SUPER_ADMIN para acessar isso.");
-                window.location.href = "dashboard.html";
-                return;
-            }
-
-            alert("Erro ao carregar empresas.");
-            return;
-        }
-
-        const empresas = await response.json();
-
-        empresasCache = Array.isArray(empresas) ? empresas : [];
-
-        atualizarKpis(empresasCache);
-        renderizarEmpresas(empresasCache);
-
-    } catch (error) {
-        console.log(error);
-        alert("Erro de conexão ao carregar empresas.");
-    }
+function renderizarEmpresas(){const q=sa$('saBusca').value.toLocaleLowerCase('pt-BR');
+ const empresas=empresasCache.filter(e=>[e.nome,e.slug,...e.usuarios.flatMap(u=>[u.nome,u.email])].join(' ').toLocaleLowerCase('pt-BR').includes(q));
+ sa$('listaEmpresas').innerHTML=empresas.map(e=>'<tr><td><strong>'+saEsc(e.nome)+'</strong><small>'+saEsc(e.slug)+' · '+(e.ativo?'Ativa':'Inativa')+'</small></td><td>'+ (e.usuarios.filter(u=>u.role==='ADMIN').map(u=>'<strong>'+saEsc(u.nome)+'</strong><small>'+saEsc(u.email)+'</small>').join('')||'Sem administrador')+'</td><td><strong>'+e.totalUsuarios+' usuários · '+e.usuarios30dias+' acessaram em 30 dias</strong><small>'+e.totalClientes+' clientes · '+e.totalPropostas+' propostas</small></td><td><span class="'+(e.erros24h||e.notasComProblema?'sa-warning':'')+'">'+e.erros24h+' falhas em 24h</span><small>'+e.notasComProblema+' notas com pendência</small></td><td>'+saData(e.ultimoLogin)+'</td><td><div class="sa-row-actions"><button data-sa-editar="'+e.empresaid+'">Editar cadastro</button><button data-sa-config="'+e.empresaid+'">Módulos e perfil</button><button data-sa-log="'+e.empresaid+'">Ver logs</button></div></td></tr>').join('')||'<tr><td colspan="6">Nenhuma empresa encontrada.</td></tr>';
+ sa$('listaEmpresas').querySelectorAll('[data-sa-editar]').forEach(b=>b.onclick=()=>saEditar(Number(b.dataset.saEditar)));
+ sa$('listaEmpresas').querySelectorAll('[data-sa-config]').forEach(b=>b.onclick=()=>configurarSistema(Number(b.dataset.saConfig)));
+ sa$('listaEmpresas').querySelectorAll('[data-sa-log]').forEach(b=>b.onclick=()=>{sa$('saEmpresa').value=b.dataset.saLog;saUsuarios();saPagina=1;saCarregarLogs();sa$('saAuditoria').scrollIntoView({behavior:'smooth'});});
 }
-
-function atualizarKpis(empresas) {
-    document.getElementById("kpiTotal").innerText = empresas.length;
-    document.getElementById("kpiAtivas").innerText = empresas.filter(e => e.ativo).length;
-    document.getElementById("kpiInativas").innerText = empresas.filter(e => !e.ativo).length;
+function saUsuarios(){const atual=sa$('saUsuario').value,id=Number(sa$('saEmpresa').value);const usuarios=empresasCache.filter(e=>!id||e.empresaid===id).flatMap(e=>e.usuarios);
+ sa$('saUsuario').innerHTML='<option value="">Todos</option>'+usuarios.map(u=>'<option value="'+u.usuarioid+'">'+saEsc(u.nome)+' · '+saEsc(u.role)+'</option>').join('');sa$('saUsuario').value=usuarios.some(u=>String(u.usuarioid)===atual)?atual:'';}
+async function saCarregarLogs(){const seq=++saSequencia;sa$('saLogs').innerHTML='<tr><td colspan="6">Carregando atividade…</td></tr>';
+ try{const q=new URLSearchParams({pagina:saPagina,empresaId:sa$('saEmpresa').value,usuarioId:sa$('saUsuario').value,modulo:sa$('saModulo').value,inicio:sa$('saInicio').value,fim:sa$('saFim').value,erros:String(sa$('saErros').checked)});
+ const d=await saApi('/superadmin/logs?'+q);if(seq!==saSequencia)return;saPaginas=d.paginas;
+ sa$('saLogs').innerHTML=d.linhas.map(l=>'<tr><td>'+saData(l.createdAt)+'</td><td><strong>'+saEsc(l.empresaNome||'Paiva Tech / plataforma')+'</strong><small>'+saEsc(l.usuarioNome)+' · '+saEsc(l.papel)+'</small></td><td><strong>'+saEsc(l.acao)+' · '+saEsc(l.modulo)+'</strong><small>'+saEsc(l.metodo)+' '+saEsc(l.rota)+(l.alvoId?' · #'+saEsc(l.alvoId):'')+'</small></td><td><span class="'+(l.status>=400?'sa-warning':'sa-ok')+'">HTTP '+l.status+'</span></td><td>'+l.duracaoMs+' ms</td><td>'+(l.detalhes?'<details><summary>Ver alteração</summary><pre>'+saEsc(JSON.stringify(l.detalhes,null,2))+'</pre></details>':'—')+'</td></tr>').join('')||'<tr><td colspan="6">Nenhum evento neste filtro. O histórico de operações começa com a implantação da auditoria.</td></tr>';
+ sa$('saPagina').textContent='Página '+d.pagina+' de '+d.paginas+' · '+d.total+' eventos';sa$('saAnterior').disabled=saPagina<=1;sa$('saProxima').disabled=saPagina>=saPaginas;
+ }catch(e){if(seq===saSequencia){sa$('saLogs').innerHTML='<tr><td colspan="6">Não foi possível carregar os logs.</td></tr>';saStatus(e.message,true);}}
 }
-
-function renderizarStatus(ativo) {
-    if (ativo) {
-        return `<span class="status-badge status-ativo">Ativa</span>`;
-    }
-    return `<span class="status-badge status-inativo">Inativa</span>`;
+function saDialog(titulo,html,salvar){const d=document.createElement('dialog');d.className='sa-dialog';d.innerHTML='<form><header><h2>'+saEsc(titulo)+'</h2><button type="button" data-fechar aria-label="Fechar">×</button></header><div class="sa-dialog-fields">'+html+'</div><p data-erro role="alert"></p><footer><button type="button" data-fechar>Cancelar</button><button class="sa-primary" type="submit">Salvar alterações</button></footer></form>';document.body.append(d);d.querySelectorAll('[data-fechar]').forEach(b=>b.onclick=()=>d.close());d.onclose=()=>d.remove();d.querySelector('form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{await salvar(new FormData(e.target));d.close();await carregarEmpresas();await saCarregarLogs();}catch(err){d.querySelector('[data-erro]').textContent=err.message;}finally{b.disabled=false;}};d.showModal();return d;}
+function saEditar(id){const e=empresasCache.find(e=>e.empresaid===id),admins=e.usuarios.filter(u=>u.role==='ADMIN');
+ saDialog('Editar empresa e administradores','<label>Nome da empresa<input name="nome" required maxlength="200" value="'+saEsc(e.nome)+'"></label><label>E-mail de contato<input name="emailContato" type="email" maxlength="254" value="'+saEsc(e.emailContato)+'"></label><label>Telefone<input name="telefoneContato" maxlength="50" value="'+saEsc(e.telefoneContato)+'"></label><h3>Administradores</h3>'+admins.map(u=>'<label>Nome do administrador · '+saEsc(u.email)+'<input name="admin_'+u.usuarioid+'" required maxlength="200" value="'+saEsc(u.nome)+'"></label>').join('')+'<p>O identificador da empresa e as credenciais de acesso permanecem os mesmos.</p>',f=>saApi('/superadmin/empresas/'+id,'PATCH',{nome:f.get('nome'),emailContato:f.get('emailContato'),telefoneContato:f.get('telefoneContato'),administradores:admins.map(u=>({id:u.usuarioid,nome:f.get('admin_'+u.usuarioid)}))}));
 }
-
-function renderizarEmpresas(empresas) {
-
-    listaEmpresas.innerHTML = "";
-
-    if (!empresas || empresas.length === 0) {
-        listaEmpresas.innerHTML = `
-            <div class="empty-state">
-                <h3>Nenhuma empresa cadastrada</h3>
-                <p>Cadastre a primeira empresa (tenant) do sistema.</p>
-            </div>
-        `;
-        return;
-    }
-
-    empresas.forEach(empresa => {
-        listaEmpresas.innerHTML += `
-            <div class="cliente-card">
-
-                <div class="cliente-header">
-
-                    <div class="cliente-avatar">
-                        ${textoSeguro(empresa.nome?.charAt(0)?.toUpperCase())}
-                    </div>
-
-                    <div class="cliente-header-info">
-                        <h3>${textoSeguro(empresa.nome)}</h3>
-                        <p>${textoSeguro(empresa.slug)}</p>
-                    </div>
-
-                    ${renderizarStatus(empresa.ativo)}
-<button type="button" onclick="configurarSistema(${empresa.empresaid})">Configurar sistema</button>
-
-                </div>
-
-                <div class="cliente-body">
-
-                    <div class="cliente-item">
-                        <span>Contato</span>
-                        <strong>${textoSeguro(empresa.emailContato) || "—"}</strong>
-                    </div>
-
-                    <div class="cliente-item">
-                        <span>Telefone</span>
-                        <strong>${textoSeguro(empresa.telefoneContato) || "—"}</strong>
-                    </div>
-
-                    <div class="cliente-item">
-                        <span>Status</span>
-                        <strong>${empresa.ativo ? "Ativa" : "Inativa"}</strong>
-                    </div>
-
-                </div>
-
-            </div>
-        `;
-    });
-}
-
-formEmpresa.addEventListener("submit", async (e) => {
-
-    e.preventDefault();
-
-    try {
-
-        const body = {
-            nome: pegarValor("nome"),
-            slug: pegarValor("slug")?.toLowerCase(),
-            adminNome: pegarValor("adminNome"),
-            adminEmail: pegarValor("adminEmail"),
-            adminSenha: pegarValor("adminSenha"),
-        };
-
-        if (!body.nome || !body.slug || !body.adminNome || !body.adminEmail || !body.adminSenha) {
-            alert("Preencha todos os campos.");
-            return;
-        }
-
-        const response = await fetch(`${API_URL}/empresas`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify(body)
-        });
-
-        const resposta = await response.json();
-
-        if (!response.ok) {
-            alert(resposta.error || "Erro ao criar empresa.");
-            return;
-        }
-
-        const modal = bootstrap.Modal.getInstance(document.getElementById("modalEmpresa"));
-        if (modal) modal.hide();
-
-        formEmpresa.reset();
-        alert(`Empresa "${body.nome}" criada. Admin: ${body.adminEmail}`);
-        carregarEmpresas();
-
-    } catch (error) {
-        console.log(error);
-        alert("Erro de conexão ao criar empresa.");
-    }
-});
-
-carregarEmpresas();
-
+sa$('saMeuPerfil').onclick=()=>saDialog('Meu perfil de desenvolvedor','<label>Seu nome<input name="nome" required maxlength="200" value="'+saEsc(saDados?.perfil.nome||'')+'"></label>',async f=>{const r=await saApi('/superadmin/perfil','PATCH',{nome:f.get('nome')});if(sessaoAdmin.usuario)sessaoAdmin.usuario.nome=r.nome;localStorage.setItem('usuarioLogado',JSON.stringify(sessaoAdmin));document.querySelector('.user-box strong').textContent=r.nome;});
+sa$('saBusca').oninput=renderizarEmpresas;sa$('saEmpresa').onchange=saUsuarios;
+sa$('saFiltros').onsubmit=e=>{e.preventDefault();saPagina=1;saCarregarLogs();};
+sa$('saAnterior').onclick=()=>{if(saPagina>1){saPagina--;saCarregarLogs();}};sa$('saProxima').onclick=()=>{if(saPagina<saPaginas){saPagina++;saCarregarLogs();}};
+sa$('saAtualizar').onclick=async e=>{e.target.disabled=true;try{await carregarEmpresas();await saCarregarLogs();}finally{e.target.disabled=false;}};
+sa$('formEmpresa').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{const body=Object.fromEntries(['nome','slug','adminNome','adminEmail','adminSenha'].map(k=>[k,sa$(k).value.trim()]));await saApi('/empresas','POST',body);bootstrap.Modal.getInstance(sa$('modalEmpresa'))?.hide();e.target.reset();await carregarEmpresas();await saCarregarLogs();}catch(err){saStatus(err.message,true);}finally{b.disabled=false;}};
+if(!token)location.replace('login.html');else if((sessaoAdmin.usuario?.role||sessaoAdmin.role)!=='SUPER_ADMIN'){saStatus('Acesso exclusivo do superadmin.',true);}else{carregarEmpresas().then(()=>saCarregarLogs());}
 function configurarSistema(id) {
  const empresa=empresasCache.find(e=>e.empresaid===id);if(!empresa)return;
  const c=empresa.configuracaoSistema||{perfil:"PADRAO"};
- const dialog=document.createElement("dialog");dialog.style.cssText="max-width:700px;width:95%;border:0;border-radius:16px;padding:24px";
+ const dialog=document.createElement("dialog");dialog.className="sa-dialog";dialog.style.cssText="max-width:700px;width:95%;border:0;border-radius:16px;padding:24px";
  dialog.innerHTML='<form method="dialog"><h2>Configuração do sistema</h2><label>Perfil <select id="configPerfil"><option>PADRAO</option><option>SBA</option><option>PERSONALIZADO</option></select></label><p>Cada usuário herda as opções da empresa. As permissões de acesso continuam por função.</p><fieldset id="configModulos"><legend>Módulos</legend></fieldset><fieldset id="configCampos"><legend>Campos do orçamento</legend></fieldset><fieldset id="configFlags"><legend>Recursos</legend></fieldset><label>Escopo padrão<textarea id="configEscopo" rows="5" style="width:100%"></textarea></label><p id="configErro"></p><button type="button" id="salvarConfig">Salvar</button> <button>Cancelar</button></form>';
  document.body.append(dialog);
  const defaults=p=>({perfil:p,modulos:Object.fromEntries(["dashboard","clientes","servicos","propostas","vendedores","agenda","templates","financeiro","fiscal","fornecedores","compras","obras"].map(k=>[k,k!=="obras"])),camposProposta:Object.fromEntries(["prioridade","origem","frete","validadeDias"].map(k=>[k,p!=="SBA"])),reformaTributaria:p==="SBA",selecionarDestinatario:p==="SBA",certificadoA1:p==="SBA",composicaoCustos:p==="SBA",ocultarEscopoVazio:p==="SBA",textoEscopo:p==="SBA"?"NAO INCLUI - ART E QUAISQUER OUTRAS PECAS E SERVICOS QUE NAO ESTEJAM RELACIONADOS NESTE ORCAMENTO.\nPRAZO DE ENTREGA - A COMBINAR\nIPI ISENTO":""});

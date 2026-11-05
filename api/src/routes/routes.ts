@@ -1,3 +1,5 @@
+import * as superadmin from '../controller/ctsuperadmin';
+import * as obraPropostaJose from '../controller/ctobraPropostaJose';
 import * as propostaPdfJose from "../controller/ctpropostaPdfJose";
 import * as cancelamentoSba from '../controller/ctcancelamentoSba';
 import * as producaoSba from "../controller/ctproducaoSba";
@@ -34,8 +36,15 @@ import auth from "../middlewares/auth";
 import requireRole from "../middlewares/requireRole";
 
 const routes = express.Router();
+routes.use('/superadmin',auth,superadmin.somenteSuperAdmin);
+routes.get('/superadmin/resumo',superadmin.resumo);
+routes.get('/superadmin/logs',superadmin.logs);
+routes.patch('/superadmin/empresas/:id',superadmin.editar);
+routes.patch('/superadmin/perfil',superadmin.meuPerfil);
 routes.use('/obras', auth, obra.acesso);
 routes.get('/obras', obra.listar);
+routes.get('/obras/propostas-disponiveis',planilhasJose.somenteJose,obraPropostaJose.listar);
+routes.post('/obras/a-partir-proposta',requireRole(['ADMIN','SUPER_ADMIN']),planilhasJose.somenteJose,obraPropostaJose.criar);
 routes.post('/obras', requireRole(['ADMIN','SUPER_ADMIN']), obra.salvar);
 routes.get('/obras/colaboradores', obra.colaboradores);
 routes.post('/obras/colaboradores', requireRole(['ADMIN','SUPER_ADMIN']), obra.salvarColaborador);
@@ -83,8 +92,8 @@ routes.post("/usuarios/redefinir-senha", usuario.redefinirSenha);
 // --- Provisionamento de empresas (tenants) — só Paiva Tech (SUPER_ADMIN) ---
 routes
   .route("/empresas")
-  .get(auth, requireRole(["SUPER_ADMIN"]), empresa.read)
-  .post(auth, requireRole(["SUPER_ADMIN"]), empresa.create);
+  .get(auth, requireRole(["SUPER_ADMIN"]), superadmin.somenteSuperAdmin, empresa.read)
+  .post(auth, requireRole(["SUPER_ADMIN"]), superadmin.somenteSuperAdmin, empresa.create);
 
 // --- Perfil da própria empresa (branding: logo, cores, contato) ---
 // Qualquer usuário autenticado pode VER; só ADMIN da empresa pode EDITAR.
@@ -96,7 +105,7 @@ routes
 
 routes
   .route("/empresas/:id")
-  .put(auth, requireRole(["SUPER_ADMIN"]), empresa.update);
+  .put(auth, requireRole(["SUPER_ADMIN"]), superadmin.somenteSuperAdmin, empresa.update);
 
 // --- Usuários da própria empresa — só ADMIN/SUPER_ADMIN da empresa ---
 routes

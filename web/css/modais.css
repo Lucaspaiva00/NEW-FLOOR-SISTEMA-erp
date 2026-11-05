@@ -1,0 +1,9 @@
+/* Centralização compartilhada entre modais nativos, Bootstrap e alertas. */
+html body dialog{position:fixed!important;inset:0!important;margin:auto!important;height:fit-content!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px)!important;box-sizing:border-box;overflow:auto;overscroll-behavior:contain}
+html body .modal .modal-dialog{display:flex;align-items:center;min-height:calc(100dvh - 32px);margin:16px auto!important;box-sizing:border-box}
+html body .modal .modal-dialog .modal-content{max-height:calc(100dvh - 32px);overflow:hidden;width:100%}
+html body .modal .modal-body{overflow-y:auto;overscroll-behavior:contain;min-height:0}
+html body .modal .modal-header,html body .modal .modal-footer{flex-shrink:0}
+html body .swal2-container{align-items:center!important;justify-items:center!important}
+@media(max-width:600px){html body .modal .modal-dialog{min-height:calc(100dvh - 20px);margin:10px auto!important}html body .modal .modal-dialog .modal-content{max-height:calc(100dvh - 20px)}}
+html body .modal .modal-content>form{display:flex;flex-direction:column;min-height:0;max-height:inherit}

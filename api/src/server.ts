@@ -1,3 +1,5 @@
+import auditoria from './middlewares/auditoria';
+import {garantirAuditoria} from './services/auditoriaAdmin.service';
 import "dotenv/config";
 
 import express from "express";
@@ -26,12 +28,14 @@ app.use(
   express.static(path.join(process.cwd(), "public", "assets"))
 );
 
+app.use(auditoria);
 app.use(routes);
 
 const PORT = process.env.PORT || 3000;
 
 async function iniciarServidor() {
   await garantirSchemaConfiguracao();
+  await garantirAuditoria();
   await garantirSchemaObras();
   console.log("Estrutura de obras verificada; ativação restrita a José/Construarty.");
   await testarFluxoObras();

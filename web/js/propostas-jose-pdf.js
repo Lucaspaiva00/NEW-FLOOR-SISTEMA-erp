@@ -60,13 +60,13 @@
  function decorar(){board?.querySelectorAll('.proposal-card').forEach(card=>{
  if(card.dataset.josePdfDecorado)return;card.dataset.josePdfDecorado='1';
  card.querySelectorAll('[data-proposta-acao="duplicar"],[data-proposta-acao="email"],[data-proposta-acao="whatsapp"]').forEach(b=>b.closest('li')?.remove());
- const a=document.createElement('div');a.className='jose-pdf-card-actions';a.innerHTML='<button type="button" data-jose-pdf-acao="ver">Visualizar proposta</button><button type="button" data-jose-pdf-acao="baixar">Baixar PDF</button>';a.addEventListener('pointerdown',e=>e.stopPropagation());card.appendChild(a);
+ const a=document.createElement('div');a.className='jose-pdf-card-actions';a.innerHTML='<button type="button" data-jose-pdf-acao="ver">Visualizar proposta</button><button type="button" data-jose-pdf-acao="baixar">Baixar PDF</button>';if(admin&&empresa.configuracaoSistema?.modulos?.obras===true){const criar=document.createElement('button');criar.type='button';criar.dataset.josePdfAcao='obra';criar.textContent='Criar / abrir obra';a.appendChild(criar);}a.addEventListener('pointerdown',e=>e.stopPropagation());card.appendChild(a);
  const tag=card.querySelector('.tag-origem');if(tag?.textContent==='PDF_JOSE')tag.textContent='PDF original';
  });}
  board?.addEventListener('click',e=>{
  const card=e.target.closest('.proposal-card');if(!card||typeof estaArrastando!=='undefined'&&estaArrastando)return;
  const direto=e.target.closest('[data-jose-pdf-acao]'),acao=e.target.closest('[data-proposta-acao]');
- if(direto){e.preventDefault();e.stopImmediatePropagation();if(direto.dataset.josePdfAcao==='ver')previsualizarProposta(card.dataset.id,direto);else visualizarPdfProposta(card.dataset.id,direto);return;}
+ if(direto){e.preventDefault();e.stopImmediatePropagation();if(direto.dataset.josePdfAcao==='obra'){location.href='obras.html?proposta='+encodeURIComponent(card.dataset.id);return;}if(direto.dataset.josePdfAcao==='ver')previsualizarProposta(card.dataset.id,direto);else visualizarPdfProposta(card.dataset.id,direto);return;}
  if(acao?.dataset.propostaAcao==='editar'||!e.target.closest('button,a,.dropdown')){e.preventDefault();e.stopImmediatePropagation();detalhe(card.dataset.id);}
  },true);
  if(board)new MutationObserver(decorar).observe(board,{childList:true,subtree:true});decorar();
