@@ -1,3 +1,4 @@
+import * as propostaPdfJose from "../controller/ctpropostaPdfJose";
 import * as cancelamentoSba from '../controller/ctcancelamentoSba';
 import * as producaoSba from "../controller/ctproducaoSba";
 import * as transmissaoSba from "../controller/cttransmissaoSba";
@@ -135,6 +136,10 @@ routes
   .get(auth, servico.readOne)
   .put(auth, servico.update)
   .delete(auth, servico.remove);
+
+routes.post('/propostas/jose/pdf/previa',auth,requireRole(['ADMIN','SUPER_ADMIN']),propostaPdfJose.somenteJose,propostaPdfJose.previa);
+routes.post('/propostas/jose/pdf/importar',auth,requireRole(['ADMIN','SUPER_ADMIN']),propostaPdfJose.somenteJose,propostaPdfJose.importar);
+routes.patch('/propostas/jose/pdf/:id',auth,requireRole(['ADMIN','SUPER_ADMIN']),propostaPdfJose.somenteJose,propostaPdfJose.editar);
 
 routes.route("/propostas/kanban").get(auth, proposta.readKanban);
 routes.route("/propostas").get(auth, proposta.read).post(auth, proposta.create);

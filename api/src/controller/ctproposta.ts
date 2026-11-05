@@ -1,3 +1,4 @@
+import {enviarOriginalJose} from "./ctpropostaPdfJose";
 import {obterContaEmailUsuario} from "../services/emailUsuario.service";
 import { Prisma } from "@prisma/client";
 import { validarPlanoRecebimento } from "../services/planoRecebimento.service";
@@ -173,6 +174,8 @@ async function gerarPdfInterno(id: string | string[] | number, empresaId: number
   if (!proposta) {
     throw new Error("Proposta não encontrada");
   }
+
+  if(empresaId===5&&proposta.origem==="PDF_JOSE")throw Error("Esta proposta usa PDF original. Utilize Visualizar proposta ou Baixar PDF.");
 
   let template = proposta.templateProposta;
 
@@ -400,6 +403,10 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       });
 
       return;
+    }
+
+    if(req.empresaId===5&&propostaAtual.origem==='PDF_JOSE'&&(body.itens!==undefined||body.composicaoCustos!==undefined||body.subtotal!==undefined||body.clienteId!==undefined&&Number(body.clienteId)!==propostaAtual.clienteId)){
+      res.status(409).json({error:'O orçamento vem do PDF original. Para outro orçamento, envie uma nova proposta PDF.'});return;
     }
 
     const proposta = await prisma.$transaction(async tx=>{
@@ -787,6 +794,7 @@ export const duplicar = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if(req.empresaId===5&&original.origem==="PDF_JOSE"){res.status(409).json({error:"Para outra proposta, envie o PDF correspondente. O arquivo original não será duplicado ou substituído."});return;}
     const copia = prepararCampos(original, req.configuracaoSistema || resolverConfiguracao(null));
     const numero = await gerarNumeroAutomaticoProposta(req.empresaId as number);
     const titulo = original.titulo.endsWith(" (cópia)")
@@ -907,6 +915,7 @@ export const dashboard = async (
 
 export const gerarPdf = async (req: Request, res: Response): Promise<void> => {
   try {
+    if(await enviarOriginalJose(req,res,false))return;
     const { id } = req.params;
 
     const resultado = await gerarPdfInterno(paramId(id), req.empresaId as number);
@@ -935,6 +944,7 @@ export const downloadPdf = async (
   res: Response,
 ): Promise<void> => {
   try {
+    if(await enviarOriginalJose(req,res,false))return;
     const { id } = req.params;
 
     const proposta = await buscarPropostaCompleta(paramId(id), req.empresaId as number);
@@ -989,6 +999,7 @@ export const visualizarPdf = async (req: Request, res: Response): Promise<void> 
  try {
   if(!req.empresaId){res.status(401).json({error:'Autenticação necessária.'});return;}
   if(req.configuracaoSistema?.modulos?.propostas===false){res.status(403).json({error:'Módulo de propostas indisponível para esta empresa.'});return;}
+  if(await enviarOriginalJose(req,res,true))return;
   const id=Number(req.params.id);
   if(!Number.isSafeInteger(id)||id<=0){res.status(400).json({error:'Proposta inválida.'});return;}
   const proposta=await buscarPropostaCompleta(String(id),req.empresaId);
