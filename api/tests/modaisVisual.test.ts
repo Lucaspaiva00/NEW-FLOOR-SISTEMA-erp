@@ -14,9 +14,10 @@ test('painel do desenvolvedor e modais reais ficam centralizados no desktop e ce
  await page.evaluateOnNewDocument(()=>localStorage.setItem('usuarioLogado',JSON.stringify({token:'mock-sem-acesso-real',usuario:{role:'SUPER_ADMIN',nome:'Lucas Paiva'}})));
  await page.setRequestInterception(true);page.on('request',r=>{void(async()=>{
  const url=new URL(r.url());
+ if(r.method()==='OPTIONS')return r.respond({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'authorization,content-type','access-control-allow-methods':'GET,POST,PATCH,PUT,DELETE,OPTIONS'}});
  if(url.hostname==='cdn.jsdelivr.net'&&url.pathname.endsWith('bootstrap.min.css'))return r.respond({contentType:'text/css',body:bootstrapCss});
- if(url.pathname==='/superadmin/resumo')return r.respond({contentType:'application/json',body:JSON.stringify({perfil:{nome:'Lucas'},geradoEm:new Date(),kpis:{ativas:3,empresas:4,usuarios:8,usuarios30dias:6,erros24h:1,notasComProblema:2},empresas:[empresa]})});
- if(url.pathname==='/superadmin/logs')return r.respond({contentType:'application/json',body:JSON.stringify({linhas:[],total:0,pagina:1,paginas:1})});
+ if(url.pathname==='/superadmin/resumo')return r.respond({headers:{'access-control-allow-origin':'*'},contentType:'application/json',body:JSON.stringify({perfil:{nome:'Lucas'},geradoEm:new Date(),kpis:{ativas:3,empresas:4,usuarios:8,usuarios30dias:6,erros24h:1,notasComProblema:2},empresas:[empresa]})});
+ if(url.pathname==='/superadmin/logs')return r.respond({headers:{'access-control-allow-origin':'*'},contentType:'application/json',body:JSON.stringify({linhas:[],total:0,pagina:1,paginas:1})});
  if(url.hostname==='cdn.jsdelivr.net'&&url.pathname.endsWith('bootstrap.bundle.min.js'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(web,'vendor/bootstrap/bootstrap.bundle.min.js'))});
  if(url.hostname==='erp.test'){
  const file=path.join(web,url.pathname);if(!file.startsWith(web+path.sep)||!fs.existsSync(file))return r.abort();
@@ -26,7 +27,7 @@ test('painel do desenvolvedor e modais reais ficam centralizados no desktop e ce
  async function centralizado(selector:string){const b=await page.$eval(selector,e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,vw:innerWidth,vh:innerHeight};});
  assert.ok(Math.abs(b.x+b.w/2-b.vw/2)<3,JSON.stringify(b));assert.ok(Math.abs(b.y+b.h/2-b.vh/2)<3,JSON.stringify(b));assert.ok(b.y>=0&&b.y+b.h<=b.vh+1,JSON.stringify(b));}
  for(const [width,height] of [[1440,1000],[390,844]]){
-  await page.setViewport({width,height});await page.goto('https://erp.test/empresas.html',{waitUntil:'networkidle0'});await page.waitForSelector('[data-sa-editar]');
+  await page.setViewport({width,height});await page.goto('https://erp.test/empresas.html',{waitUntil:'networkidle0'});await page.waitForSelector('[data-sa-editar]',{timeout:10000}).catch(async e=>{throw Error(String(e)+' · '+errors.join('; ')+' · '+await page.$eval('#saStatus',e=>e.textContent));});
   assert.equal(await page.$eval('body',e=>e.scrollWidth<=innerWidth),true);
   await page.click('[data-sa-editar]');await centralizado('dialog[open]');await page.click('dialog [data-fechar]');
   await page.click('[data-sa-config]');await centralizado('dialog[open]');await page.$eval('dialog',e=>e.close());
