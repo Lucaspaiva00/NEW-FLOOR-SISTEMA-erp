@@ -1030,7 +1030,7 @@
       ${editavel ? `<button type="button" class="btn-new" data-emitir-nota="${n.notafiscalid}">Emitir agora</button>` : ""}`;
     if(window.__newFloorFiscal)window.dispatchEvent(new CustomEvent("newfloor-nota-detalhe",{detail:n}));
     // Evento neutro: habilita ações isoladas por tenant em scripts opcionais.
-    window.dispatchEvent(new CustomEvent("sba-nota-detalhe",{detail:{id:n.notafiscalid,tipo:n.tipo,status:n.status,ambiente:n.ambienteEmissao||n.empresaFiscal?.ambiente,testeProducaoSba:n.payloadExtra?.sbaTesteProducao===true,versao:n.updatedAt,valorTotal:Number(n.valorTotal),tomador:n.destinatarioNome,documento:n.destinatarioCnpj||n.destinatarioCpf,propostaId:n.propostaId,diretaSba:n.payloadEnviado?.provedor==="SEFIN_NACIONAL_DIRETO_HOMOLOGACAO"}}));
+    window.dispatchEvent(new CustomEvent("sba-nota-detalhe",{detail:{id:n.notafiscalid,tipo:n.tipo,status:n.status,ambiente:n.ambienteEmissao||n.empresaFiscal?.ambiente,testeProducaoSba:n.payloadExtra?.sbaTesteProducao===true,versao:n.updatedAt,valorTotal:Number(n.valorTotal),tomador:n.destinatarioNome,documento:n.destinatarioCnpj||n.destinatarioCpf,propostaId:n.propostaId,chave:n.chave,numero:n.numero,cancelamentoPendente:(n.eventos||[]).some(e=>e.tipo==='SBA_CANCELAMENTO'&&e.status==='PENDENTE'),diretaProducaoSba:n.payloadEnviado?.provedor==='SEFIN_NACIONAL_DIRETO_PRODUCAO',diretaSba:n.payloadEnviado?.provedor==="SEFIN_NACIONAL_DIRETO_HOMOLOGACAO"}}));
   }
 
   async function abrirDetalheNota(id) {

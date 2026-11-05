@@ -84,7 +84,7 @@ export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promi
 
 export async function solicitarSefinSba(nota:any,method:'GET'|'POST',path:string,body?:any):Promise<{httpStatus:number,data:any}>{
  validarDestinoSba(nota,true);
- if(!((method==='POST'&&path==='/nfse')||(method==='GET'&&/^\/(?:dps\/DPS\d{42}|nfse\/\d{50})$/.test(path))))throw erro('Operação SEFIN não permitida.');
+ if(!((method==='POST'&&(path==='/nfse'||/^\/nfse\/\d{50}\/eventos$/.test(path)))||(method==='GET'&&/^\/(?:dps\/DPS\d{42}|nfse\/\d{50}(?:\/eventos\/101101\/1)?)$/.test(path))))throw erro('Operação SEFIN não permitida.');
  return comA1Sba(nota,(pfx,senha)=>new Promise((resolve,reject)=>{
   const texto=body===undefined?undefined:JSON.stringify(body);
   const base=(nota.ambienteEmissao||nota.empresaFiscal.ambiente)==='PRODUCAO'?'https://sefin.nfse.gov.br/SefinNacional':SEFIN_RESTRITA_BASE;

@@ -13,7 +13,7 @@ import {validarDestinoSba,comA1Sba,solicitarSefinSba,lerRetornoSefinSba} from '.
 export const etapasSba={padroes:aplicarPadroesEmNotaSba,preparar:montarDpsPreviaSba,assinar:assinarDpsXmlSba,validar:validarDpsOficialSba,certificado:comA1Sba,solicitar:solicitarSefinSba,financeiro:sincronizarFinanceiroNota};
 const PROVEDOR='SEFIN_NACIONAL_DIRETO_PRODUCAO';
 const falha=(message:string,statusCode=422)=>Object.assign(Error(message),{statusCode});
-async function carregar(req:Request):Promise<any>{
+export async function carregarNotaProducaoSba(req:Request):Promise<any>{
  if(req.configuracaoSistema?.perfil!=='SBA'||req.empresaId!==2)throw falha('Recurso exclusivo da SBA.',403);
  const id=Number(req.params.id);
  if(!Number.isSafeInteger(id)||id<=0)throw falha('Nota inválida.',400);
@@ -31,11 +31,16 @@ async function evento(notaId:number,tipo:string,status:string,descricao:string){
 }
 async function guardar(nota:any,retorno:any,parseado:any){
  // Primeiro preserva o retorno fiscal. Falha financeira nunca transforma autorização em rejeição.
- const saved=await prisma.notaFiscal.update({where:{notafiscalid:nota.notafiscalid},data:{
+ const saved=await prisma.$transaction(async tx=>{
+  await tx.$queryRaw`SELECT notafiscalid FROM "NotaFiscal" WHERE notafiscalid=${nota.notafiscalid} AND "empresaId"=${nota.empresaId} FOR UPDATE`;
+  const atual=await tx.notaFiscal.findFirst({where:{notafiscalid:nota.notafiscalid,empresaId:nota.empresaId}});
+  if(atual?.status==='CANCELADA')return atual;
+  return tx.notaFiscal.update({where:{notafiscalid:nota.notafiscalid},data:{
   status:parseado.status,retornoProvedor:retorno,
   mensagemRetorno:parseado.mensagem,
   ...(parseado.chave?{chave:parseado.chave,numero:parseado.numero,dataAutorizacao:nota.dataAutorizacao||new Date()}:{}),
  }});
+ });
  let pendenciaFinanceira=false;
  if(saved.status==='AUTORIZADA'&&nota.payloadExtra?.sbaTesteProducao!==true){
   try{
@@ -48,13 +53,13 @@ async function guardar(nota:any,retorno:any,parseado:any){
    });
   }catch(_){pendenciaFinanceira=true;await evento(nota.notafiscalid,'PENDENCIA_FINANCEIRA','AUTORIZADA','Nota autorizada. Sincronização financeira pendente; consulte novamente para reconciliar.').catch(()=>{});}
  }
- await evento(nota.notafiscalid,'RETORNO_SEFIN_PRODUCAO',saved.status,parseado.mensagem);
+ await evento(nota.notafiscalid,'RETORNO_SEFIN_PRODUCAO',saved.status,saved.status==='CANCELADA'?'Consulta de emissão preservou o cancelamento já confirmado.':parseado.mensagem);
  return {notaId:saved.notafiscalid,status:saved.status,mensagem:saved.mensagemRetorno,ambiente:'PRODUCAO',chave:saved.chave,numero:saved.numero,pendenciaFinanceira};
 }
 export const transmitirProducaoSba=async(req:Request,res:Response):Promise<void>=>{
  let reservada:any=null;
  try{
-  const original=await carregar(req);
+  const original=await carregarNotaProducaoSba(req);
   const teste=original.payloadExtra?.sbaTesteProducao===true;
   if(req.body?.confirmacao!==(teste?'EMITIR_NOTA_REAL_R1':'EMITIR_NOTA_REAL'))throw falha('Confirme expressamente a emissão real desta nota.');
   if(!teste&&req.body?.versaoConfirmada!==original.updatedAt.toISOString())throw falha('A nota foi alterada. Reabra e confira antes de confirmar.',409);
@@ -107,7 +112,8 @@ export const transmitirProducaoSba=async(req:Request,res:Response):Promise<void>
 };
 export const consultarProducaoSba=async(req:Request,res:Response):Promise<void>=>{
  try{
-  const nota=await carregar(req);
+  const nota=await carregarNotaProducaoSba(req);
+  if(nota.status==='CANCELADA'){res.json({status:'CANCELADA',mensagem:'Nota cancelada. Use Consultar cancelamento para conferir o evento.'});return;}
   const meta=nota.payloadEnviado;
   if(meta?.provedor!==PROVEDOR||!/^DPS\d{42}$/.test(meta.idDps))throw falha('Esta nota ainda não possui uma DPS transmitida pela integração direta.');
   let chave=nota.chave;
@@ -126,8 +132,8 @@ export const consultarProducaoSba=async(req:Request,res:Response):Promise<void>=
 };
 export const xmlAutorizadoProducaoSba=async(req:Request,res:Response):Promise<void>=>{
  try{
-  const nota=await carregar(req);
-  if(nota.status!=='AUTORIZADA'||nota.payloadEnviado?.provedor!==PROVEDOR)throw falha('Documento ainda não autorizado em produção.');
+  const nota=await carregarNotaProducaoSba(req);
+  if(!['AUTORIZADA','CANCELADA'].includes(nota.status)||nota.payloadEnviado?.provedor!==PROVEDOR)throw falha('Documento ainda não autorizado em produção.');
   const parsed=lerRetornoSefinSba({httpStatus:200,data:nota.retornoProvedor},nota.payloadEnviado.idDps,"PRODUCAO");
   if(parsed.status!=='AUTORIZADA')throw falha('XML autorizado indisponível. Consulte a DPS.');
   res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/xml; charset=utf-8');
@@ -138,7 +144,7 @@ export const xmlAutorizadoProducaoSba=async(req:Request,res:Response):Promise<vo
 /** Diagnóstico e consulta somente de leitura, sem POST de emissão. */
 export const prepararProducaoSba=async(req:Request,res:Response):Promise<void>=>{
  try{
-  const nota=await carregar(req);
+  const nota=await carregarNotaProducaoSba(req);
   const ajustes=await etapasSba.padroes(nota.empresaId,{...nota});
   const dps=etapasSba.preparar({...nota,...ajustes});
   if(dps.pendencias.length){res.status(422).json({error:'Complete os dados da nota.',pendencias:dps.pendencias});return;}
@@ -152,11 +158,11 @@ export const prepararProducaoSba=async(req:Request,res:Response):Promise<void>=>
 
 export const pdfAutorizadoProducaoSba=async(req:Request,res:Response):Promise<void>=>{
  try{
-  const nota=await carregar(req);
-  if(nota.status!=='AUTORIZADA'||nota.payloadEnviado?.provedor!==PROVEDOR)throw falha('Documento ainda não autorizado em produção.');
+  const nota=await carregarNotaProducaoSba(req);
+  if(!['AUTORIZADA','CANCELADA'].includes(nota.status)||nota.payloadEnviado?.provedor!==PROVEDOR)throw falha('Documento ainda não autorizado em produção.');
   const parsed=lerRetornoSefinSba({httpStatus:200,data:nota.retornoProvedor},nota.payloadEnviado.idDps,"PRODUCAO");
   if(parsed.status!=='AUTORIZADA'||parsed.chave!==nota.chave||String(parsed.numero)!==String(nota.numero))throw falha('XML autorizado indisponível ou divergente. Consulte a DPS.');
-  const pdf=await gerarDanfseSba(parsed.xml!,nota.chave);
+  const pdf=await gerarDanfseSba(parsed.xml!,nota.chave,nota.status==='CANCELADA');
   res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/pdf');
   res.setHeader('Content-Disposition',`attachment; filename="nfse-sba-${parsed.numero}.pdf"`);res.send(pdf);
  }catch(e:any){erro(res,e);}

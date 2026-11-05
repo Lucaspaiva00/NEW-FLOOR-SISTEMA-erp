@@ -1,3 +1,6 @@
+import {montarCancelamentoSba} from '../src/services/cancelamentoSba.service';
+import {assinarCancelamentoSba} from '../src/services/xmlAssinaturaDpsSba.service';
+import {validarEventoSba} from '../src/services/validacaoEventoSba.service';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes,createCipheriv,hkdfSync} from 'node:crypto';
@@ -62,5 +65,11 @@ test('Proposta real aceita outro tomador/valor e gera XML com total exato e muni
 test('DPS de proposta com valor real passa assinatura e XSD de produção sem transmissão',async()=>{
  const old=process.env.CERTIFICADO_ENCRYPTION_KEY;process.env.CERTIFICADO_ENCRYPTION_KEY='laboratorio-producao-sba';
  try{const n=notaNormal();const c=certificadoTeste();const d=montarDpsProducaoSba(n);const a=assinarDpsXmlSba(d.xml,envelopeTeste(c.arquivo,c.senha),2,9);const r=await validarDpsProducaoSba(a.xmlAssinado);assert.equal(r.valido,true,String(r.erro));}
+ finally{if(old===undefined)delete process.env.CERTIFICADO_ENCRYPTION_KEY;else process.env.CERTIFICADO_ENCRYPTION_KEY=old;}
+});
+
+test('cancelamento assinado com A1 sintético passa XSD oficial e não faz requisição fiscal',async()=>{
+ const old=process.env.CERTIFICADO_ENCRYPTION_KEY;process.env.CERTIFICADO_ENCRYPTION_KEY='laboratorio-producao-sba';
+ try{const n:any=nota();n.status='AUTORIZADA';n.chave='2'.repeat(50);const c=certificadoTeste();const d=montarCancelamentoSba(n,'9','Cancelamento para validação em laboratório.');const a=assinarCancelamentoSba(d.xml,envelopeTeste(c.arquivo,c.senha),2,9);const r=await validarEventoSba(a.xmlAssinado);assert.equal(r.valido,true,String(r.erro));assert.ok(a.signatureVerificada);}
  finally{if(old===undefined)delete process.env.CERTIFICADO_ENCRYPTION_KEY;else process.env.CERTIFICADO_ENCRYPTION_KEY=old;}
 });

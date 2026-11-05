@@ -78,3 +78,9 @@ test('timeout após envio mantém PROCESSANDO e bloqueia reenvio',async()=>ambie
  configurarNormal(a);etapasSba.solicitar=async(_:any,m:string)=>{if(m==='POST'){a.calls.post++;throw Error('Timeout de laboratório');}return {httpStatus:404,data:{}};};
  const r=a.resposta();await transmitirProducaoSba(a.req,r);assert.equal(r.code,202);assert.equal(a.notaDb.status,'PROCESSANDO');await transmitirProducaoSba(a.req,a.resposta());assert.equal(a.calls.post,1);assert.equal(a.calls.financeiro,0);
 }));
+
+test('consulta de emissão concorrente nunca reautoriza nota já cancelada',async()=>ambiente(async a=>{
+ configurarNormal(a);a.notaDb.status='AUTORIZADA';a.notaDb.chave=chave;a.notaDb.payloadEnviado={provedor:'SEFIN_NACIONAL_DIRETO_PRODUCAO',idDps};
+ etapasSba.solicitar=async()=>{a.notaDb.status='CANCELADA';return sucesso();};
+ const r=a.resposta();await consultarProducaoSba(a.req,r);assert.equal(a.notaDb.status,'CANCELADA');assert.equal(r.body.status,'CANCELADA');assert.equal(a.calls.financeiro,0);
+}));

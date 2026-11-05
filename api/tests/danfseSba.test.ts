@@ -29,3 +29,8 @@ test('rota PDF impede acesso fora da SBA e nunca emite ou disponibiliza rascunho
   req.empresaId=2;req.configuracaoSistema.perfil='SBA';const draft=res();await pdfAutorizadoProducaoSba(req,draft);assert.equal(draft.code,422);assert.match(draft.body.error,/ainda não autorizado/);
  }finally{(prisma.notaFiscal as any).findFirst=old;}
 });
+
+test('DANFSe cancelado identifica a situação e inclui marca CANCELADA sem alterar XML',async()=>{
+ const html=await montarDanfseSba(xml,chave,true);assert.ok(html.includes('class="watermark">CANCELADA'));assert.ok(html.includes('NFS-e cancelada'));
+ const normal=await montarDanfseSba(xml,chave);assert.equal(normal.includes('class="watermark">CANCELADA'),false);
+});

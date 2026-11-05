@@ -5,12 +5,12 @@ import { DOMParser } from "@xmldom/xmldom";
 import { validarCertificadoA1Sba } from "./certificadoA1Sba.service";
 
 /**
- * Assina apenas DPS em memória. O A1 só pode ser decifrado pelo servidor,
+ * Assina DPS ou pedido de cancelamento em memória. O A1 só pode ser decifrado pelo servidor,
  * vinculado por GCM/AAD à empresa e à emissora autorizadas.
  * Esta função não transmite, não persiste e não homologa o XML.
  */
 export function assinarDpsXmlSba(
-  xml:string,envelope:string,empresaId:number,emissoraId:number
+  xml:string,envelope:string,empresaId:number,emissoraId:number,documento:"DPS"|"pedRegEvento"="DPS"
 ): {xmlAssinado:string;signatureVerificada:true; xsdHomologado:false} {
   if(typeof xml!=="string"||xml.length>300000||
     /<!DOCTYPE|<!ENTITY/i.test(xml)||!/^<\?xml version="1.0" encoding="UTF-8"\?>/.test(xml)) {
@@ -22,13 +22,14 @@ export function assinarDpsXmlSba(
     if(level!=="warning")throw Error("XML malformado: "+String(message).slice(0,80));
   }});
   const doc=parser.parseFromString(xml,"application/xml");
-  if(doc.documentElement?.localName!=="DPS"||
+  const info=documento==="DPS"?"infDPS":"infPedReg";
+  if(doc.documentElement?.localName!==documento||
     doc.documentElement.namespaceURI!=="http://www.sped.fazenda.gov.br/nfse"||
-    doc.getElementsByTagNameNS("http://www.sped.fazenda.gov.br/nfse","infDPS").length!==1) {
-    throw Error("Somente DPS Nacional com infDPS único pode ser assinada.");
+    doc.getElementsByTagNameNS("http://www.sped.fazenda.gov.br/nfse",info).length!==1) {
+    throw Error("Documento Nacional sem grupo único para assinatura.");
   }
-  const inf=doc.getElementsByTagNameNS("http://www.sped.fazenda.gov.br/nfse","infDPS")[0];
-  if(!/^DPS[0-9]{42}$/.test(inf.getAttribute("Id")||""))throw Error("Identificador Id da DPS inválido.");
+  const inf=doc.getElementsByTagNameNS("http://www.sped.fazenda.gov.br/nfse",info)[0];
+  if(!(documento==="DPS"?/^DPS[0-9]{42}$/:/^PRE[0-9]{50}101101$/).test(inf.getAttribute("Id")||""))throw Error("Identificador do documento fiscal inválido.");
 
   const segredo=process.env.CERTIFICADO_ENCRYPTION_KEY||process.env.JWT_SECRET;
   if(!segredo)throw Error("Chave de criptografia do servidor não configurada.");
@@ -81,7 +82,7 @@ export function assinarDpsXmlSba(
     idAttribute:"Id",
   });
   assinatura.addReference({
-    xpath:"/*[local-name()='DPS']/*[local-name()='infDPS']",
+    xpath:`/*[local-name()='${documento}']/*[local-name()='${info}']`,
     transforms:[
       "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
       "http://www.w3.org/2001/10/xml-exc-c14n#"
@@ -89,13 +90,17 @@ export function assinarDpsXmlSba(
     digestAlgorithm:"http://www.w3.org/2001/04/xmlenc#sha256",
   });
   assinatura.computeSignature(xml,{
-    location:{reference:"/*[local-name()='DPS']",action:"append"}
+    location:{reference:`/*[local-name()='${documento}']`,action:"append"}
   });
   const assinado=assinatura.getSignedXml();
   const verificador=new SignedXml({publicCert:certificadoPem});
   verificador.loadSignature(assinatura.getSignatureXml());
   if(!verificador.checkSignature(assinado))throw Error("A assinatura XMLDSig não passou na verificação local.");
   const referencias=verificador.getSignedReferences();
-  if(referencias.length!==1 || !referencias[0].includes("<infDPS"))throw Error("Assinatura não cobre exclusivamente infDPS.");
+  if(referencias.length!==1 || !referencias[0].includes("<"+info))throw Error("Assinatura não cobre exclusivamente o grupo fiscal esperado.");
   return {xmlAssinado:assinado,signatureVerificada:true,xsdHomologado:false};
+}
+
+export function assinarCancelamentoSba(xml:string,envelope:string,empresaId:number,emissoraId:number){
+ return assinarDpsXmlSba(xml,envelope,empresaId,emissoraId,'pedRegEvento');
 }

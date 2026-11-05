@@ -1,3 +1,4 @@
+import * as cancelamentoSba from '../controller/ctcancelamentoSba';
 import * as producaoSba from "../controller/ctproducaoSba";
 import * as transmissaoSba from "../controller/cttransmissaoSba";
 import * as emailUsuario from "../controller/ctemailUsuario";
@@ -261,5 +262,11 @@ routes.route("/financeiro/lancamentos/:id")
 routes.post("/financeiro/lancamentos/:id/baixar", auth, financeiro.baixar);
 routes.post("/financeiro/lancamentos/:id/reabrir", auth, financeiro.reabrir);
 routes.post("/financeiro/lancamentos/:id/cancelar", auth, financeiro.cancelar);
+
+
+
+routes.post("/fiscal/sba/nfse/notas/:id/cancelar-producao",auth,requireRole(["ADMIN","SUPER_ADMIN"]),cancelamentoSba.cancelarProducaoSba);
+routes.post("/fiscal/sba/nfse/notas/:id/consultar-cancelamento",auth,requireRole(["ADMIN","SUPER_ADMIN"]),cancelamentoSba.consultarCancelamentoSba);
+routes.get("/fiscal/sba/nfse/notas/:id/xml-cancelamento",auth,requireRole(["ADMIN","SUPER_ADMIN"]),cancelamentoSba.xmlCancelamentoSba);
 
 export default routes;
