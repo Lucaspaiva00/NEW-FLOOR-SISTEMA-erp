@@ -66,6 +66,7 @@ export const cancelarProducaoSba=async(req:Request,res:Response):Promise<void>=>
    return tx.eventoNotaFiscal.create({data:{notaFiscalId:nota.notafiscalid,tipo:TIPO,status:'PENDENTE',descricao:'Cancelamento solicitado; aguardando confirmação fiscal.',retorno:{idPedido:pedido.id,usuarioId:req.usuario?.id||null,justificativa:pedido.motivo,codigoMotivo:pedido.codigo,...payload}}});
   });
   const r=await etapasCancelamentoSba.solicitar(nota,'POST','/nfse/'+nota.chave+'/eventos',payload);
+  await prisma.eventoNotaFiscal.create({data:{notaFiscalId:nota.notafiscalid,tipo:'SBA_RETORNO_CANCELAMENTO',status:'RETORNO',descricao:'Retorno recebido do Portal Nacional para cancelamento.',retorno:{httpStatus:r.httpStatus,resposta:r.data}}});
   const p=lerCancelamentoSba(r,nota.chave,nota.empresaFiscal.cnpj);
   if(p.estado==='CONFIRMADO'){res.json(await confirmar(nota,r,p,envio.eventonotafiscalid));return;}
   if(p.estado==='REJEITADO')await prisma.eventoNotaFiscal.update({where:{eventonotafiscalid:envio.eventonotafiscalid},data:{status:'REJEITADO',descricao:p.mensagem,retorno:{...(envio.retorno as any),resposta:r.data}}});
@@ -79,6 +80,7 @@ export const consultarCancelamentoSba=async(req:Request,res:Response):Promise<vo
  try{
   const nota=await carregar(req);
   const r=await etapasCancelamentoSba.solicitar(nota,'GET','/nfse/'+nota.chave+'/eventos/101101/1');
+  await prisma.eventoNotaFiscal.create({data:{notaFiscalId:nota.notafiscalid,tipo:'SBA_CONSULTA_CANCELAMENTO',status:'CONSULTA',descricao:'Retorno da consulta de cancelamento ao Portal Nacional.',retorno:{httpStatus:r.httpStatus,resposta:r.data}}});
   const p=lerCancelamentoSba(r,nota.chave,nota.empresaFiscal.cnpj);
   if(p.estado==='CONFIRMADO'){res.json(await confirmar(nota,r,p));return;}
   res.status(r.httpStatus===404?200:202).json({status:nota.status,cancelamento:'NAO_CONFIRMADO',mensagem:r.httpStatus===404?'Cancelamento ainda não localizado no Portal Nacional. A situação fiscal salva foi preservada.':'Consulta sem confirmação. A situação fiscal salva foi preservada.'});
