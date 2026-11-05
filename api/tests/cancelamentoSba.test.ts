@@ -53,3 +53,22 @@ test('outra empresa, falta de confirmação, versão alterada e XSD inválido bl
  a.req.empresaId=1;const cross=res();await cancelarProducaoSba(a.req,cross);assert.equal(cross.code,403);a.req.empresaId=2;
  a.req.body.confirmacao='';await cancelarProducaoSba(a.req,res());a.req.body.confirmacao='CANCELAR_NFSE_REAL';a.req.body.versaoConfirmada='antiga';await cancelarProducaoSba(a.req,res());a.req.body.versaoConfirmada=a.n.updatedAt.toISOString();etapasCancelamentoSba.validar=async()=>({valido:false,erro:'XSD laboratório'});const r=res();await cancelarProducaoSba(a.req,r);assert.equal(r.code,422);assert.equal(a.calls.post,0);assert.equal(a.eventos.length,0);
 }));
+
+test('SEFIN 1.6 consulta retorna eventos com arquivoXml em dupla base64',()=>{
+ const original=retorno().data;
+ const data={tipoAmbiente:1,eventos:[{chaveAcesso:chave,tipoEvento:101101,numeroPedidoRegistroEvento:1,arquivoXml:Buffer.from(original.eventoXmlGZipB64).toString('base64')}]};
+ assert.equal(lerCancelamentoSba({httpStatus:200,data},chave,cnpj).estado,'CONFIRMADO');
+ assert.equal(lerCancelamentoSba({httpStatus:200,data},'3'.repeat(50),cnpj).estado,'PENDENTE');
+ data.eventos[0].tipoEvento=105102;
+ assert.equal(lerCancelamentoSba({httpStatus:200,data},chave,cnpj).estado,'PENDENTE');
+});
+
+test('consulta SEFIN 1.6 reconcilia pedido pendente sem repetir POST e guarda comprovante',async()=>ambiente(async a=>{
+ const e=await prisma.eventoNotaFiscal.create({data:{notaFiscalId:11,tipo:'SBA_CANCELAMENTO',status:'PENDENTE',descricao:'Aguardando'}});
+ const original=retorno().data;
+ const data={eventos:[{chaveAcesso:chave,tipoEvento:101101,numeroPedidoRegistroEvento:1,arquivoXml:Buffer.from(original.eventoXmlGZipB64).toString('base64')}]};
+ etapasCancelamentoSba.solicitar=async(_:any,m:string)=>{assert.equal(m,'GET');return {httpStatus:200,data};};
+ const q=res();await consultarCancelamentoSba(a.req,q);
+ assert.equal(q.body.status,'CANCELADA');assert.equal(e.status,'CONFIRMADO');assert.equal(a.calls.post,0);
+ assert.deepEqual(e.retorno,data);assert.ok(a.eventos.some((x:any)=>x.tipo==='SBA_CONSULTA_CANCELAMENTO'&&x.retorno.httpStatus===200));
+}));

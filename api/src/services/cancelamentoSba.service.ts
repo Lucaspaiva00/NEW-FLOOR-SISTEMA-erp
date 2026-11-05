@@ -24,9 +24,22 @@ export function compactarCancelamentoSba(xml:string){
 }
 export function lerCancelamentoSba(result:{httpStatus:number,data:any},chave:string,cnpj:string){
  const data=result.data||{};
- if(result.httpStatus>=200&&result.httpStatus<300&&typeof data.eventoXmlGZipB64==='string'){
-  if(data.eventoXmlGZipB64.length>3000000)throw falha('Evento retornado excede o limite.');
-  const xml=gunzipSync(Buffer.from(data.eventoXmlGZipB64,'base64'),{maxOutputLength:4000000}).toString('utf8');
+ // A consulta SEFIN 1.6 retorna eventos[].arquivoXml: base64 do texto gzip/base64.
+ // Aceitar apenas o evento solicitado; a identidade também é conferida no XML abaixo.
+ const eventos=Array.isArray(data.eventos)?data.eventos:[];
+ const correspondente=eventos.length<=100?eventos.find((e:any)=>e.chaveAcesso===chave&&Number(e.tipoEvento)===101101&&Number(e.numeroPedidoRegistroEvento)===1):undefined;
+ let arquivo=typeof data.eventoXmlGZipB64==='string'?data.eventoXmlGZipB64:correspondente?.arquivoXml;
+ if(typeof arquivo==='string'&&arquivo.length<=3000000){
+  const primeiro=Buffer.from(arquivo,'base64');
+  if(primeiro[0]!==0x1f||primeiro[1]!==0x8b){
+   const interno=primeiro.toString('ascii').trim();
+   if(!/^[A-Za-z0-9+/]+={0,2}$/.test(interno))throw falha('Codificação do evento retornado inválida.');
+   arquivo=interno;
+  }
+ }
+ if(result.httpStatus>=200&&result.httpStatus<300&&typeof arquivo==='string'){
+  if(arquivo.length>3000000)throw falha('Evento retornado excede o limite.');
+  const xml=gunzipSync(Buffer.from(arquivo,'base64'),{maxOutputLength:4000000}).toString('utf8');
   if(/<!DOCTYPE|<!ENTITY/i.test(xml))throw falha('Evento retornado inválido.');
   const d=new DOMParser({onError:()=>{throw falha('Evento retornado malformado.');}}).parseFromString(xml,'application/xml');
   const all=(tag:string)=>d.getElementsByTagNameNS(NS,tag);
