@@ -521,6 +521,7 @@ export const listarNotas = async (req: Request, res: Response): Promise<void> =>
             }
           : {}),
       },
+      ...(empresaId === 2 ? {omit:{payloadExtra:true as const}} : {}),
       include: {
         empresaFiscal: { select: { empresafiscalid: true, razaoSocial: true, nomeFantasia: true, cnpj: true, ambiente: true } },
         cliente: { select: { clienteid: true, razaoSocial: true, nomeFantasia: true } },
@@ -563,7 +564,9 @@ export const buscarNota = async (req: Request, res: Response): Promise<void> => 
       res.status(404).json({ error: "Nota fiscal não encontrada." });
       return;
     }
-    res.json({ ...nota, empresaFiscal: semTokens(nota.empresaFiscal) });
+    const extra=nota.payloadExtra as any;
+    const payloadExtra=extra?.origem==='XML_EXTERNO_SBA'?{origem:extra.origem,hash:extra.hash,temPdf:!!extra.pdfBase64}:nota.payloadExtra;
+    res.json({ ...nota,payloadExtra, empresaFiscal: semTokens(nota.empresaFiscal) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao buscar nota fiscal." });
@@ -943,6 +946,8 @@ export const cancelarNota = async (req: Request, res: Response): Promise<void> =
 };
 
 export const cartaCorrecaoNota = async (req: Request, res: Response): Promise<void> => {
+  if(req.configuracaoSistema?.perfil==='SBA'){res.status(422).json({error:'Para NF-e externa, faça a carta de correção no emissor de origem.'});return;}
+
   const id = intOr(req.params.id);
   try {
     const correcao = String(req.body.correcao || "").trim();

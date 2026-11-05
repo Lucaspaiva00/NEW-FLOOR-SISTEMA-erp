@@ -1,3 +1,4 @@
+import * as nfeExternaSba from "../controller/ctnfeExternaSba";
 import * as superadmin from '../controller/ctsuperadmin';
 import * as obraPropostaJose from '../controller/ctobraPropostaJose';
 import * as propostaPdfJose from "../controller/ctpropostaPdfJose";
@@ -209,6 +210,9 @@ routes.post("/fiscal/empresas/:id/certificado",auth,requireRole(["ADMIN","SUPER_
 routes.get("/fiscal/arquivos",auth,fornecedor.apenasSba,arquivoFiscal.listar);
 routes.post("/fiscal/arquivos",auth,fornecedor.apenasSba,arquivoFiscal.criar);
 routes.get("/fiscal/arquivos/:id/:tipo",auth,fornecedor.apenasSba,arquivoFiscal.baixar);
+routes.post('/fiscal/sba/nfe-externa/previa',auth,requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']),nfeExternaSba.previa);
+routes.post('/fiscal/sba/nfe-externa/importar',auth,requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']),nfeExternaSba.importar);
+routes.get('/fiscal/sba/nfe-externa/:id/:tipo',auth,requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']),nfeExternaSba.baixar);
 // Módulo fiscal
 routes.get("/fiscal/dashboard", auth, fiscal.dashboard);
 routes.get("/fiscal/sba/integracoes/status", auth, integracaoFiscalSba.diagnosticoFiscalSba);

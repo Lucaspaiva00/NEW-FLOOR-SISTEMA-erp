@@ -1015,18 +1015,20 @@
       }
     } catch (_) { /* Retorno inválido não vira link executável. */ }
     const editavel = ["RASCUNHO", "ERRO", "REJEITADA"].includes(n.status);
-    const consultavel = n.status !== "RASCUNHO";
+    const externaSba = n.payloadExtra?.origem === "XML_EXTERNO_SBA";
+    const consultavel = n.status !== "RASCUNHO" && !externaSba;
     $("acoesDetalheFiscal").innerHTML = `
       <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
-      <button type="button" class="btn btn-outline-secondary" data-ver-payload="${n.notafiscalid}">Ver payload</button>
+      ${!externaSba ? `<button type="button" class="btn btn-outline-secondary" data-ver-payload="${n.notafiscalid}">Ver payload</button>` : ""}
       ${editavel ? `<button type="button" class="btn btn-outline-danger" data-excluir-nota="${n.notafiscalid}">Excluir rascunho</button>` : ""}
       ${editavel ? `<button type="button" class="btn btn-outline-primary" data-editar-nota="${n.notafiscalid}">Editar</button>` : ""}
+      ${externaSba ? `<button type="button" class="btn btn-outline-success" data-externa-download="${n.notafiscalid}" data-tipo="xml">Baixar XML original</button>${n.payloadExtra.temPdf ? `<button type="button" class="btn btn-outline-success" data-externa-download="${n.notafiscalid}" data-tipo="pdf">Baixar DANFE PDF</button>` : ''}<a class="btn btn-outline-secondary" href="https://emissor.sieg.com/" target="_blank" rel="noopener">Abrir SIEG Emissor</a>` : ''}
       ${n.caminhoXml ? `<a class="btn btn-outline-success" target="_blank" rel="noopener" href="${esc(n.caminhoXml)}">XML</a>` : ""}
       ${pdfDownload ? `<a class="btn btn-outline-success" target="_blank" rel="noopener" download href="${esc(pdfDownload)}">Baixar PDF</a>` : ""}
       ${editavel ? `<button type="button" class="btn btn-outline-primary" data-conferir-nota="${n.notafiscalid}">Conferir dados</button>` : ""}
       ${consultavel ? `<button type="button" class="btn btn-outline-dark" data-consultar-nota="${n.notafiscalid}">Consultar</button>` : ""}
-      ${n.status === "AUTORIZADA" && n.tipo === "NFE" ? `<button type="button" class="btn btn-outline-primary" data-carta-correcao="${n.notafiscalid}">Carta de correção</button>` : ""}
-      ${n.status === "AUTORIZADA" ? `<button type="button" class="btn btn-danger" data-cancelar-nota="${n.notafiscalid}">Cancelar nota</button>` : ""}
+      ${n.status === "AUTORIZADA" && n.tipo === "NFE" && !externaSba ? `<button type="button" class="btn btn-outline-primary" data-carta-correcao="${n.notafiscalid}">Carta de correção</button>` : ""}
+      ${n.status === "AUTORIZADA" && !externaSba ? `<button type="button" class="btn btn-danger" data-cancelar-nota="${n.notafiscalid}">Cancelar nota</button>` : ""}
       ${editavel ? `<button type="button" class="btn-new" data-emitir-nota="${n.notafiscalid}">Emitir agora</button>` : ""}`;
     if(window.__newFloorFiscal)window.dispatchEvent(new CustomEvent("newfloor-nota-detalhe",{detail:n}));
     // Evento neutro: habilita ações isoladas por tenant em scripts opcionais.
@@ -1281,6 +1283,8 @@
   atualizarTudo().then(() => {
     const params = new URLSearchParams(window.location.search);
     const propostaId = params.get("propostaId");
+    const notaImportada = params.get("nota");
+    if (notaImportada && /^\d+$/.test(notaImportada)) { abrirDetalheNota(Number(notaImportada)); window.history.replaceState({}, "", window.location.pathname); return; }
 
     if (!propostaId) return;
 
