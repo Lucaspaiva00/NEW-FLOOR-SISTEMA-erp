@@ -6,6 +6,7 @@ const semAcentos = (v: any) => String(v ?? "").normalize("NFD")
 const valor = (cell: any): any => {
   const v = cell?.value;
   if (v && typeof v === "object" && !(v instanceof Date)) {
+    if ((v.formula || v.sharedFormula) && (v.result === undefined || v.result === null)) return v;
     if (Object.prototype.hasOwnProperty.call(v, "result")) return v.result ?? "";
     if (v.text != null) return v.text;
     if (Array.isArray(v.richText)) return v.richText.map((p: any) => p.text).join("");
@@ -13,10 +14,23 @@ const valor = (cell: any): any => {
   return v ?? "";
 };
 const texto = (v: any) => String(v ?? "").trim().slice(0, 1200);
-const numero = (v: any) => {
-  const n = typeof v === "number" ? v : Number(String(v ?? "").replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+export const numeroPlanilha = (v: any): number => {
+ if(typeof v==="number")return Number.isFinite(v)?v:NaN;
+ if(typeof v!=="string")return NaN;
+ const t=v.trim().replace(/R\$|\s|%/g,"");
+ if(!t)return NaN;
+ const normalized=t.includes(",")?t.replace(/\./g,"").replace(",","."):t;
+ return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalized)?Number(normalized):NaN;
 };
+export function percentualPlanilha(cell:any):number {
+ const v=valor(cell);
+ if(v===""||v===null)return 0;
+ const n=numeroPlanilha(v);
+ if(!Number.isFinite(n))return NaN;
+ const p=typeof v==="string"&&v.includes("%")?n:
+  String(cell.numFmt||"").includes("%")?n*100:(n>0&&n<=1?n*100:n);
+ return Math.round(p*10000)/10000;
+}
 export function validarXlsx(base64: unknown) {
   if (typeof base64 !== "string" || base64.length > 7_100_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) {
     throw Error("Envie uma planilha XLSX de até 5 MB.");
@@ -37,11 +51,12 @@ type Linha = { linha: number; item: string; etapa: string; descricao: string; un
 export type AbaPlanilha = {
   indice: number; nome: string; reconhecida: boolean; cabecalho: number;
   itens: Linha[]; medicoes: Medicao[]; aviso?: string;
+  amostra?: {linha:number; celulas:{coluna:string; valor:string}[]}[];
 };
-export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, permitirMapeamento = false): Promise<{ hash: string; abas: AbaPlanilha[]; avisos: string[] }> {
+export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, permitirMapeamento = false): Promise<{ hash: string; abas: AbaPlanilha[]; avisos: string[]; valida: boolean }> {
   const workbook = await abrirWorkbook(bytes);
   if (workbook.worksheets.length > 20) throw Error("Limite de 20 abas por planilha.");
-  const abas: AbaPlanilha[] = [], avisos: string[] = [];
+  const abas: AbaPlanilha[] = [], avisos: string[] = [], erros: string[] = [];
   for (let indice = 0; indice < workbook.worksheets.length; indice++) {
     const sheet = workbook.worksheets[indice];
     let cabecalho = 0, colItem = 0, colEtapa = 0, colDescricao = 0, colUnidade = 0, colQuantidade = 0, colValor = 0, precoUnitario = true;
@@ -49,12 +64,14 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
       const cols = Math.min(sheet.columnCount, 180);
       let item = 0, etapa = 0, descricao = 0, unidade = 0, qtd = 0, preco = 0, unitario = true;
       for (let c = 1; c <= cols; c++) {
-        const t = semAcentos(valor(sheet.getCell(r, c)));
+        const cell = sheet.getCell(r, c);
+        if(cell.isMerged && cell.master.address !== cell.address)continue;
+        const t = semAcentos(valor(cell));
         if (t === "ITEM" || t === "CODIGO") item = c;
         if (t === "ETAPA" || t === "FASE") etapa = c;
-        if (t === "DESCRICAO" || t === "DESCRICAO DO SERVICO" || t === "SERVICO") descricao = c;
-        if (t === "UNI" || t === "UNIDADE") unidade = c;
-        if (t === "QUANTIDADE" || t === "QTD") qtd = c;
+        if (["DESCRICAO","DESCRICAO DO SERVICO","SERVICO","ATIVIDADE","DISCRIMINACAO"].includes(t)) descricao = c;
+        if (["UNI","UNIDADE","UN","UND"].includes(t)) unidade = c;
+        if (["QUANTIDADE","QTD","QTDE","QTDE."].includes(t)) qtd = c;
         if (t.includes("VALOR UNITARIO") || t === "PRECO UNITARIO") { preco = c; unitario = true; }
         else if (t === "VALOR TOTAL" && !preco) { preco = c; unitario = false; }
       }
@@ -92,8 +109,10 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
     if (cabecalho) {
       for (let r = Math.max(1, cabecalho - 3); r <= cabecalho; r++) {
         for (let c = 1; c <= Math.min(sheet.columnCount, 180); c++) {
-          const t = semAcentos(valor(sheet.getCell(r, c)));
-          const match = t.match(/MEDICAO\s*(\d{1,3})/);
+          const cell = sheet.getCell(r, c);
+        if(cell.isMerged && cell.master.address !== cell.address)continue;
+        const t = semAcentos(valor(cell));
+          const match = t.match(/MEDICAO\s*(?:N[ºO°.]?\s*)?(\d{1,3})/) || t.match(/(\d{1,3})\s*[ªº°AO.]*\s*MEDICAO/);
           if (match) {
             const n = Number(match[1]);
             if (!medicoes.some(m => m.numero === n)) medicoes.push({ numero: n, coluna: c, titulo: texto(valor(sheet.getCell(r, c))) });
@@ -126,20 +145,24 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
         const textoValor = String(valorBruto ?? "").trim().replace(/[R$\s]/g, "");
         const normalizado = textoValor.includes(",")
           ? textoValor.replace(/\./g, "").replace(",", ".") : textoValor;
-        const preco = typeof valorBruto === "number" ? valorBruto : Number(normalizado);
+        const preco = numeroPlanilha(valorBruto);
         if (!textoValor || !Number.isFinite(preco) || preco < 0) {
-          avisos.push(sheet.name + " linha " + r + ": valor contratual não numérico; serviço ignorado para evitar medição incorreta.");
+          erros.push(sheet.name + " linha " + r + ": valor contratual não numérico. Se houver fórmula, recalcule e salve o Excel antes de importar.");
           continue;
         }
         if (/^(TOTAL|SUBTOTAL|RESUMO|OBSERVACOES)/.test(semAcentos(descricao))) continue;
         const percentuais: Record<string, number> = {};
         for (const m of medicoes) {
-          const n = numero(valor(sheet.getCell(r, m.coluna)));
-          percentuais[String(m.numero)] = Math.round((n <= 1 ? n * 100 : n) * 10000) / 10000;
+          const n = percentualPlanilha(sheet.getCell(r, m.coluna));
+          if(!Number.isFinite(n)||n<0||n>100){
+            erros.push(sheet.name+" linha "+r+": percentual inválido na coluna "+sheet.getColumn(m.coluna).letter+". Recalcule fórmulas e confira o valor no Excel.");
+          }
+          percentuais[String(m.numero)] = Number.isFinite(n) ? n : 0;
         }
         const quantidadeInformada = colQuantidade ? valor(sheet.getCell(r, colQuantidade)) : null;
         const quantidade = quantidadeInformada === null || quantidadeInformada === undefined || quantidadeInformada === ""
-          ? 1 : numero(quantidadeInformada);
+          ? 1 : numeroPlanilha(quantidadeInformada);
+        if(!Number.isFinite(quantidade)||quantidade<0){erros.push(sheet.name+" linha "+r+": quantidade inválida.");continue;}
         itens.push({
           linha: r, item, etapa, descricao,
           unidade: colUnidade ? texto(valor(sheet.getCell(r, colUnidade))) : "",
@@ -152,12 +175,26 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
     const reconhecida = Boolean(cabecalho && medicoes.length && itens.length);
     const aviso = reconhecida ? undefined : "Não foi reconhecida uma tabela de serviços com colunas de medição. Esta aba será preservada, sem edição automática.";
     if (aviso) avisos.push(sheet.name + ": " + aviso);
-    abas.push({ indice, nome: sheet.name, reconhecida, cabecalho, itens, medicoes, ...(aviso ? { aviso } : {}),
+    const amostra: NonNullable<AbaPlanilha["amostra"]> = [];
+    const inicioAmostra=cabecalho?Math.max(1,cabecalho-2):1;
+    for(let r=inicioAmostra;r<=Math.min(sheet.rowCount,inicioAmostra+24);r++){
+      const celulas:{coluna:string;valor:string}[]=[];
+      for(let c=1;c<=Math.min(sheet.columnCount,180);c++){
+        const cell=sheet.getCell(r,c), v=valor(cell);
+        if(v!==""&&v!=null)celulas.push({coluna:sheet.getColumn(c).letter,valor:texto(typeof v==="object"&&cell.type===ExcelJS.ValueType.Formula?"Fórmula sem resultado salvo":v)});
+      }
+      if(celulas.length)amostra.push({linha:r,celulas});
+    }
+    abas.push({ indice, amostra, nome: sheet.name, reconhecida, cabecalho, itens, medicoes, ...(aviso ? { aviso } : {}),
       ...(!manual && cabecalho ? { mapeamento: {cabecalho, item: colItem, etapa: colEtapa, descricao: colDescricao, unidade: colUnidade, quantidade: colQuantidade, valor: colValor, tipoValor: precoUnitario ? "unitario" : "total", colunasMedicoes: medicoes.map(m=>sheet.getColumn(m.coluna).letter).join(",")} } : {}),
     } as any);
   }
+  if(erros.length){
+    avisos.push(...erros);
+    if(!permitirMapeamento)throw Error(erros.slice(0,5).join("\n"));
+  }
   if (!abas.some(a => a.reconhecida) && !permitirMapeamento) throw Error("Nenhuma aba reconhecida. Ajuste o mapeamento das colunas na prévia antes de importar.");
-  return { hash: createHash("sha256").update(bytes).digest("hex"), abas, avisos };
+  return { hash: createHash("sha256").update(bytes).digest("hex"), abas, avisos, valida: erros.length === 0 };
 }
 export function aplicarEdicoes(aba: AbaPlanilha, medicoes: Record<string, number>, numeroMedicao: number) {
   const med = aba.medicoes.find(m => m.numero === numeroMedicao);
@@ -182,8 +219,16 @@ export async function gerarExcel(bytes: Buffer, abas: AbaPlanilha[], edicoes: Re
     if (!Number.isFinite(percent) || percent < 0 || percent > 100) throw Error("Percentual inválido.");
     const sheet = workbook.worksheets[abaId];
     const cell = sheet.getCell(linha, med.coluna);
-    if (cell.type === ExcelJS.ValueType.Formula) throw Error("A célula de progresso possui fórmula e não pode ser sobrescrita.");
-    cell.value = percent / 100;
+    if (cell.type === ExcelJS.ValueType.Formula) {
+      if(Math.abs(percentualPlanilha(cell)-percent)<0.00001)continue;
+      throw Error("A célula de progresso possui fórmula e não pode ser sobrescrita.");
+    }
+    const antigo=valor(cell);
+    const fracionario=String(cell.numFmt||"").includes("%") ||
+      !(typeof antigo==="string"&&antigo.includes("%")) &&
+      (antigo==="" || numeroPlanilha(antigo)<=1);
+    cell.value = fracionario ? percent / 100 : percent;
+    if(typeof antigo==="string"&&antigo.includes("%")){cell.value=percent/100;cell.numFmt="0.00%";}
   }
   workbook.calcProperties.fullCalcOnLoad = true;
   return Buffer.from(await workbook.xlsx.writeBuffer());

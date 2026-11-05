@@ -72,7 +72,7 @@
       const atual = valorProgresso(aba, item, numero);
       return '<tr data-linha="' + item.linha + '"><td><strong>' + esc(item.item) +
         '</strong><small>' + esc(item.etapa) + '</small></td><td>' + esc(item.descricao) +
-        '</td><td>' + brl(item.valor) + '</td><td>' + antes.toLocaleString("pt-BR") +
+        '<small>' + esc(item.quantidade) + ' ' + esc(item.unidade) + '</small></td><td>' + brl(item.valor) + '</td><td>' + antes.toLocaleString("pt-BR") +
         '%</td><td><input type="number" min="0" max="100" step="0.01" inputmode="decimal" ' +
         'aria-label="Percentual medido do serviço ' + esc(item.item) + '" value="' + atual +
         '" data-progresso="' + item.linha + '"></td><td data-acumulado="' + item.linha +
@@ -217,13 +217,16 @@
           '<option value="total" ' + (m.tipoValor === "total" ? "selected" : "") + '>Total da linha</option></select></label>' +
           campo("colunasMedicoes", "Colunas dos percentuais (ex.: L,P,T)", m.colunasMedicoes || a.medicoes.map(n => letra(n.coluna)).join(",") || "L,P,T") +
           '</div><p>Utilize as letras que aparecem no Excel. Cada coluna informada corresponde a uma medição. O sistema somente altera os percentuais dessas colunas.</p>' +
-          '</details></div>';
+          '</details><details><summary>Ver dados lidos do arquivo</summary><div style="overflow:auto;max-height:360px"><table><thead><tr><th>Linha</th><th>Colunas e valores</th></tr></thead><tbody>' +
+          (a.amostra || []).map(r => '<tr><td>' + r.linha + '</td><td>' +
+            r.celulas.map(c => '<span style="display:inline-block;padding:6px"><strong>' + esc(c.coluna) + ':</strong> ' + esc(c.valor) + '</span>').join('') +
+            '</td></tr>').join('') + '</tbody></table></div><p>Prévia das primeiras 25 linhas do trecho. A importação lê até 3.000 linhas por aba.</p></details></div>';
       }).join("") +
-      (p.avisos.length ? '<p class="pm-aviso">Abas não reconhecidas ficam intactas no arquivo. Ajuste as colunas apenas se desejar editá-las.</p>' : "") +
+      (p.avisos.length ? '<ul class="pm-aviso">' + p.avisos.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul>' : "") +
       '<button type="button" class="pm-secondary" id="pmRevisarMapa">Validar mapeamento das abas</button>' +
       '<label>Identificação desta planilha<input id="pmNome" maxlength="180" value="' +
       esc(estado.arquivoNome.replace(/\.xlsx$/i, "")) + '"></label>' +
-      '<button type="button" id="pmConfirmar" ' + (!reconhecidas ? 'disabled' : '') +
+      '<button type="button" id="pmConfirmar" ' + (!reconhecidas || p.valida === false ? 'disabled' : '') +
       '>Confirmar importação desta planilha</button>';
     $("pmRevisarMapa").onclick = () => aguardar(async () => {
       const mapeamentos = {};

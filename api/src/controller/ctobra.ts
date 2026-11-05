@@ -1,3 +1,4 @@
+import {apontarPeriodoJose} from '../services/maoObraJose.service';
 import {Request,Response,NextFunction} from 'express';
 import prisma from '../prisma';
 import {data,id,numero,texto,dinheiro,valorMedicao,htmlSeguro as h} from '../services/obras.service';
@@ -24,7 +25,7 @@ export const colaboradores=executar(async(req,res)=>{res.json(await prisma.colab
 export const salvarColaborador=executar(async(req,res)=>{const b=req.body,empresaId=req.empresaId!,d={nome:texto(b.nome,'nome',300),funcao:texto(b.funcao,'função',300),diaria:dinheiro(numero(b.diaria,0.01)),ativo:b.ativo!==false};
  if(req.params.id){const r=await prisma.colaboradorObra.updateMany({where:{id:id(req.params.id),empresaId},data:d});if(!r.count)throw Error('Colaborador não encontrado.');res.json({ok:true});}else res.status(201).json(await prisma.colaboradorObra.create({data:{...d,empresaId}}));
 });
-export const apontar=executar(async(req,res)=>{res.json(await prisma.$transaction(db=>apontarDia(db,req.empresaId!,req.body,req.usuario?.id),{isolationLevel:'Serializable'}));});
+export const apontar=executar(async(req,res)=>{res.json(await prisma.$transaction(db=>req.body?.periodo===true?apontarPeriodoJose(db,req.empresaId!,req.body,req.usuario?.id):apontarDia(db,req.empresaId!,req.body,req.usuario?.id),{isolationLevel:'Serializable',timeout:60000}));});
 export const fechar=executar(async(req,res)=>{res.json(await prisma.$transaction(db=>fecharDiarias(db,req.empresaId!,req.body,req.usuario?.id),{isolationLevel:'Serializable'}));});
 export const despesa=executar(async(req,res)=>{
  const b=req.body,empresaId=req.empresaId!,obraId=id(b.obraId),valor=dinheiro(numero(b.valor,0.01)),dia=data(b.data),categoria=texto(b.categoria,'categoria',100),descricao=texto(b.descricao,'descrição');
