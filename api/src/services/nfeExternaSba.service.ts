@@ -55,7 +55,7 @@ export async function importarNfeExterna(db:any,empresaId:number,dados:{xml:stri
  const {itens,hash,emitente,documento,...fiscais}=n;
  const nota=await db.notaFiscal.create({data:{...fiscais,empresaId,empresaFiscalId:ef.empresafiscalid,clienteId:p.clienteId,propostaId:p.propostaid,tipo:'NFE',valorRetencoes:0,status:'AUTORIZADA',ambienteEmissao:'PRODUCAO',referencia:'EXTERNA_NFE_'+n.chave,...(n.documento.length===14?{destinatarioCnpj:n.documento}:{destinatarioCpf:n.documento}),payloadExtra:{origem:'XML_EXTERNO_SBA',hash,xmlBase64:Buffer.from(dados.xml).toString('base64'),...(dados.pdf?{pdfBase64:dados.pdf}:{})},mensagemRetorno:'NF-e emitida fora do ERP. Autorização informada no XML importado; sem consulta online à SEFAZ. Cancelamento e correções no emissor de origem.',itens:{create:itens},eventos:{create:{tipo:'IMPORTACAO_XML_EXTERNO',status:'AUTORIZADA',protocolo:n.protocolo,descricao:'XML original importado e assinatura conferida localmente. Sem transmissão ou consulta à SEFAZ.'}}},include:{empresaFiscal:true}});
  // Preserva recebimentos, vencimentos e parcelas já existentes. Não cria uma segunda receita da nota.
- if(cobrancas.length){await db.proposta.update({where:{propostaid:p.propostaid},data:{status:'FATURADA',dataFaturamento:p.dataFaturamento||n.dataAutorizacao}});}
+ if(cobrancas.length){await db.proposta.update({where:{propostaid:p.propostaid},data:{status:'FATURADA',colunaKanbanId:null,dataFaturamento:p.dataFaturamento||n.dataAutorizacao}});}
  else await sincronizarFinanceiroNota(nota,db);
  return {id:nota.notafiscalid,jaImportada:false};
 }
