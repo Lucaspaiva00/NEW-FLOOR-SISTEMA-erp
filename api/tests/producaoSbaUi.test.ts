@@ -19,7 +19,7 @@ test('UI confirma valor e versão da nota, sem substituir pelo ensaio de R$ 1',a
 test('UI de outros perfis não recebe ações de emissão SBA',async()=>{const a=await tela('PADRAO');a.abrir();assert.equal(a.area.children.length,0);});
 
 test('UI oferece cancelar somente nota autorizada da integração direta e Voltar não envia',async()=>{
- const a=await tela();Object.assign(a.nota,{status:'AUTORIZADA',diretaProducaoSba:true,chave:'2'.repeat(50),numero:'25'});a.abrir();const b=a.area.children.find((b:any)=>b.dataset.sbaTransmissao==='cancelar-producao');assert.ok(b);await a.eventos.click({target:{closest:()=>b}});assert.equal(a.calls.length,1);assert.match(a.dialogs[0].title,/25/);
+ const a=await tela();Object.assign(a.nota,{status:'AUTORIZADA',diretaProducaoSba:true,chave:'2'.repeat(50),numero:'25'});a.abrir();const b=a.area.children.find((b:any)=>b.dataset.sbaTransmissao==='cancelar-producao');assert.ok(b);await a.eventos.click({target:{closest:()=>b}});assert.equal(a.calls.length,1);assert.match(a.dialogs[0].title,/25/);assert.equal(a.dialogs[0].target,a.area);assert.equal(a.dialogs[0].focusConfirm,false);assert.equal(typeof a.dialogs[0].didOpen,'function');
  const p=await tela();Object.assign(p.nota,{status:'AUTORIZADA',diretaProducaoSba:true,cancelamentoPendente:true});p.abrir();assert.equal(p.area.children.some((b:any)=>b.dataset.sbaTransmissao==='cancelar-producao'),false);assert.ok(p.area.children.some((b:any)=>b.dataset.sbaTransmissao==='consultar-cancelamento'));
 });
 test('UI cancelamento exige dois passos e envia motivo, justificativa, chave e versão',async()=>{
