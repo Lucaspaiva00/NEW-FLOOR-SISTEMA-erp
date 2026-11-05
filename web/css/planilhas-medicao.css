@@ -48,3 +48,29 @@
 .planilhas-medicao .pm-mapa-ativar input{width:17px;height:17px;flex-shrink:0}
 .planilhas-medicao .pm-mapa p{line-height:1.5}
 .planilhas-medicao #pmRevisarMapa{margin:10px 0}
+/* Fluxo diário: obra, arquivo e medição. A leitura técnica é opcional. */
+.planilhas-medicao header{background:none;box-shadow:none;color:#0f172a;padding:0;margin:0 0 18px;border-radius:0;min-height:0}
+.planilhas-medicao header h1{font-size:28px;color:#172b46;margin:0 0 8px}
+.planilhas-medicao header p{font-size:14px;color:#64748b;margin:0}
+.planilhas-medicao [hidden]{display:none!important}
+.planilhas-medicao #pmStatus:empty{display:none}
+.planilhas-medicao .pm-actions{display:flex;gap:10px;flex-wrap:wrap}
+.planilhas-medicao #pmImportador{background:#f8fafc;border:1px solid #dbe4ef;margin:20px 0;padding:20px}
+.planilhas-medicao #pmPrevia{margin-top:24px}
+.planilhas-medicao #pmPreviaAba{max-width:620px;margin-bottom:14px}
+.planilhas-medicao .pm-ajustes{border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin:18px 0}
+.planilhas-medicao .pm-ajustes>summary{cursor:pointer;font-size:13px;font-weight:650;color:#475569}
+.planilhas-medicao .pm-ajustes>p{margin:14px 0}
+.planilhas-medicao .pm-servicos-previa{max-height:360px;margin:12px 0}
+.planilhas-medicao .pm-servicos-previa table{min-width:500px}
+.planilhas-medicao .pm-servicos-previa td:first-child{width:65%;min-width:240px}
+.planilhas-medicao .pm-servicos-previa td:nth-child(2){min-width:100px}
+.planilhas-medicao .pm-servicos-previa th{position:sticky;top:0}
+.planilhas-medicao #pmNome{max-width:620px;margin-bottom:16px}
+.planilhas-medicao .pm-detalhes-toggle{display:flex;gap:8px;align-items:center;font-weight:500;margin:18px 0}
+.planilhas-medicao #pmEditor .pm-historico{display:none}
+.planilhas-medicao #pmEditor.pm-com-historico .pm-historico{display:table-cell}
+.planilhas-medicao #pmEditor table{min-width:720px}
+.planilhas-medicao #pmEditor.pm-com-historico table{min-width:930px}
+.planilhas-medicao .pm-editor-actions p{font-size:12px;max-width:520px}
+@media(max-width:800px){.planilhas-medicao .pm-actions{width:100%}.planilhas-medicao .pm-actions>*{flex:1}.planilhas-medicao #pmImportador{padding:14px}.planilhas-medicao header h1{font-size:24px}}

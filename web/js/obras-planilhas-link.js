@@ -13,7 +13,7 @@
       button.type = "button";
       button.id = "abrirPlanilhasMedicaoJose";
       button.textContent = "Planilhas de medição da engenharia";
-      button.addEventListener("click", () => { location.assign("planilhas-medicao.html"); });
+      button.addEventListener("click", () => { location.assign("planilhas-medicao.html" + (window.obrasUI?.obra?.id ? "?obra=" + encodeURIComponent(window.obrasUI.obra.id) : "")); });
       barra.append(button);
     }).catch(() => {});
 })();

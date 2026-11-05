@@ -5,34 +5,33 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/dashboard.css"><link rel="stylesheet" href="css/menu-mobile.css?v=20261014-mobile">
-<link rel="stylesheet" href="css/obras.css?v=20261013-4"><link rel="stylesheet" href="css/planilhas-medicao.css?v=20261015-2">
+<link rel="stylesheet" href="css/obras.css?v=20261013-4"><link rel="stylesheet" href="css/planilhas-medicao.css?v=20261105-simples">
 <link rel="stylesheet" href="css/modais.css?v=20261105-global">
 </head><body><button class="mobile-menu-btn" aria-label="Abrir menu">☰</button><div class="mobile-overlay"></div>
 <div class="layout"><aside class="sidebar"><div><div class="logo"><img class="logo-img" src="assets/logo-default.svg" alt="Empresa"></div>
 <nav class="menu"><a href="dashboard.html">Dashboard</a><a href="clientes.html">Clientes</a><a href="vendedores.html">Vendedores</a><a href="servicos.html">Serviços</a><a href="propostas.html">Propostas</a><a href="agenda.html">Agenda</a><a href="templates.html">Templates</a></nav></div>
 <div class="user-box"><div class="avatar">J</div><div><strong>Usuário</strong><span>Administrador</span></div></div></aside>
 <main class="main-content obras-page planilhas-medicao">
-<header><p>CONSTRUARTY · MEDIÇÕES PARA ENGENHARIA</p><h1>Planilhas de medição</h1>
-<p>Importe a planilha da contratante, preencha a evolução de cada serviço e exporte o Excel para solicitar o pagamento.</p></header>
+<header><h1>Medições da obra</h1><p>Atualize os serviços executados e baixe a planilha para a engenharia.</p></header>
 <p id="pmStatus" role="status" aria-live="polite"></p>
 <section class="pm-panel" id="pmPrincipal" hidden>
 <div class="pm-toolbar"><label>Obra cadastrada<select id="pmObra"><option value="">Selecione uma obra</option></select></label>
-<a href="obras.html" class="pm-secondary">Voltar para gestão de obras</a></div>
-<div class="pm-panel" id="pmImportador">
-<h2>Importar planilha da empresa</h2><p>Não altera orçamentos, diárias, medições anteriores nem financeiro. Revise o reconhecimento das abas antes de confirmar.</p>
+<div class="pm-actions"><a href="obras.html" class="pm-secondary">Voltar às obras</a><button type="button" id="pmAdicionar" hidden>+ Adicionar planilha</button></div></div>
+<div class="pm-panel" id="pmImportador" hidden>
+<div class="pm-editor-header"><h2>Adicionar planilha</h2><button type="button" id="pmFecharImportacao" class="pm-secondary">Fechar</button></div><p>1. Escolha o Excel. 2. Confira os serviços e confirme.</p>
 <label class="pm-file">Arquivo Excel (.xlsx, até 5 MB)<input type="file" id="pmArquivo" accept=".xlsx"></label>
-<button type="button" id="pmPrever">Ler planilha e revisar abas</button>
+<button type="button" id="pmPrever">Conferir serviços</button>
 <div id="pmPrevia" hidden></div></div>
-<div class="pm-panel"><h2>Planilhas da obra</h2><div id="pmLista">Selecione uma obra.</div></div>
+<div class="pm-panel"><h2>Planilhas salvas</h2><div id="pmLista">Selecione uma obra.</div></div>
 <div class="pm-panel" id="pmEditor" hidden>
-<div class="pm-editor-header"><div><h2 id="pmTitulo">Editar medição</h2><p>A coluna informada é a porcentagem realizada NESTA medição. O total acumulado não pode exceder 100%.</p></div>
-<button type="button" id="pmExcel" class="pm-secondary">Gerar Excel para engenharia</button></div>
+<div class="pm-editor-header"><div><h2 id="pmTitulo">Editar medição</h2><p>Preencha o percentual executado neste período. O valor é calculado automaticamente.</p></div>
+<button type="button" id="pmExcel" class="pm-secondary">Baixar Excel</button></div>
 <div class="pm-toolbar">
 <label>Aba de serviços<select id="pmAba"></select></label><label>Medição<select id="pmMedicao"></select></label>
-</div><div id="pmResumo" class="pm-resumo"></div>
-<div class="pm-grid-scroll"><table><thead><tr><th>Item / etapa</th><th>Descrição do serviço</th><th>Valor previsto</th><th>Anterior (%)</th><th>Atual (%)</th><th>Acumulado (%)</th><th>Valor nesta medição</th></tr></thead><tbody id="pmLinhas"></tbody></table></div>
-<div class="pm-editor-actions"><p>Confira os valores antes de salvar ou enviar. O Excel mantém a planilha original e atualiza os percentuais editados.</p>
-<button type="button" id="pmSalvar">Salvar evolução da medição</button></div></div></section>
+</div><label class="pm-detalhes-toggle"><input type="checkbox" id="pmMostrarAcumulado"> Mostrar histórico e acumulado</label><div id="pmResumo" class="pm-resumo"></div>
+<div class="pm-grid-scroll"><table><thead><tr><th>Item / etapa</th><th>Descrição do serviço</th><th>Valor previsto</th><th class="pm-historico">Anterior (%)</th><th>Executado agora (%)</th><th class="pm-historico">Acumulado (%)</th><th>Valor nesta medição</th></tr></thead><tbody id="pmLinhas"></tbody></table></div>
+<div class="pm-editor-actions"><p>Salvar a evolução não gera cobrança. Os recebíveis são gerados pelas medições aprovadas na gestão de obras.</p>
+<button type="button" id="pmSalvar">Salvar medição</button></div></div></section>
 </main></div>
-<script src="js/config.js"></script><script src="js/planilhas-medicao.js?v=20261105-valores"></script><script src="js/menu-mobile.js"></script><script src="js/sidebar.js?v=20261013-2"></script>
+<script src="js/config.js"></script><script src="js/planilhas-medicao.js?v=20261105-simples"></script><script src="js/menu-mobile.js"></script><script src="js/sidebar.js?v=20261013-2"></script>
 </body></html>

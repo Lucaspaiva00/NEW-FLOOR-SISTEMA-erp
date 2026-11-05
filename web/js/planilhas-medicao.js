@@ -72,10 +72,10 @@
       const atual = valorProgresso(aba, item, numero);
       return '<tr data-linha="' + item.linha + '"><td><strong>' + esc(item.item) +
         '</strong><small>' + esc(item.etapa) + '</small></td><td>' + esc(item.descricao) +
-        '<small>' + esc(item.quantidade) + ' ' + esc(item.unidade) + '</small></td><td>' + brl(item.valor) + '</td><td>' + antes.toLocaleString("pt-BR") +
+        '<small>' + esc(item.quantidade) + ' ' + esc(item.unidade) + '</small></td><td>' + brl(item.valor) + '</td><td class="pm-historico">' + antes.toLocaleString("pt-BR") +
         '%</td><td><input type="number" min="0" max="100" step="0.01" inputmode="decimal" ' +
         'aria-label="Percentual medido do serviço ' + esc(item.item) + '" value="' + atual +
-        '" data-progresso="' + item.linha + '"></td><td data-acumulado="' + item.linha +
+        '" data-progresso="' + item.linha + '"></td><td class="pm-historico" data-acumulado="' + item.linha +
         '">—</td><td data-valor="' + item.linha + '">—</td></tr>';
     }).join("");
     $("pmLinhas").querySelectorAll("[data-progresso]").forEach(inp =>
@@ -127,11 +127,17 @@
     }
     const obras = await api("/obras");
     $("pmPrincipal").hidden = false;
-    $("pmImportador").hidden = !admin;
+    $("pmAdicionar").hidden = !admin;
+    $("pmAdicionar").disabled = true;
+    $("pmAdicionar").onclick = () => { $("pmImportador").hidden = false; $("pmImportador").scrollIntoView({ behavior: "smooth", block: "start" }); };
+    $("pmFecharImportacao").onclick = () => { $("pmImportador").hidden = true; };
+    $("pmMostrarAcumulado").onchange = () => $("pmEditor").classList.toggle("pm-com-historico", $("pmMostrarAcumulado").checked);
     $("pmObra").innerHTML = '<option value="">Selecione uma obra</option>' +
       obras.map(o => '<option value="' + o.id + '">' + esc(o.nome) + '</option>').join("");
     $("pmObra").addEventListener("change", () => aguardar(async () => {
       estado.obraId = Number($("pmObra").value) || null;
+      $("pmAdicionar").disabled = !estado.obraId;
+      $("pmImportador").hidden = true; $("pmArquivo").value = ""; estado.arquivo = "";
       estado.planilha = null; estado.previa = null; estado.mapeamentos = {}; estado.draft.clear();
       $("pmEditor").hidden = true; $("pmPrevia").hidden = true;
       await carregarLista();
@@ -177,7 +183,11 @@
       setTimeout(() => URL.revokeObjectURL(url), 30000);
       status("Excel gerado. Confira a planilha antes de encaminhar para aprovação e pagamento.");
     }, $("pmExcel"));
-    status("Selecione uma obra para importar ou abrir as planilhas de medição.");
+    const obraInicial = new URLSearchParams(location.search).get("obra");
+    if (obras.some(o => String(o.id) === obraInicial)) {
+      $("pmObra").value = obraInicial; $("pmObra").dispatchEvent(new Event("change"));
+    }
+    status("Escolha a obra para abrir ou adicionar uma planilha.");
   }
   function mostrarPrevia() {
     const p = estado.previa;
@@ -192,9 +202,11 @@
     };
     const campo = (key, label, valor) =>
       '<label>' + label + '<input type="text" data-pm-campo="' + key + '" value="' + esc(valor ?? "") + '"></label>';
-    $("pmPrevia").innerHTML = '<h3>Prévia do Excel</h3><p><strong>' + reconhecidas +
-      ' abas reconhecidas</strong> de ' + p.abas.length +
-      '. Se a empresa utilizar outro modelo, confira e ajuste as colunas manualmente.</p>' +
+    $("pmPrevia").innerHTML = '<h3>Confira os serviços</h3><p>' + reconhecidas + ' abas de serviços encontradas.</p>' +
+      '<label>Aba da planilha<select id="pmPreviaAba">' + p.abas.map(a => '<option value="' + a.indice + '">' + esc(a.nome) + (a.reconhecida ? ' · ' + a.itens.length + ' serviços' : ' · revisar leitura') + '</option>').join('') + '</select></label>' +
+      '<div id="pmServicosPrevia"></div>' +
+      (p.valida === false ? '<p class="pm-aviso" role="alert">Há valores que não puderam ser lidos. Revise os avisos em “Ajustar leitura” antes de importar.</p>' : '') +
+      '<details id="pmAjustesLeitura" class="pm-ajustes"><summary>Ajustar leitura / consultar avisos' + (p.avisos.length ? ' (' + p.avisos.length + ')' : '') + '</summary><p>Use somente se os serviços ou valores da prévia estiverem incorretos.</p>' +
       p.abas.map(a => {
         const m = estado.mapeamentos[String(a.indice)] || a.mapeamento || {};
         const manualAtivo = Boolean(estado.mapeamentos[String(a.indice)]);
@@ -224,10 +236,18 @@
       }).join("") +
       (p.avisos.length ? '<ul class="pm-aviso">' + p.avisos.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul>' : "") +
       '<button type="button" class="pm-secondary" id="pmRevisarMapa">Validar mapeamento das abas</button>' +
-      '<label>Identificação desta planilha<input id="pmNome" maxlength="180" value="' +
+      '</details><label>Nome da planilha<input id="pmNome" maxlength="180" value="' +
       esc(estado.arquivoNome.replace(/\.xlsx$/i, "")) + '"></label>' +
       '<button type="button" id="pmConfirmar" ' + (!reconhecidas || p.valida === false ? 'disabled' : '') +
-      '>Confirmar importação desta planilha</button>';
+      '>Importar e abrir medições</button>';
+    function renderServicosPrevia() {
+      const a = p.abas.find(a => String(a.indice) === $("pmPreviaAba").value);
+      if (!a?.reconhecida) { $("pmServicosPrevia").innerHTML = '<p class="pm-aviso">Esta aba não foi reconhecida. Use “Ajustar leitura” se ela contiver serviços.</p>'; return; }
+      $("pmServicosPrevia").innerHTML = '<p><strong>' + a.itens.length + ' serviços · ' + brl(a.itens.reduce((t, i) => t + Number(i.valor || 0), 0)) + '</strong></p><div class="pm-grid-scroll pm-servicos-previa"><table><thead><tr><th>Serviço</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>' + a.itens.map(i => '<tr><td><strong>' + esc(i.item) + '</strong> ' + esc(i.descricao) + '</td><td>' + esc(i.quantidade) + ' ' + esc(i.unidade) + '</td><td>' + brl(i.valor) + '</td></tr>').join('') + '</tbody></table></div>';
+    }
+    $("pmPreviaAba").value = String(p.abas.find(a => a.reconhecida)?.indice ?? p.abas[0]?.indice ?? '');
+    $("pmPreviaAba").onchange = renderServicosPrevia;
+    renderServicosPrevia();
     $("pmRevisarMapa").onclick = () => aguardar(async () => {
       const mapeamentos = {};
       $("pmPrevia").querySelectorAll("[data-pm-aba]").forEach(div => {
@@ -251,7 +271,7 @@
         arquivo: estado.arquivo, hash: estado.previa.hash, mapeamentos: estado.mapeamentos
       });
       estado.arquivo = ""; estado.previa = null; estado.mapeamentos = {};
-      $("pmPrevia").hidden = true; $("pmArquivo").value = "";
+      $("pmPrevia").hidden = true; $("pmImportador").hidden = true; $("pmArquivo").value = "";
       await carregarLista(); await abrirPlanilha(resultado.id);
       status("Planilha importada para a obra. Os pagamentos não foram alterados.");
     }, $("pmConfirmar"));
