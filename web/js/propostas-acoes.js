@@ -174,7 +174,7 @@ async function enviarEmailProposta(id, btn) {
     try{
       // O Kanban é resumido: consulte a proposta completa para obter todos os contatos atuais.
       const completa=await request(`${API_URL}/propostas/${id}`);
-      destinatarios=await window.escolherEmailsCliente(completa.cliente,completa.emailDestinatario);
+      destinatarios=await window.escolherEmailsCliente(completa.cliente,completa.emailsDestinatarios?.length?completa.emailsDestinatarios:completa.emailDestinatario);
       if(!destinatarios)return;
       destinatario=destinatarios.join(', ');
     }catch(e){toastErro(e.message||'Não foi possível carregar os contatos.');return;}

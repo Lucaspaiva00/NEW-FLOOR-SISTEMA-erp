@@ -13,7 +13,7 @@ test('quinze contatos preservam legado, aceitam um, vários ou todos e removem d
  assert.throws(()=>destinatariosCliente(cliente,['outro@outraempresa.invalid']),/cadastrados/);
  assert.throws(()=>destinatariosCliente(cliente,[]),/Selecione/);
  assert.throws(()=>destinatariosCliente(cliente,['pessoa1@example.invalid\r\nBcc:x@y.invalid']),/cadastrados/);
- assert.throws(()=>validarContatosAdicionais(Array(47).fill({})),/50/);
+ assert.equal(validarContatosAdicionais(Array(200).fill({email:'contato@example.invalid'})).length,200);const muitos={contatosAdicionais:Array.from({length:200},(_,i)=>({email:`contato${i}@example.invalid`}))};assert.equal(destinatariosCliente(muitos,muitos.contatosAdicionais.map(c=>c.email)).length,200);
  assert.throws(()=>validarContatosAdicionais([{email:'email-invalido'}]),/válido/);
 });
 test('edição salva contatos adicionais apenas na SBA e mantém isolamento por empresa; omissão não apaga contatos',async(t)=>{

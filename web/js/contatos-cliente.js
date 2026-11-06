@@ -12,7 +12,7 @@ window.escolherEmailsCliente = function(cliente, padrao) {
     const lista=d.querySelector('.contatos-envio-lista');
     for(const [email,nome] of emails){const label=document.createElement('label'),check=document.createElement('input'),text=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');check.type='checkbox';check.value=email;check.name='destinatarios';strong.textContent=nome;small.textContent=email;text.append(strong,small);label.append(check,text);lista.append(label);}
     const checks=[...lista.querySelectorAll('input')],todos=d.querySelector('[data-todos]'),submit=d.querySelector('[type="submit"]');
-    const selecionado=String(padrao||'').trim().toLowerCase();(checks.find(c=>c.value===selecionado)||checks[0]).checked=true;
+    const selecionados=new Set((Array.isArray(padrao)?padrao:[padrao]).filter(Boolean).map(v=>String(v).trim().toLowerCase()));checks.forEach(c=>c.checked=selecionados.has(c.value));if(!checks.some(c=>c.checked))checks[0].checked=true;
     function atualizar(){const n=checks.filter(c=>c.checked).length;todos.checked=n===checks.length;todos.indeterminate=n>0&&n<checks.length;submit.disabled=!n;d.querySelector('[data-resumo]').textContent=n+' de '+checks.length+' contato(s) selecionado(s)';}
     checks.forEach(c=>c.onchange=atualizar);todos.onchange=()=>{checks.forEach(c=>c.checked=todos.checked);atualizar();};
     let resultado=null;d.querySelectorAll('[data-voltar]').forEach(b=>b.onclick=()=>d.close());d.querySelector('form').onsubmit=e=>{e.preventDefault();resultado=checks.filter(c=>c.checked).map(c=>c.value);if(resultado.length)d.close();};d.onclose=()=>{d.remove();resolve(resultado);};document.body.append(d);atualizar();d.showModal();

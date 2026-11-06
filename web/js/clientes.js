@@ -15,6 +15,7 @@ const pesquisaCliente = document.getElementById("pesquisaCliente");
 let clientesCache = [];
 
 let MAX_CONTATOS = 4;
+let contatosSemLimite = false;
 
 function idCampoContato(tipo, index, prefixo = "") {
   const nome = `${tipo}${index}`;
@@ -45,7 +46,7 @@ function atualizarBotaoAdicionarContato(grupo, tipo) {
   if (!lista || !botao) return;
 
   const visiveis = contatosVisiveis(lista).length;
-  botao.disabled = visiveis >= MAX_CONTATOS;
+  botao.disabled = !contatosSemLimite && visiveis >= MAX_CONTATOS;
 }
 
 function revelarProximoContato(prefixo, tipo) {
@@ -53,6 +54,7 @@ function revelarProximoContato(prefixo, tipo) {
 
   if (!lista) return;
 
+  if(contatosSemLimite && !lista.querySelector(".contato-extra.campo-oculto"))garantirQuantidadeContatos(MAX_CONTATOS+1);
   const proximo = lista.querySelector(".contato-extra.campo-oculto");
 
   if (!proximo) return;
@@ -155,7 +157,7 @@ function montarBodyCliente(prefixo = "") {
   };
 
   return {
-    ...(MAX_CONTATOS > 4 ? {contatosAdicionais:Array.from({length:MAX_CONTATOS-4},(_,i)=>({
+    ...(contatosSemLimite ? {contatosAdicionais:Array.from({length:MAX_CONTATOS-4},(_,i)=>({
       email:pegarValor(campo('email'+(i+5))),nomeEmail:pegarValor(campo('nomeEmail'+(i+5))),
       telefone:pegarValor(campo('telefone'+(i+5))),nomeTelefone:pegarValor(campo('nomeTelefone'+(i+5)))
     })).filter(c=>Object.values(c).some(Boolean))} : {}),
@@ -776,6 +778,7 @@ async function abrirModalCliente(id) {
     preencherCampo("editarNomeEmail3", cliente.nomeEmail3);
     preencherCampo("editarNomeEmail4", cliente.nomeEmail4);
 
+    if(contatosSemLimite)garantirQuantidadeContatos(4+(cliente.contatosAdicionais?.length||0));
     for(let i=5;i<=MAX_CONTATOS;i++){
       const c=cliente.contatosAdicionais?.[i-5]||{};
       for(const k of ['email','nomeEmail','telefone','nomeTelefone'])preencherCampo(idCampoContato(k,i,'editar'),c[k]||'');
@@ -1182,19 +1185,22 @@ window.addEventListener('configuracao-sistema',({detail:c})=>{
  }
 });
 
-function ampliarContatosSba(config) {
- if(config?.perfil!=='SBA' || MAX_CONTATOS===50)return;
- MAX_CONTATOS=50;
+function garantirQuantidadeContatos(quantidade) {
+ if(!contatosSemLimite||quantidade<=MAX_CONTATOS)return;
  document.querySelectorAll('[data-contato-grupo]').forEach(grupo=>{
-  const prefixo=grupo.dataset.prefix||'',lista=grupo.querySelector('.contato-lista'),tipo=lista.dataset.tipo;
-  grupo.querySelector('.contato-grupo-dica').textContent=tipo==='email'?'Até 50 contatos com nome e e-mail':'Até 50 números de contato';
-  const modelo=lista.querySelector('[data-index="4"]');
-  for(let i=5;i<=MAX_CONTATOS;i++){
+  const prefixo=grupo.dataset.prefix||'',lista=grupo.querySelector('.contato-lista'),tipo=lista.dataset.tipo,modelo=lista.querySelector('[data-index="4"]');
+  for(let i=MAX_CONTATOS+1;i<=quantidade;i++){
    const item=modelo.cloneNode(true);item.dataset.index=String(i);item.classList.add('campo-oculto');
    item.querySelectorAll('input').forEach(input=>{const nome=input.id.toLowerCase().includes('nome')?'nome'+tipo[0].toUpperCase()+tipo.slice(1):tipo;const antigo=input.id;input.id=idCampoContato(nome,i,prefixo);input.value='';const label=item.querySelector('label[for="'+antigo+'"]');if(label)label.htmlFor=input.id;});
    item.querySelector('.btn-contato-remover').onclick=()=>removerContato(item,prefixo,tipo);lista.append(item);configurarMascaras(item);
   }
-  atualizarBotaoAdicionarContato(grupo,tipo);
+ });MAX_CONTATOS=quantidade;
+}
+function ampliarContatosSba(config) {
+ if(config?.perfil!=='SBA'||contatosSemLimite)return;contatosSemLimite=true;
+ document.querySelectorAll('[data-contato-grupo]').forEach(grupo=>{
+  grupo.querySelector('.contato-grupo-dica').textContent='Adicione os contatos necessários, sem limite fixo de quantidade.';
+  atualizarBotaoAdicionarContato(grupo,grupo.querySelector('.contato-lista').dataset.tipo);
  });
 }
 window.addEventListener('configuracao-sistema',({detail})=>ampliarContatosSba(detail));

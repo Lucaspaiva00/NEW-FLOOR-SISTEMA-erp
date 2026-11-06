@@ -5,7 +5,7 @@ function ambiente(perfil='SBA'){
  const dom=new JSDOM(read('orcamentos.html').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,''),{url:'https://erp.test/orcamentos.html',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window as any,d=w.document,posts:any[]=[];
  w.API_URL='https://api.test';w.__configuracaoSistema={perfil,composicaoCustos:true,textoEscopo:''};w.localStorage.setItem('usuarioLogado',JSON.stringify({token:'mock'}));
  w.bootstrap={Modal:class{node:any;constructor(n:any){this.node=n;}show(){this.node.dispatchEvent(new w.Event('show.bs.modal',{bubbles:true}));this.node.dispatchEvent(new w.Event('shown.bs.modal',{bubbles:true}));}hide(){}}};
- w.fetch=async(url:string,o:any={})=>{let data:any=[];if(o.method==='POST'||o.method==='PUT'){posts.push(JSON.parse(o.body));data={propostaid:100};}else if(url.endsWith('/clientes'))data=[{clienteid:1,razaoSocial:'Cliente',contatosAdicionais:[{email:'quinze@example.invalid',nomeEmail:'Contato 15'}]}];return {ok:true,json:async()=>data};};
+ w.fetch=async(url:string,o:any={})=>{let data:any=[];if(o.method==='POST'||o.method==='PUT'){posts.push(JSON.parse(o.body));data={propostaid:100};}else if(url.endsWith('/clientes'))data=[{clienteid:1,razaoSocial:'Cliente',contatosAdicionais:Array.from({length:200},(_,i)=>({email:`contato${i}@example.invalid`,nomeEmail:'Contato '+i}))}];return {ok:true,json:async()=>data};};
  for(const p of ['pagamento-sba','plano-recebimento','composicao-servicos','orcamentos','modal-tabs'])w.eval(read('js/'+p+'.js'));
  w.dispatchEvent(new w.CustomEvent('configuracao-sistema',{detail:w.__configuracaoSistema}));return {dom,w,d,posts};
 }
@@ -19,8 +19,9 @@ test('SBA tem somente Dados, Serviços e Condições, inclusive antes do carrega
  [...servico.querySelectorAll('button')].find((b:any)=>b.textContent==='+ Adicionar material').click();set('[data-campo=custoUnitario]','100');
  const unit=servico.querySelector('[data-campo=valorUnitario]');assert.equal(unit.readOnly,false);assert.equal(Number(unit.value),125);
  set('[data-campo=valorUnitario]','180');assert.equal(servico.querySelector('[data-campo=modoPreco]').value,'MANUAL');
- d.getElementById('titulo').value='Orçamento';d.getElementById('cliente').value='1';d.getElementById('cliente').onchange();assert.ok([...d.getElementById('email').options].some((o:any)=>o.value==='quinze@example.invalid'));
- await d.getElementById('formOrcamento').onsubmit({preventDefault(){}});assert.equal(posts.length,1);assert.equal(posts[0].descricao,undefined);
+ d.getElementById('titulo').value='Orçamento';d.getElementById('cliente').value='1';d.getElementById('cliente').onchange();assert.ok([...d.getElementById('email').options].some((o:any)=>o.value==='contato199@example.invalid'));
+ const todos=d.querySelector('.budget-destinatarios input[aria-label]');todos.checked=true;todos.onchange();assert.equal(d.querySelectorAll('.budget-destinatarios-lista input:checked').length,200);
+ await d.getElementById('formOrcamento').onsubmit({preventDefault(){}});assert.equal(posts.length,1);assert.equal(posts[0].descricao,undefined);assert.equal(posts[0].emailsDestinatarios.length,200);
  const dados=posts[0].composicaoCustos;assert.equal(dados.servicos[0].modoPreco,'MANUAL');const total=calcularComposicao(dados);assert.equal(total.preco,360);assert.equal(total.custoMateriais,100);assert.equal(total.valorImposto,64.8);assert.equal(total.lucro,195.2);
  // Reabrir não cria guias duplicadas; alternar o preço automático usa os custos novamente.
  await d.getElementById('novoOrcamento').onclick();assert.equal(nav.children.length,3);

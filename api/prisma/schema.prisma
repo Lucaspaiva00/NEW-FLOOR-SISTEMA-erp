@@ -152,6 +152,7 @@ model Servico {
 model Proposta {
   valorLiquidoFinanceiro Decimal? @db.Decimal(14,2)
   contatoDestinatario String?
+  emailsDestinatarios Json?
   emailDestinatario String?
   composicaoCustos Json?
   prazoEntrega String?

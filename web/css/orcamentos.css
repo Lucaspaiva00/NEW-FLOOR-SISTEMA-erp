@@ -45,3 +45,11 @@ body:has(.budget-editor-modal.show) .mobile-menu-btn{visibility:hidden}
 @media(max-width:700px){.service-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}.service-tabs button{width:100%;text-align:center}}
 /* Campos removidos da interface SBA e grupos de cálculo ocultos. */
 .sba-form label[hidden],.sba-form .sba-grid[hidden]{display:none!important}
+
+.sba-form select[hidden]{display:none!important}
+.budget-destinatarios{grid-column:1/-1;border:1px solid #dce4ed;border-radius:9px;padding:12px;margin-bottom:14px;min-width:0}
+.budget-destinatarios>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:#607187}
+.budget-destinatarios .budget-destinatarios-lista{max-height:200px;overflow:auto;margin-top:8px}
+.budget-destinatarios label{display:flex;align-items:center;gap:10px;margin:0;padding:8px 0;cursor:pointer}
+.budget-destinatarios label span{overflow-wrap:anywhere;min-width:0}
+.budget-destinatarios input[type=checkbox]{width:18px;height:18px;min-height:0;flex-shrink:0;margin:0;padding:0;accent-color:#234d72}

@@ -7,12 +7,12 @@ function setup(page='clientes.html'){
 }
 test('cadastro SBA permite quinze contatos, reabre todos e remove extras; outros perfis mantêm quatro',async()=>{
  for(const perfil of ['SBA','NEW_FLOOR']){const {dom,w,d}=setup();try{w.eval(read('js/clientes.js'));await new Promise(r=>setTimeout(r,0));w.__configuracaoSistema={perfil};w.dispatchEvent(new w.CustomEvent('configuracao-sistema',{detail:{perfil}}));
- const lista=d.querySelector('[data-prefix=""] .contato-lista[data-tipo=email]');assert.equal(lista.querySelectorAll('.contato-item').length,perfil==='SBA'?50:4);
+ const lista=d.querySelector('[data-prefix=""] .contato-lista[data-tipo=email]');assert.equal(lista.querySelectorAll('.contato-item').length,4);
  if(perfil!=='SBA')continue;
  for(let i=1;i<=15;i++){if(i>1)d.querySelector('[data-prefix=""] .btn-contato-adicionar[data-tipo=email]').click();d.getElementById('email'+i).value=`p${i}@example.invalid`;d.getElementById('nomeEmail'+i).value='Contato '+i;}
  const body=w.montarBodyCliente();assert.equal(body.contatosAdicionais.length,11);assert.equal(body.contatosAdicionais[10].email,'p15@example.invalid');
  const cliente={...body,clienteid:1};w.fetch=async()=>({ok:true,json:async()=>cliente});await w.abrirModalCliente(1);assert.equal(d.getElementById('editarEmail15').value,'p15@example.invalid');assert.equal(d.getElementById('editarNomeEmail15').value,'Contato 15');assert.equal(d.getElementById('editarEmail15').closest('.contato-item').classList.contains('campo-oculto'),false);
- d.getElementById('editarEmail15').closest('.contato-item').querySelector('.btn-contato-remover').click();assert.equal(w.montarBodyCliente('editar').contatosAdicionais.length,10);
+ d.getElementById('editarEmail15').closest('.contato-item').querySelector('.btn-contato-remover').click();assert.equal(w.montarBodyCliente('editar').contatosAdicionais.length,10);for(let i=16;i<=75;i++){w.revelarProximoContato('','email');d.getElementById('email'+i).value=`p${i}@example.invalid`;}assert.equal(w.montarBodyCliente().contatosAdicionais.length,71);
  }finally{dom.window.close();}}
 });
 test('modal seleciona um ou quinze contatos sem prompt, deduplica e escapa nomes',async()=>{

@@ -10,6 +10,7 @@ import { calcularComposicao } from "../services/orcamentoSba.service";
 async function prepararBody(req: Request, res: Response): Promise<any> {
  const config=req.configuracaoSistema || resolverConfiguracao(null);
  const body=prepararCampos(req.body,config);
+ if(config.perfil!=="SBA")delete body.emailsDestinatarios;
  if(!config.selecionarDestinatario) {delete body.contatoDestinatario; if(req.empresaId!==1)delete body.emailDestinatario;}
  if(!config.composicaoCustos) {delete body.composicaoCustos;delete body.prazoEntrega;}
  try {
@@ -33,17 +34,22 @@ async function prepararBody(req: Request, res: Response): Promise<any> {
      }))
      :[{descricao:body.titulo || "Serviços e materiais",detalhes:body.descricao || "",unidade:"UN",quantidade:1,valorUnitario:body.composicaoCustos.preco,subtotal:body.composicaoCustos.preco,desconto:0,acrescimo:0}];
  }
- if(body.clienteId === undefined && (body.emailDestinatario || body.contatoDestinatario) && req.params.id) {
+ if(body.clienteId === undefined && (body.emailDestinatario || body.contatoDestinatario || body.emailsDestinatarios!==undefined) && req.params.id) {
  const existing=await prisma.proposta.findFirst({where:{propostaid:Number(req.params.id),empresaId:req.empresaId as number},select:{clienteId:true}});
  if(!existing)throw new Error("Proposta não encontrada");body.clienteId=existing.clienteId;
  }
  if(body.clienteId !== undefined) {
    const cliente=await prisma.cliente.findFirst({where:{clienteid:Number(body.clienteId),empresaId:req.empresaId as number}});
    if(!cliente) throw new Error("Cliente não pertence à empresa.");
+   if(config.perfil==='SBA' && body.emailsDestinatarios!==undefined){
+    if(!Array.isArray(body.emailsDestinatarios))throw Error('Informe uma lista de destinatários válida.');
+    body.emailsDestinatarios=body.emailsDestinatarios.length?destinatariosCliente(cliente,body.emailsDestinatarios):[];
+    body.emailDestinatario=body.emailsDestinatarios[0]||null;
+   }
    if(req.empresaId===1 && body.emailDestinatario) {
     body.emailDestinatario=String(body.emailDestinatario).trim();
     if(body.emailDestinatario.length>254 || !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(body.emailDestinatario))throw Error('Informe um e-mail adicional válido para a New Floor.');
-   } else if(body.emailDestinatario && !contatosCliente(cliente).some(c=>c.email===body.emailDestinatario)) throw new Error("Selecione um e-mail cadastrado no cliente.");
+   } else if(body.emailDestinatario && !contatosCliente(cliente).some(c=>String(c.email).trim().toLowerCase()===String(body.emailDestinatario).trim().toLowerCase())) throw new Error("Selecione um e-mail cadastrado no cliente.");
    if(body.contatoDestinatario && ![cliente.responsavel,...contatosCliente(cliente).flatMap(c=>[c.nomeEmail,c.nomeTelefone])].includes(body.contatoDestinatario)) throw new Error("Selecione um contato cadastrado no cliente.");
  }
  return body;
@@ -258,6 +264,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         numero: numeroAutomatico,
 
         contatoDestinatario: body.contatoDestinatario || null,
+        emailsDestinatarios: body.emailsDestinatarios,
         emailDestinatario: body.emailDestinatario || null,
         composicaoCustos: body.composicaoCustos,
         prazoEntrega: body.prazoEntrega || null,
@@ -453,6 +460,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
         numero: body.numero ?? propostaAtual.numero,
 
         contatoDestinatario: body.contatoDestinatario !== undefined ? body.contatoDestinatario || null : body.clienteId && Number(body.clienteId) !== propostaAtual.clienteId ? null : propostaAtual.contatoDestinatario,
+        emailsDestinatarios: body.emailsDestinatarios !== undefined ? body.emailsDestinatarios : body.clienteId && Number(body.clienteId) !== propostaAtual.clienteId ? [] : undefined,
         emailDestinatario: body.emailDestinatario !== undefined ? body.emailDestinatario || null : body.clienteId && Number(body.clienteId) !== propostaAtual.clienteId ? null : propostaAtual.emailDestinatario,
         composicaoCustos: body.composicaoCustos,
         prazoEntrega: body.prazoEntrega,
@@ -666,7 +674,7 @@ export const readKanban = async (
         descricao: true,
         status: true,
         colunaKanbanId: true,
-        ...(req.configuracaoSistema?.composicaoCustos ? { composicaoCustos: true, contatoDestinatario: true, emailDestinatario: true, prazoEntrega: true } : {}),
+        ...(req.configuracaoSistema?.composicaoCustos ? { composicaoCustos: true, contatoDestinatario: true, emailDestinatario: true, emailsDestinatarios: true, prazoEntrega: true } : {}),
         prioridade: true,
         origem: true,
         subtotal: true,
@@ -811,6 +819,7 @@ export const duplicar = async (req: Request, res: Response): Promise<void> => {
         tipoProposta: original.tipoProposta,
         descricao: original.descricao,
         contatoDestinatario: original.contatoDestinatario,
+        ...(req.configuracaoSistema?.perfil === "SBA" && Array.isArray(original.emailsDestinatarios) ? {emailsDestinatarios:original.emailsDestinatarios} : {}),
         emailDestinatario: original.emailDestinatario,
         composicaoCustos: original.composicaoCustos || undefined,
         prazoEntrega: original.prazoEntrega,
@@ -1033,6 +1042,7 @@ export const enviarEmail = async (
 
     const destinatario =
       req.body?.destinatario ||
+      (Array.isArray(proposta.emailsDestinatarios)?String(proposta.emailsDestinatarios[0]||""):"") ||
       proposta.emailDestinatario ||
       proposta.cliente?.email1 ||
       proposta.cliente?.email2;
@@ -1053,7 +1063,7 @@ export const enviarEmail = async (
       res.status(400).json({error:'Informe endereços de e-mail válidos antes de enviar.'});return;
     }
     const listaSba = req.configuracaoSistema?.perfil === "SBA"
-      ? destinatariosCliente(proposta.cliente,req.body?.destinatarios ?? [destinatario]) : undefined;
+      ? destinatariosCliente(proposta.cliente,req.body?.destinatarios ?? (Array.isArray(proposta.emailsDestinatarios)&&proposta.emailsDestinatarios.length?proposta.emailsDestinatarios:[destinatario])) : undefined;
     const destinatarios = listaSba ? listaSba.join(", ") : req.empresaId === 1
       ? [...new Set([String(destinatario).trim(),extraNewFloor].filter(Boolean).map(e=>e.toLowerCase()))].join(", ")
       : destinatario;
