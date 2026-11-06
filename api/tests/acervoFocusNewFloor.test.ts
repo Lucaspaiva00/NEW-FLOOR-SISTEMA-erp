@@ -17,3 +17,8 @@ test('Focus não marca recebida cancelada como válida para criar cobrança',asy
  assert.equal(await conferirSituacaoFocus({},e,{chave,direcao:'RECEBIDA'},async()=>({data:{status:'cancelado'},maxVersao:0})),false);
  assert.equal(await conferirSituacaoFocus({},e,{chave,direcao:'RECEBIDA'},async()=>({data:{status:'autorizado',chave_nfse:chave},maxVersao:0})),true);
 });
+
+test('emitida autorizada sem chave no campo é identificada pelo XML Focus e salva sem reemitir',async()=>{
+ const writes:any[]=[];const db:any={$executeRaw:async(q:any)=>{writes.push(q);},$queryRaw:async()=>[{versao:0}],notaFiscal:{findMany:async()=>[{notafiscalid:10,empresaId:1,empresaFiscalId:1,status:'AUTORIZADA',ambienteEmissao:'PRODUCAO',chave:null,caminhoXml:'/arquivos/NFS'+chave+'-nfse.xml',numero:'38',destinatarioNome:'Cliente',valorTotal:1,valorRetencoes:0,dataEmissao:new Date('2026-10-29T12:00:00Z')}]}};
+ await sincronizarRecebidasFocus(db,e,async()=>({data:[],maxVersao:0}));const registro=writes.find(q=>q.text?.includes('DocumentoRecebidoSba'));assert.ok(registro);const dados=JSON.parse(registro.values.find((v:any)=>typeof v==='string'&&v.startsWith('{')));assert.equal(dados.chave,chave);assert.equal(dados.notaFiscalId,10);assert.equal(dados.numero,'38');assert.equal(dados.direcao,'EMITIDA');
+});

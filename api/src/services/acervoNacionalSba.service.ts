@@ -1,4 +1,4 @@
-import {sincronizarRecebidasFocus,conferirSituacaoFocus} from './acervoFocusNewFloor.service';
+import {sincronizarRecebidasFocus,conferirSituacaoFocus,sincronizarFinanceiroEmitidaFocus} from './acervoFocusNewFloor.service';
 import {Prisma} from '@prisma/client';
 import {consultarRecebidasAdn,solicitarAdnSba,lerNotaRecebidaAdn} from './recebidasAdnSba.service';
 import {situacaoEventosAdn} from './situacaoEventosAdn.service';
@@ -13,7 +13,7 @@ export function situacaoFinanceira(contas:any[]){
 }
 // Only exact fiscal identifiers and explicit user links: never infer payment from age or matching amount.
 export async function contasDoDocumento(db:any,empresaId:number,n:any){
- const notas=await db.notaFiscal.findMany({where:{empresaId,chave:n.chave},select:{notafiscalid:true,propostaId:true}});
+ const notas=await db.notaFiscal.findMany({where:{empresaId,OR:[{chave:n.chave},...(n.notaFiscalId?[{notafiscalid:Number(n.notaFiscalId)}]:[])]},select:{notafiscalid:true,propostaId:true}});
  const conditions:any[]=[{chaveOrigem:chaveFinanceira(empresaId,n)},{documento:n.chave},{observacoes:{contains:n.chave}}];
  if(n.lancamentoVinculado)conditions.push({lancamentofinanceiroid:Number(n.lancamentoVinculado)});
  if(notas.length){conditions.push({notaFiscalId:{in:notas.map((x:any)=>x.notafiscalid)}});const propostas=notas.map((x:any)=>x.propostaId).filter(Boolean);if(propostas.length)conditions.push({propostaId:{in:propostas}});}
@@ -32,10 +32,10 @@ export async function listarAcervo(db:any,empresa:any,b:any){
  const rows=await db.$queryRaw(Prisma.sql`SELECT dados,("xmlCompactado" IS NOT NULL) AS "temXml" FROM "DocumentoRecebidoSba" WHERE "empresaId"=${tenant} AND "empresaFiscalId"=${id} ORDER BY COALESCE(dados->>'dataEmissao','') DESC,chave DESC`);
  const filtradas=rows.map((r:any)=>({...r.dados,temXml:!!r.temXml,direcao:r.dados.direcao||'RECEBIDA'})).filter((n:any)=>(!f.direcao||n.direcao===f.direcao)&&(!f.busca||[n.emissor,n.tomador,n.numero,n.chave,n.documentoEmissor,n.documentoTomador].join(' ').toLowerCase().includes(f.busca.toLowerCase())));
  // Batched exact links avoid one database request per document.
- const notas=await db.notaFiscal.findMany({where:{empresaId:tenant,chave:{in:filtradas.map((n:any)=>n.chave)}},select:{chave:true,notafiscalid:true,propostaId:true}});
+ const notas=await db.notaFiscal.findMany({where:{empresaId:tenant,OR:[{chave:{in:filtradas.map((n:any)=>n.chave)}},{notafiscalid:{in:filtradas.map((n:any)=>Number(n.notaFiscalId)).filter(Number.isSafeInteger)}}]},select:{chave:true,notafiscalid:true,propostaId:true}});
  const chaves=filtradas.map((n:any)=>chaveFinanceira(tenant,n)),vinculos=filtradas.map((n:any)=>Number(n.lancamentoVinculado)).filter(Number.isSafeInteger);
  const contas=filtradas.length?await db.lancamentoFinanceiro.findMany({where:{empresaId:tenant,OR:[{chaveOrigem:{in:chaves}},{documento:{in:filtradas.map((n:any)=>n.chave)}},...filtradas.map((n:any)=>({observacoes:{contains:n.chave}})),{lancamentofinanceiroid:{in:vinculos}},{notaFiscalId:{in:notas.map((n:any)=>n.notafiscalid)}},{propostaId:{in:notas.map((n:any)=>n.propostaId).filter(Boolean)}}]},select:{lancamentofinanceiroid:true,chaveOrigem:true,documento:true,observacoes:true,notaFiscalId:true,propostaId:true,tipo:true,status:true,valor:true,valorPago:true,dataVencimento:true,dataPagamento:true,descricao:true}}):[];
- const documentos=filtradas.map((n:any)=>{const internas=notas.filter((x:any)=>x.chave===n.chave);const vinculadas=contas.filter((l:any)=>l.tipo===(n.direcao==='EMITIDA'?'ENTRADA':'SAIDA')&&(l.chaveOrigem===chaveFinanceira(tenant,n)||l.documento===n.chave||l.observacoes?.includes(n.chave)||l.lancamentofinanceiroid===n.lancamentoVinculado||internas.some((x:any)=>l.notaFiscalId===x.notafiscalid||x.propostaId&&l.propostaId===x.propostaId)));return {...n,contas:vinculadas,situacaoFinanceira:situacaoFinanceira(vinculadas)};}).filter((n:any)=>!f.situacao||n.situacaoFinanceira===f.situacao);
+ const documentos=filtradas.map((n:any)=>{const internas=notas.filter((x:any)=>x.chave===n.chave||x.notafiscalid===n.notaFiscalId);const vinculadas=contas.filter((l:any)=>l.tipo===(n.direcao==='EMITIDA'?'ENTRADA':'SAIDA')&&(l.chaveOrigem===chaveFinanceira(tenant,n)||l.documento===n.chave||l.observacoes?.includes(n.chave)||l.lancamentofinanceiroid===n.lancamentoVinculado||internas.some((x:any)=>l.notaFiscalId===x.notafiscalid||x.propostaId&&l.propostaId===x.propostaId)));return {...n,contas:vinculadas,situacaoFinanceira:situacaoFinanceira(vinculadas)};}).filter((n:any)=>!f.situacao||n.situacaoFinanceira===f.situacao);
  const total=documentos.length,paginas=Math.max(1,Math.ceil(total/f.tamanho)),pagina=Math.min(f.pagina,paginas);
  return {documentos:documentos.slice((pagina-1)*f.tamanho,pagina*f.tamanho),total,pagina,paginas,tamanho:f.tamanho};
 }
@@ -93,7 +93,7 @@ export async function automatizarRecebiveisAcervo(db:any,empresa:any,solicitar=s
   try{
    const contas=await contasDoDocumento(db,empresa.empresaId,n);
    if(contas.length){existentes++;estado={status:'VINCULADA'};}
-   else{await conciliarAcervo(db,empresa,{confirmar:true,chave:n.chave,acao:'ABERTO'},solicitar,true);criadas++;estado={status:'CRIADA'};}
+   else{if(empresa.empresaId===1&&n.fonte==='FOCUS_ERP'&&n.notaFiscalId)await sincronizarFinanceiroEmitidaFocus(db,empresa,n);else await conciliarAcervo(db,empresa,{confirmar:true,chave:n.chave,acao:'ABERTO'},solicitar,true);criadas++;estado={status:'CRIADA'};}
   }catch(e:any){pendentes++;estado={status:'PENDENTE',motivo:String(e?.message||'Conferência necessária.').slice(0,250),tentarApos:Date.now()+15*60*1000};}
   await db.$executeRaw(Prisma.sql`UPDATE "DocumentoRecebidoSba" SET dados=jsonb_set(dados,'{automacaoFinanceira}',${JSON.stringify({...estado,versao:4})}::jsonb) WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND chave=${n.chave}`);
  }

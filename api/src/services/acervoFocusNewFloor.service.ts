@@ -1,3 +1,4 @@
+import {sincronizarFinanceiroNota} from './fiscalFinanceiro.service';
 import {Prisma} from '@prisma/client';
 import {gzipSync} from 'node:zlib';
 import {lerNotaRecebidaAdn} from './recebidasAdnSba.service';
@@ -16,9 +17,9 @@ export async function lerFocusProducao(e:any,path:string,xml=false,fetcher:typeo
 }
 export async function salvarEmitidasFocus(db:any,e:any){
  const notas=await db.notaFiscal.findMany({where:{empresaId:e.empresaId,empresaFiscalId:e.empresafiscalid,tipo:'NFSE',status:{in:['AUTORIZADA','CANCELADA']}},include:{empresaFiscal:{select:{ambiente:true}}}});
- for(const n of notas){if((n.ambienteEmissao||n.empresaFiscal.ambiente)!=='PRODUCAO'||!/^\d{50}$/.test(n.chave||''))continue;
- const dados={tipo:'NFSE_NACIONAL',chave:n.chave,versao:n.notafiscalid,direcao:'EMITIDA',fonte:'FOCUS_ERP',notaFiscalId:n.notafiscalid,numero:n.numero,documentoEmissor:dig(e.cnpj),emissor:e.razaoSocial||'New Floor',tomador:n.destinatarioNome,documentoTomador:dig(n.destinatarioCnpj||n.destinatarioCpf),cnpjTomador:dig(n.destinatarioCnpj||n.destinatarioCpf),dataEmissao:(n.dataEmissao||n.dataAutorizacao||n.createdAt).toISOString(),valor:Number(n.valorTotal),valorLiquido:Number(n.valorTotal)-Number(n.valorRetencoes||0),situacao:n.status==='CANCELADA'?'cancelada':'autorizada'};
- await db.$executeRaw(Prisma.sql`INSERT INTO "DocumentoRecebidoSba" ("empresaId","empresaFiscalId",chave,nsu,dados) VALUES (${e.empresaId},${e.empresafiscalid},${n.chave},${n.notafiscalid},${JSON.stringify(dados)}::jsonb) ON CONFLICT ("empresaFiscalId",chave) DO UPDATE SET dados="DocumentoRecebidoSba".dados || EXCLUDED.dados`);
+ for(const n of notas){const chave=n.chave||String(n.caminhoXml||n.retornoProvedor?.caminho_xml_nota_fiscal||'').match(/(?:^|\/)NFS(\d{50})-nfse\.xml$/i)?.[1];if((n.ambienteEmissao||n.empresaFiscal.ambiente)!=='PRODUCAO'||!/^\d{50}$/.test(chave||''))continue;
+ const dados={tipo:'NFSE_NACIONAL',chave,versao:n.notafiscalid,direcao:'EMITIDA',fonte:'FOCUS_ERP',notaFiscalId:n.notafiscalid,numero:n.numero,documentoEmissor:dig(e.cnpj),emissor:e.razaoSocial||'New Floor',tomador:n.destinatarioNome,documentoTomador:dig(n.destinatarioCnpj||n.destinatarioCpf),cnpjTomador:dig(n.destinatarioCnpj||n.destinatarioCpf),dataEmissao:(n.dataEmissao||n.dataAutorizacao||n.createdAt).toISOString(),valor:Number(n.valorTotal),valorLiquido:Number(n.valorTotal)-Number(n.valorRetencoes||0),situacao:n.status==='CANCELADA'?'cancelada':'autorizada'};
+ await db.$executeRaw(Prisma.sql`INSERT INTO "DocumentoRecebidoSba" ("empresaId","empresaFiscalId",chave,nsu,dados) VALUES (${e.empresaId},${e.empresafiscalid},${chave},${n.notafiscalid},${JSON.stringify(dados)}::jsonb) ON CONFLICT ("empresaFiscalId",chave) DO UPDATE SET dados="DocumentoRecebidoSba".dados || EXCLUDED.dados`);
  }
 }
 export async function sincronizarRecebidasFocus(db:any,e:any,ler=lerFocusProducao){
@@ -39,9 +40,16 @@ export async function sincronizarRecebidasFocus(db:any,e:any,ler=lerFocusProduca
 export async function conferirSituacaoFocus(db:any,e:any,n:any,ler=lerFocusProducao){
  validarEmpresa(e);
  if(n.direcao==='EMITIDA'){
-  const nota=await db.notaFiscal.findFirst({where:{empresaId:e.empresaId,empresaFiscalId:e.empresafiscalid,chave:n.chave,tipo:'NFSE'},include:{empresaFiscal:true}});
+  const nota=await db.notaFiscal.findFirst({where:{empresaId:e.empresaId,empresaFiscalId:e.empresafiscalid,tipo:'NFSE',OR:[{chave:n.chave},...(n.notaFiscalId?[{notafiscalid:Number(n.notaFiscalId)}]:[])]},include:{empresaFiscal:true}});
   if(!nota||nota.status!=='AUTORIZADA'||(nota.ambienteEmissao||nota.empresaFiscal.ambiente)!=='PRODUCAO')return false;
   const r=await consultarNaFocus(nota),p=parseFocusResult(r.baseUrl,r.data);return p.status==='AUTORIZADA'&&(!p.chave||p.chave===n.chave);
  }
  const r=await ler(e,'/v2/nfsens_recebidas/'+n.chave+'.json');const d=r.data,status=String(d?.situacao||d?.status||'').toLowerCase();return ['autorizada','autorizado'].includes(status)&&!d.cancelamento&&(!d.chave_nfse||d.chave_nfse===n.chave);
+}
+
+export async function sincronizarFinanceiroEmitidaFocus(db:any,e:any,n:any){
+ if(!await conferirSituacaoFocus(db,e,n))throw erro('Confira a situação atual desta nota emitida na Focus antes de gerar cobrança.');
+ const nota=await db.notaFiscal.findFirst({where:{empresaId:e.empresaId,empresaFiscalId:e.empresafiscalid,notafiscalid:Number(n.notaFiscalId),status:'AUTORIZADA'},include:{empresaFiscal:true}});
+ if(!nota)throw erro('Nota emitida não encontrada nesta empresa.');
+ await db.$transaction((tx:any)=>sincronizarFinanceiroNota(nota,tx));
 }
