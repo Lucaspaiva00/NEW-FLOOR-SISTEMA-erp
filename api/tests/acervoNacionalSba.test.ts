@@ -80,3 +80,9 @@ test('ADN retorna a NFS-e original junto dos eventos: aceita a nota correta, mas
  assert.equal(situacaoEventosAdn({httpStatus:200,data:{StatusProcessamento:'REJEICAO',LoteDFe:[]}},chave),false);
  assert.equal(situacaoEventosAdn({httpStatus:200,data:{LoteDFe:[{ArquivoXml:gzipSync(xml('4'.repeat(50))).toString('base64')}]}},chave),false);
 });
+
+test('mesmo número em outro ano com chave fiscal própria não bloqueia uma nota diferente',async()=>{
+ const b=banco();b.tx.$queryRaw=async(q:any)=>String(q.text||q).includes('SELECT dados')?[{dados:{...nota,valorLiquido:90}}]:[];
+ b.tx.lancamentoFinanceiro.findFirst=async({where}:any)=>{if(where?.documento){assert.equal(where.notaFiscalId,null);assert.equal(where.propostaId,null);assert.equal(where.OR[1].NOT.OR[0].chaveOrigem.startsWith,'EMITIDA:');return null;}return b.criada();};
+ await conciliarAcervo(b.db,empresa,{confirmar:true,chave,acao:'ABERTO'},async()=>({httpStatus:200,data:[]}),true);assert.equal(b.criada().valor,90);
+});

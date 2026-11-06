@@ -71,7 +71,7 @@ export async function conciliarAcervo(db:any,empresa:any,b:any,solicitar=solicit
  if(!situacaoEventosAdn(r,n.chave))throw erro('Não foi possível confirmar a situação atual da nota no Portal Nacional. Confira os eventos fiscais antes de conciliar.');
  const valorFinanceiro=automatico?n.valorLiquido:n.valor;
  if(automatico&&(!Number.isFinite(valorFinanceiro)||valorFinanceiro<=0))throw erro('Valor líquido não confirmado no XML. Confira a nota antes de lançar o recebível.');
- if(automatico&&n.numero&&await tx.lancamentoFinanceiro.findFirst({where:{empresaId:empresa.empresaId,tipo:'ENTRADA',documento:n.numero}}))throw erro('Há uma conta com este número de nota, sem chave fiscal vinculada. Confira e vincule a conta existente para evitar duplicidade.');
+ if(automatico&&n.numero&&await tx.lancamentoFinanceiro.findFirst({where:{empresaId:empresa.empresaId,tipo:'ENTRADA',documento:n.numero,notaFiscalId:null,propostaId:null,OR:[{chaveOrigem:null},{NOT:{OR:[{chaveOrigem:{startsWith:'EMITIDA:'}},{chaveOrigem:{startsWith:'RECEBIDA:'}}]}}]}}))throw erro('Há uma conta com este número de nota, sem chave fiscal vinculada. Confira e vincule a conta existente para evitar duplicidade.');
  const tipo=n.direcao==='EMITIDA'?'ENTRADA':'SAIDA',nome=tipo==='ENTRADA'?'Receitas de NFS-e':'Fornecedores',favorecido=tipo==='ENTRADA'?n.tomador:n.emissor;
  const categoria=await tx.categoriaFinanceira.upsert({where:{empresaId_nome_tipo:{empresaId:empresa.empresaId,nome,tipo}},update:{},create:{empresaId:empresa.empresaId,nome,tipo}});
  const l=await tx.lancamentoFinanceiro.create({data:{empresaId:empresa.empresaId,tipo,status:'ABERTO',origem:'MANUAL',chaveOrigem:chaveFinanceira(empresa.empresaId,n),categoriaFinanceiraId:categoria.categoriafinanceiraid,descricao:'NFS-e '+(n.numero||'')+' · '+favorecido,documento:n.numero||n.chave,favorecido,valor:valorFinanceiro,dataCompetencia:new Date(n.dataEmissao),dataVencimento:automatico?null:new Date(b.vencimento+'T15:00:00Z'),observacoes:automatico?'Importação automática de NFS-e emitida. Chave: '+n.chave+'. Valor líquido do XML. Vencimento a definir; quitação não confirmada.':'Conciliada com acervo Portal Nacional. Chave: '+n.chave+'. Valor bruto conferido pelo usuário.'}});
@@ -83,7 +83,7 @@ export async function conciliarAcervo(db:any,empresa:any,b:any,solicitar=solicit
 // Runs only as part of the user's explicit invoice synchronization. No automatic payment or proposal mutation.
 export async function automatizarRecebiveisAcervo(db:any,empresa:any,solicitar=solicitarAdnSba){
  if(empresa.empresaId!==2)throw erro('Automação disponível apenas para a SBA.');
- const rows=await db.$queryRaw(Prisma.sql`SELECT dados,nsu,"xmlCompactado" FROM "DocumentoRecebidoSba" WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND dados->>'direcao'='EMITIDA' AND dados->>'situacao' IN ('recebida','autorizada') AND ((dados->'automacaoFinanceira'->>'versao') IS DISTINCT FROM '3' OR (dados->'automacaoFinanceira'->>'status'='PENDENTE' AND (dados->'automacaoFinanceira'->>'tentarApos')::bigint<${Date.now()})) ORDER BY nsu LIMIT 4`);
+ const rows=await db.$queryRaw(Prisma.sql`SELECT dados,nsu,"xmlCompactado" FROM "DocumentoRecebidoSba" WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND dados->>'direcao'='EMITIDA' AND dados->>'situacao' IN ('recebida','autorizada') AND ((dados->'automacaoFinanceira'->>'versao') IS DISTINCT FROM '4' OR (dados->'automacaoFinanceira'->>'status'='PENDENTE' AND (dados->'automacaoFinanceira'->>'tentarApos')::bigint<${Date.now()})) ORDER BY nsu LIMIT 4`);
  let criadas=0,existentes=0,pendentes=0;
  for(const row of rows.slice(0,3)){
   const n=row.dados;let estado:any;
@@ -94,7 +94,7 @@ export async function automatizarRecebiveisAcervo(db:any,empresa:any,solicitar=s
    if(contas.length){existentes++;estado={status:'VINCULADA'};}
    else{await conciliarAcervo(db,empresa,{confirmar:true,chave:n.chave,acao:'ABERTO'},solicitar,true);criadas++;estado={status:'CRIADA'};}
   }catch(e:any){pendentes++;estado={status:'PENDENTE',motivo:String(e?.message||'Conferência necessária.').slice(0,250),tentarApos:Date.now()+15*60*1000};}
-  await db.$executeRaw(Prisma.sql`UPDATE "DocumentoRecebidoSba" SET dados=jsonb_set(dados,'{automacaoFinanceira}',${JSON.stringify({...estado,versao:3})}::jsonb) WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND chave=${n.chave}`);
+  await db.$executeRaw(Prisma.sql`UPDATE "DocumentoRecebidoSba" SET dados=jsonb_set(dados,'{automacaoFinanceira}',${JSON.stringify({...estado,versao:4})}::jsonb) WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND chave=${n.chave}`);
  }
  return {continuarFinanceiro:rows.length>3,financeiroAutomatico:{criadas,existentes,pendentes}};
 }
