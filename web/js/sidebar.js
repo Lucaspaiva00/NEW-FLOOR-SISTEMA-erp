@@ -388,7 +388,7 @@ function aplicarPerfilEmpresa(c) {
  if(c.composicaoCustos) {
  if(!document.getElementById("subjectTabsScript")) {
  const css=document.createElement("link");css.rel="stylesheet";css.href="css/modal-tabs.css";document.head.append(css);
- const script=document.createElement("script");script.id="subjectTabsScript";script.src="js/modal-tabs.js";document.body.append(script);
+ const script=document.createElement("script");script.id="subjectTabsScript";script.src="js/modal-tabs.js?v=20261106-servicos";document.body.append(script);
  }
  const link=document.querySelector('.menu a[href="servicos.html"]');
  if(link){const material=document.createElement("a");material.href="materiais.html";material.textContent="Materiais";if(!menu?.querySelector('a[href="materiais.html"]'))link.after(material);if(somentePropostasJose)link.remove();else{link.href="orcamentos.html";link.textContent="Orçamentos";}}

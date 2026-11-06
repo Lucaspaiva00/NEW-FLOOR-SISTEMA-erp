@@ -43,3 +43,5 @@
 @media(max-width:700px){.service-panel{padding:12px}.service-composition-heading{padding:12px}.service-composition-heading strong{font-size:12px}.service-results{grid-template-columns:repeat(2,minmax(0,1fr))}.service-results>div{padding:12px}.service-composition .sba-row.materiais,.service-composition .sba-row.maoObra{grid-template-columns:repeat(2,minmax(0,1fr))}.service-tabs{padding:10px}.service-tabs button{padding:9px 11px}.budget-editor-modal [data-orcamento-id="totais"]{grid-template-columns:repeat(2,minmax(0,1fr))}}
 body:has(.budget-editor-modal.show) .mobile-menu-btn{visibility:hidden}
 @media(max-width:700px){.service-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}.service-tabs button{width:100%;text-align:center}}
+/* Campos removidos da interface SBA e grupos de cálculo ocultos. */
+.sba-form label[hidden],.sba-form .sba-grid[hidden]{display:none!important}

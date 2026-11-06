@@ -6,7 +6,7 @@
     return editorPromise;
   }
   async function montarEditor() {
-    const response = await fetch("orcamentos.html?v=20261030-custos-por-servico");
+    const response = await fetch("orcamentos.html?v=20261106-servicos-editaveis");
     if (!response.ok) throw new Error("Não foi possível carregar o formulário de orçamento.");
     const doc = new DOMParser().parseFromString(await response.text(), "text/html");
     const modal = doc.getElementById("modalOrcamento");
@@ -58,7 +58,7 @@
     if (!c.composicaoCustos) return;
     if(c.perfil==='SBA'&&!document.getElementById('sbaMobileStyles')){const css=document.createElement('link');css.id='sbaMobileStyles';css.rel='stylesheet';css.href='css/sba-mobile.css?v=20261012';document.head.append(css);}
     const css = document.createElement("link");
-    css.rel = "stylesheet";css.href = "css/orcamentos.css?v=20261030-custos-por-servico";document.head.append(css);
+    css.rel = "stylesheet";css.href = "css/orcamentos.css?v=20261106-servicos-editaveis";document.head.append(css);
     const button = document.querySelector('[data-bs-target="#modalNovaProposta"]');
     if (button) {
       button.removeAttribute("data-bs-toggle");button.removeAttribute("data-bs-target");

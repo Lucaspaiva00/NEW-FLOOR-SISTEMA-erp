@@ -5,7 +5,19 @@
   const fieldId = node => node.querySelector('input,select,textarea')?.id.toLowerCase() || '';
   function groupsFor(form, body) {
     if (form.querySelector('.form-step')) return []; // Clientes já possuem abas e validação próprias.
-    const budgets = [...form.querySelectorAll(':scope > .budget-section')].filter(node=>!node.hidden);
+    const budgetSections = [...form.querySelectorAll(':scope > .budget-section')];
+    if (budgetSections.length && window.__configuracaoSistema?.perfil === 'SBA') {
+      // As seções podem ser preenchidas depois do carregamento assíncrono.
+      // Agrupe também as seções legadas ocultas, para não criar guias vazias.
+      const dados=budgetSections.find(n=>n.querySelector('#cliente,[data-orcamento-id="cliente"]'));
+      const condicoes=budgetSections.find(n=>n.querySelector('#pagamento,[data-orcamento-id="pagamento"]'));
+      const descricao=dados?.querySelector('#descricao,[data-orcamento-id="descricao"]');
+      if(descricao)descricao.closest('label').hidden=true;
+      return [{label:'Dados',nodes:[dados]},
+        {label:'Serviços',nodes:budgetSections.filter(n=>n!==dados&&n!==condicoes)},
+        {label:'Condições',nodes:[condicoes]}];
+    }
+    const budgets = budgetSections.filter(node=>!node.hidden);
     if (budgets.length) return budgets.map((node, i) => ({label:({'Dados do orçamento':'Dados','Materiais':'Materiais','Fornecedores':'Fornecedores','Mão de obra':'Mão de obra','Preço e resultado':'Valores','Condições comerciais':'Condições'})[title(node)]||title(node)||'Dados', nodes:[node]}));
     if (form.id === 'formMaterial') {
       const sections = ['identificacao','organizacao','fiscal','quantidades'].map(id => form.querySelector('#'+id));

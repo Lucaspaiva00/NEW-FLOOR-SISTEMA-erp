@@ -77,8 +77,10 @@
    const modeWrap=el('label','','Cálculo do preço'),mode=el('select');mode.dataset.campo='modoPreco';mode.setAttribute('aria-label','Cálculo do preço');
    mode.add(new Option('Calcular pelo custo e margem','AUTOMATICO'));mode.add(new Option('Informar valor de venda','MANUAL'));mode.value=s.modoPreco||'AUTOMATICO';modeWrap.append(mode);card.precos.append(modeWrap);
    campo(card.precos,'margem','Margem (%)',(s.margem??.6)*100,'number');campo(card.precos,'imposto','Imposto estimado (%)',(s.imposto??.18)*100,'number');
-   campo(card.precos,'valorUnitario','Valor unitário de venda (R$)',s.valorUnitario??0,'number');
-   panels[3].append(card.precos,el('p','budget-note','Preço automático = custo ÷ (1 − margem), dividido pela quantidade. O imposto estimado é descontado do resultado; não altera a nota fiscal.'));
+   const precoVenda=campo(card.precos,'valorUnitario','Valor unitário de venda (R$)',s.valorUnitario??0,'number');
+   // Digitar um preço já escolhe o modo manual, sem exigir outro passo.
+   precoVenda.addEventListener('input',()=>{mode.value='MANUAL';});
+   panels[3].append(card.precos,el('p','budget-note','Você pode alterar o valor unitário diretamente. Para recalcular pelos custos e margem, selecione “Calcular pelo custo e margem”.'),el('p','budget-note','Preço automático = custo ÷ (1 − margem), dividido pela quantidade. O imposto estimado é descontado do resultado; não altera a nota fiscal.'));
    article.append(card.resultado);container.append(article);cards.push(card);
    (s.materiais||[]).forEach(m=>linha(card,'materiais',m));(s.maoObra||[]).forEach(m=>linha(card,'maoObra',m));
    article.addEventListener('input',atualizar);article.addEventListener('change',atualizar);
@@ -88,8 +90,8 @@
    const c=ler(),totais={custoMateriais:0,custoMaoObra:0,custoTotal:0,subtotal:0,valorImposto:0,lucro:0};
    cards.forEach((card,index)=>{
     const s=c.servicos[index];card.titulo.textContent=s.descricao||`Serviço ${index+1}`;
-    const unit=card.precos.querySelector('[data-campo="valorUnitario"]');unit.readOnly=s.modoPreco!=='MANUAL';
-    if(unit.readOnly)unit.value=Number.isFinite(s.valorUnitario)?s.valorUnitario:0;
+    const unit=card.precos.querySelector('[data-campo="valorUnitario"]');unit.readOnly=false;
+    if(s.modoPreco!=='MANUAL')unit.value=Number.isFinite(s.valorUnitario)?s.valorUnitario:0;
     card.precos.querySelector('[data-campo="margem"]').disabled=s.modoPreco==='MANUAL';
     card.resultado.replaceChildren();
     for(const [key,label] of [['custoMateriais','Materiais'],['custoMaoObra','Mão de obra'],['custoTotal','Custo total'],['subtotal','Venda'],['valorImposto','Imposto estimado'],['lucro','Lucro estimado']]){
