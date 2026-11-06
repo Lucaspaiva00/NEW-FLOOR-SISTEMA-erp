@@ -35,7 +35,7 @@
     }).join(""):'<tr><td colspan="5">'+(consultaFalhou?"Consulta não realizada: verifique o erro acima.":"Nenhuma nota retornada pelo "+fonte()+".")+'</td></tr>';
   }
   async function carregarEmpresas(){
-    await perfil;
+    await perfil;if(sba)return;
     const empresas=await api("/fiscal/empresas");
     $("nrEmpresa").innerHTML='<option value="">Selecione uma empresa emissora cadastrada</option>'+
       empresas.map(e=>'<option value="'+Number(e.empresafiscalid)+'">'+esc(e.razaoSocial)+' · '+esc(e.cnpj)+
@@ -43,7 +43,7 @@
   }
   async function consultar(mais=false){
     if(carregando)return;
-    await perfil;
+    await perfil;if(sba)return;
     const empresaFiscalId=Number($("nrEmpresa").value);
     const tipo=$("nrTipo").value;
     if(!empresaFiscalId){$("nrAviso").textContent="Selecione a empresa destinatária.";return;}

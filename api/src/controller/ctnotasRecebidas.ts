@@ -147,3 +147,14 @@ export const importarParaPagar=async(req:Request,res:Response):Promise<void>=>{
   respostaErro(res,e);
  }
 };
+
+import {listarAcervo,sincronizarAcervo,conciliarAcervo} from '../services/acervoNacionalSba.service';
+async function empresaAcervo(req:Request){
+ if(req.empresaId!==2||req.configuracaoSistema?.perfil!=='SBA')throw error('Acervo disponível apenas no perfil SBA.',403);
+ return emissora(req,Number(req.query.empresaFiscalId||req.body?.empresaFiscalId));
+}
+export const acervo=async(req:Request,res:Response):Promise<void>=>{try{res.json(await listarAcervo(prisma,await empresaAcervo(req),req.query));}catch(e){respostaErro(res,e);}};
+export const sincronizar=async(req:Request,res:Response):Promise<void>=>{try{res.json(await sincronizarAcervo(prisma,await empresaAcervo(req)));}catch(e){respostaErro(res,e);}};
+export const conciliar=async(req:Request,res:Response):Promise<void>=>{try{res.json(await conciliarAcervo(prisma,await empresaAcervo(req),req.body));}catch(e:any){if(e?.code==='P2002'){res.status(409).json({error:'Documento já conciliado. Atualize a lista.'});return;}respostaErro(res,e);}};
+
+export const xmlAcervo=async(req:Request,res:Response):Promise<void>=>{try{const emp=await empresaAcervo(req),chave=String(req.query.chave||'');if(!/^\d{50}$/.test(chave))throw error('Chave inválida.');const rows:any[]=await prisma.$queryRaw`SELECT "xmlCompactado" FROM "DocumentoRecebidoSba" WHERE "empresaId"=${emp.empresaId} AND "empresaFiscalId"=${emp.empresafiscalid} AND chave=${chave}`;if(!rows[0]?.xmlCompactado)throw error('XML ainda não sincronizado. Use Puxar notas.',404);const {gunzipSync}=await import('node:zlib');const xml=gunzipSync(Buffer.from(rows[0].xmlCompactado,'base64'),{maxOutputLength:4000000});res.setHeader('Content-Disposition','attachment; filename="NFSe-'+chave+'.xml"');res.setHeader('Content-Type','application/xml; charset=utf-8');res.setHeader('Cache-Control','no-store');res.send(xml);}catch(e){respostaErro(res,e);}};

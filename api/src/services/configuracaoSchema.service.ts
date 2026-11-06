@@ -3,6 +3,10 @@ export async function garantirSchemaConfiguracao() {
  await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "SincronizacaoRecebidasSba" ("empresaFiscalId" INTEGER PRIMARY KEY REFERENCES "EmpresaFiscal"("empresafiscalid"),"empresaId" INTEGER NOT NULL REFERENCES "Empresa"("empresaid"),nsu BIGINT NOT NULL DEFAULT 0,"proximaConsulta" TIMESTAMP(3),"leaseAte" TIMESTAMP(3),"leaseToken" TEXT,"updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
  await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "DocumentoRecebidoSba" ("empresaId" INTEGER NOT NULL REFERENCES "Empresa"("empresaid"),"empresaFiscalId" INTEGER NOT NULL REFERENCES "EmpresaFiscal"("empresafiscalid"),chave TEXT NOT NULL,nsu BIGINT NOT NULL,dados JSONB NOT NULL,PRIMARY KEY ("empresaFiscalId",chave));`);
  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "DocumentoRecebidoSba_empresa_nsu_idx" ON "DocumentoRecebidoSba"("empresaId","empresaFiscalId",nsu);`);
+ await prisma.$executeRawUnsafe(`ALTER TABLE "DocumentoRecebidoSba" ADD COLUMN IF NOT EXISTS "xmlCompactado" TEXT;`);
+ await prisma.$executeRawUnsafe(`ALTER TABLE "SincronizacaoRecebidasSba" ADD COLUMN IF NOT EXISTS "versaoAcervo" INTEGER NOT NULL DEFAULT 0;`);
+ await prisma.$executeRawUnsafe(`
+UPDATE "SincronizacaoRecebidasSba" SET nsu=0,"proximaConsulta"=NULL,"versaoAcervo"=1 WHERE "versaoAcervo"=0;`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "Proposta" ADD COLUMN IF NOT EXISTS "emailsDestinatarios" JSONB;`);
  await prisma.$executeRawUnsafe(`ALTER TABLE "Cliente" ADD COLUMN IF NOT EXISTS "contatosAdicionais" JSONB;`);
  await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmailUsuario" (

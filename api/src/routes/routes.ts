@@ -239,6 +239,10 @@ routes.get("/fiscal/sba/nfse/preparacao/:notaId",auth,requireRole(["ADMIN","SUPE
 routes.get("/fiscal/sba/nfse/preparacao/:notaId/xml",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.baixarPreviaDps);
 routes.post("/fiscal/sba/nfse/preparacao/:notaId/assinar",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.baixarDpsAssinada);
 routes.post("/fiscal/sba/nfse/preparacao/:notaId/validar-xsd",auth,requireRole(["ADMIN","SUPER_ADMIN"]),nfseNacionalSba.validarXsdDps);
+routes.get('/fiscal/sba/acervo/xml',auth,requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']),notasRecebidas.xmlAcervo);
+routes.get('/fiscal/sba/acervo',auth,requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']),notasRecebidas.acervo);
+routes.post('/fiscal/sba/acervo/sincronizar',auth,requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']),notasRecebidas.sincronizar);
+routes.post('/fiscal/sba/acervo/conciliar',auth,requireRole(['ADMIN','SUPER_ADMIN','FINANCEIRO']),notasRecebidas.conciliar);
 routes.get("/fiscal/recebidas",auth,requireRole(["ADMIN","SUPER_ADMIN","FINANCEIRO"]),notasRecebidas.listar);
 routes.post("/fiscal/recebidas/importar",auth,requireRole(["ADMIN","SUPER_ADMIN","FINANCEIRO"]),notasRecebidas.importarParaPagar);
 routes.route("/fiscal/empresas")
