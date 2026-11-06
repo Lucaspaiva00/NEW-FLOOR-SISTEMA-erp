@@ -38,8 +38,9 @@ export function validarTesteProducaoSba(nota:any){
 }
 
 /** PFX permanece em memória e nunca integra retorno, logs ou banco de auditoria. */
-export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promise<T>):Promise<T>{
- validarDestinoSba(nota,true);
+export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promise<T>,apenasConsulta=false):Promise<T>{
+ if(apenasConsulta){if(nota?.empresaId!==2||nota.empresa?.slug!=='sba'||nota.empresaFiscal?.empresaId!==2||nota.empresaFiscal?.provedor!=='PORTAL_NACIONAL_DIRETO'||nota.empresaFiscal?.padraoNfse!=='NACIONAL')throw erro('Consulta direta exclusiva da SBA.',403);}
+ else validarDestinoSba(nota,true);
  const segredo=process.env.CERTIFICADO_ENCRYPTION_KEY||process.env.JWT_SECRET;
  if(!segredo)throw erro('Chave de criptografia do A1 indisponível no servidor.');
  let claro:Buffer|undefined,pfx:Buffer|undefined,pfxTls:Buffer|undefined,senha='';

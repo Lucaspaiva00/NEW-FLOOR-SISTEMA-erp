@@ -16,6 +16,8 @@
     const tenant = await api("/empresas/me");
     if (tenant.slug !== "sba" || tenant.configuracaoSistema?.perfil !== "SBA") return;
     if (document.getElementById("fiscalIntegracoesSba")) return;
+    document.querySelector('[data-fiscal-tab="logs"]')?.remove();
+    const logs=document.getElementById('tabFiscalLogs');if(logs)logs.style.display='none';
     // Adapta somente o modal da SBA: o HTML compartilhado continua intacto
     // para New Floor e José, mas o Luiz não vê campos ou tokens Focus.
     const modalEmpresa = document.getElementById("modalEmpresaFiscal");
@@ -26,7 +28,7 @@
       const field = provedor.closest(".col-md-4");
       const label = field?.querySelector("label");
       if (label) label.textContent = "Serviços: integração direta";
-      provedor.value = "Portal Nacional — homologação";
+      provedor.value = "Portal Nacional direto";
       provedor.readOnly = true;
       padrao.value = "NACIONAL";
       padrao.disabled = true; // fiscal.js lê .value normalmente.
@@ -42,11 +44,11 @@
         const aviso = document.createElement("div");
         aviso.id = "avisoCadastroSbaSemFocus";
         aviso.className = "col-12";
-        aviso.innerHTML = '<div class="alert alert-info mb-0" role="status"><strong>SBA:</strong> a NFS-e de serviços será integrada diretamente ao Portal Nacional. Para notas de materiais, a integração pretendida é o SIEG Emissor. <strong>Não é necessário preencher tokens Focus.</strong> A transmissão de NFS-e em homologação exige DPS completa, assinatura e XSD. NFS-e em produção está disponível nas notas vinculadas às propostas. NF-e de materiais: emita na SIEG e importe o XML autorizado no ERP. Cadastre os dados fiscais e o certificado A1 para avançar na configuração.</div>';
+        aviso.innerHTML = '<div class="alert alert-info mb-0" role="status"><strong>SBA:</strong> NFS-e de serviços em produção pelo Portal Nacional, com o certificado A1 da empresa. NFS-e recebidas são consultadas diretamente no ADN. Não é necessário preencher tokens de terceiros. NF-e de materiais: emita na SIEG e importe o XML autorizado no ERP. Cadastre os dados fiscais e o certificado A1 para avançar na configuração.</div>';
         area.appendChild(aviso);
       }
       const note = document.querySelector(".fiscal-certificate-section .certificate-note");
-      if (note) note.textContent = "Certificado A1 armazenado de forma criptografada para preparar a integração direta da SBA; cada emissão exige conferência e confirmação explícita.";
+      if (note) note.textContent = "Certificado A1 armazenado de forma criptografada para a integração direta da SBA; cada emissão exige conferência e confirmação explícita.";
     };
     modalEmpresa?.addEventListener("show.bs.modal", aplicarCadastroDireto);
     modalEmpresa?.addEventListener("shown.bs.modal", aplicarCadastroDireto);
@@ -114,103 +116,6 @@
       });
     });
 
-    // Só o perfil SBA recebe botões de preparação de DPS, nunca de emissão.
-    window.addEventListener("sba-nota-detalhe",event=>{
-      const {id,tipo,status,ambiente}=event.detail||{};
-      const acoes=document.getElementById("acoesDetalheFiscal");
-      if(ambiente==="PRODUCAO"||!acoes||tipo!=="NFSE"||!Number.isSafeInteger(Number(id))||
-         ["AUTORIZADA","PROCESSANDO","CANCELADA"].includes(status))return;
-      if(acoes.querySelector("[data-sba-dps]"))return;
-      const btnPendencias=document.createElement("button");
-      btnPendencias.type="button";btnPendencias.className="btn btn-outline-secondary";
-      btnPendencias.dataset.sbaDps="pendencias";btnPendencias.dataset.id=String(id);
-      btnPendencias.textContent="Ver pendências DPS";
-      const btn1=document.createElement("button");
-      btn1.type="button";btn1.className="btn btn-outline-secondary";
-      btn1.dataset.sbaDps="previa";btn1.dataset.id=String(id);
-      btn1.textContent="Prévia DPS XML";
-      const btn2=document.createElement("button");
-      btn2.type="button";btn2.className="btn btn-outline-primary";
-      btn2.dataset.sbaDps="assinar";btn2.dataset.id=String(id);
-      btn2.textContent="Assinar DPS (não enviar)";
-      const btn3=document.createElement("button");
-      btn3.type="button";btn3.className="btn btn-outline-info";
-      btn3.dataset.sbaDps="xsd";btn3.dataset.id=String(id);
-      btn3.textContent="Validar DPS no XSD oficial";
-      acoes.append(btnPendencias,btn1,btn2,btn3);
-    });
-    document.getElementById("acoesDetalheFiscal")?.addEventListener("click",async event=>{
-      const btn=event.target.closest("[data-sba-dps]");
-      if(!btn)return;
-      const id=Number(btn.dataset.id);
-      if(!Number.isSafeInteger(id)||id<=0)return;
-      const pendencias=btn.dataset.sbaDps==="pendencias";
-      if(pendencias){
-        btn.disabled=true;
-        try{
-          const resposta=await fetch(API_URL+"/fiscal/sba/nfse/preparacao/"+id,{
-            headers:{Authorization:"Bearer "+token}
-          });
-          const data=await resposta.json().catch(()=>({}));
-          if(!resposta.ok)throw Error(data.error||"Não foi possível conferir a DPS.");
-          const erros=Array.isArray(data.pendencias)?data.pendencias:[];
-          const resultado=await Swal.fire({
-            icon:erros.length?"warning":"info",
-            title:erros.length?"Dados a revisar na DPS":"Cadastro básico preenchido",
-            html:erros.length
-              ?'<p class="text-start small">Confira todos os campos antes de validar no XSD:</p>'+
-                '<ol class="text-start">'+erros.map(e=>'<li class="mb-2">'+esc(e)+'</li>').join("")+'</ol>'
-              :'<p>A nota não tem pendências no preenchimento básico. Ainda precisa passar no XSD oficial e na SEFIN.</p>',
-            showCancelButton:erros.length>0,
-            cancelButtonText:"Fechar",
-            confirmButtonText:erros.length?"Editar rascunho":"Entendi",
-            width:650
-          });
-          if(erros.length && resultado.isConfirmed)
-            document.querySelector('[data-editar-nota="'+id+'"]')?.click();
-        }catch(e){await Swal.fire({icon:"error",title:"Erro na conferência DPS",text:e.message});}
-        finally{btn.disabled=false;}
-        return;
-      }
-      const validar=btn.dataset.sbaDps==="xsd";
-      const assinar=btn.dataset.sbaDps==="assinar";
-      const rota="/fiscal/sba/nfse/preparacao/"+id+
-        (validar?"/validar-xsd":assinar?"/assinar":"/xml");
-      btn.disabled=true;
-      try{
-        const resposta=await fetch(API_URL+rota,{
-          method:assinar||validar?"POST":"GET",
-          headers:{Authorization:"Bearer "+token,...(assinar||validar?{"Content-Type":"application/json"}:{})},
-          ...(assinar||validar?{body:"{}"}:{})
-        });
-        if(validar){
-          const data=await resposta.json().catch(()=>({}));
-          if(!resposta.ok || !data.validadoXsdOficial){
-            const pendencias=Array.isArray(data.pendencias)?data.pendencias.join("\n"):"";
-            throw Error([data.error||"DPS rejeitada pelo XSD oficial.",data.erroXsd||"",pendencias]
-              .filter(Boolean).join("\n\n"));
-          }
-          await Swal.fire({icon:"success",title:"DPS validada no XSD oficial",
-            text:"Versão: "+data.pacote+". A assinatura XMLDSig passou na validação local. A nota NÃO foi transmitida ou autorizada."});
-          return;
-        }
-        if(!resposta.ok){
-          const error=await resposta.json().catch(()=>({}));
-          const pendencias=Array.isArray(error.pendencias)?error.pendencias.join("\n"):"";
-          throw Error([error.error||"Não foi possível preparar a DPS.",pendencias].filter(Boolean).join("\n\n"));
-        }
-        const blob=await resposta.blob();
-        const url=URL.createObjectURL(blob);
-        const link=document.createElement("a");
-        link.href=url;link.download=assinar?"dps-sba-assinada-nao-homologada.xml":"dps-sba-previa-nao-validada.xml";
-        document.body.appendChild(link);link.click();link.remove();
-        setTimeout(()=>URL.revokeObjectURL(url),60000);
-        await Swal.fire({icon:"info",title:assinar?"DPS assinada localmente":"Prévia DPS gerada",
-          text:"Documento experimental para análise e validação XSD. Nenhum dado foi transmitido à SEFIN e a nota continua sem autorização."});
-      }catch(error){
-        await Swal.fire({icon:"warning",title:"Preparação fiscal pendente",text:error.message});
-      }finally{btn.disabled=false;}
-    });
     const section = document.createElement("section");
     section.id = "fiscalIntegracoesSba";
     section.className = "fiscal-panel p-3 mb-3";
@@ -218,57 +123,19 @@
     section.innerHTML =
       '<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">' +
         '<div><h2 class="h5 fw-bold mb-1">Integrações fiscais · SBA</h2>' +
-        '<p class="small text-muted mb-0">Serviços: Portal Nacional direto. Materiais: SIEG Emissor. Sem substituir ou configurar a Focus.</p></div>' +
-        '<button type="button" id="fiscalSbaVerificar" class="btn-secondary-fiscal">Verificar preparação</button>' +
+        '<p class="small text-muted mb-0">NFS-e: Portal Nacional direto. NF-e de materiais: SIEG Emissor.</p></div>' +
+        '<button type="button" id="fiscalSbaVerificar" class="btn-secondary-fiscal">Atualizar situação</button>' +
       '</div>' +
       '<div id="fiscalSbaSituacao" class="small" role="status" aria-live="polite">Consultando pré-requisitos…</div>' +
       '<div class="d-flex flex-wrap gap-2 mt-3">' +
         '<a class="btn-secondary-fiscal text-decoration-none" href="https://www.nfse.gov.br/EmissorNacional" target="_blank" rel="noopener noreferrer">Abrir Portal Nacional</a>' +
         '<a class="btn-secondary-fiscal text-decoration-none" href="https://emissor.sieg.com/" target="_blank" rel="noopener noreferrer">Abrir SIEG Emissor</a>' +
         '<button type="button" id="fiscalSbaCadastro" class="btn-secondary-fiscal">Cadastro da emissora / certificado A1</button>' +
-        '<button type="button" id="fiscalSbaAssinatura" class="btn-secondary-fiscal" disabled>Testar assinatura do A1</button>' +
-        '<button type="button" id="fiscalSbaTls" class="btn-secondary-fiscal" disabled>Testar conexão SEFIN (sem emissão)</button>' +
       '</div>' +
       '<p class="small text-muted mt-3 mb-0">NFS-e: abra a nota vinculada à proposta, confira os dados e use “Emitir NFS-e em produção”. Município e classificação fiscal devem corresponder ao serviço. Operações com retenções ou composição fiscal ainda não suportada ficam bloqueadas. NF-e de materiais: emita na SIEG e importe o XML autorizado para vincular à proposta e ao financeiro.</p>';
     area.after(section);
     section.querySelector("#fiscalSbaCadastro")?.addEventListener("click", () =>
       document.querySelector('[data-fiscal-tab="empresas"]')?.click());
-    let emissoraParaTeste=null;
-    const btnAssinatura=section.querySelector("#fiscalSbaAssinatura");
-    const btnTls=section.querySelector("#fiscalSbaTls");
-    btnTls?.addEventListener("click",async()=>{
-      if(!emissoraParaTeste)return;
-      btnTls.disabled=true;
-      try{
-        const resposta=await fetch(API_URL+"/fiscal/sba/nfse/certificado/"+emissoraParaTeste+"/testar-sefin",{
-          method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:"{}"
-        });
-        const d=await resposta.json().catch(()=>({}));
-        if(!resposta.ok||!d.tlsConectou)throw Error(d.error||"Falha na negociação TLS.");
-        await Swal.fire({icon:"success",title:"Canal TLS de homologação conectado",
-          text:"Conexão segura "+d.protocolo+" com a SEFIN de homologação. Isto NÃO confirma autorização do CNPJ para emitir; nenhuma nota foi enviada."});
-      }catch(erro){
-        await Swal.fire({icon:"warning",title:"Conexão SEFIN ainda pendente",text:erro.message});
-      }finally{btnTls.disabled=false;}
-    });
-
-    btnAssinatura?.addEventListener("click",async()=>{
-      if(!emissoraParaTeste)return;
-      btnAssinatura.disabled=true;
-      try{
-        const response=await fetch(API_URL+"/fiscal/sba/nfse/certificado/"+emissoraParaTeste+"/testar",{
-          method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:"{}"
-        });
-        const data=await response.json().catch(()=>({}));
-        if(!response.ok)throw Error(data.error||"Assinatura local do A1 não pôde ser concluída.");
-        await Swal.fire({
-          icon:"success",title:"Assinatura local validada",
-          text:"Certificado vigente até "+data.certificadoValidoAte+". O teste não transmitiu nota. A DPS em XML ainda precisa ser assinada e homologada na SEFIN."
-        });
-      }catch(e){
-        await Swal.fire({icon:"error",title:"Falha no teste do A1",text:e.message});
-      }finally{btnAssinatura.disabled=false;}
-    });
     async function verificar() {
       const status = section.querySelector("#fiscalSbaSituacao");
       const btn = section.querySelector("#fiscalSbaVerificar");
@@ -284,9 +151,6 @@
           apuracaoSimples: "Apuração do Simples",
           padraoNacional: "NFS-e Nacional"
         };
-        emissoraParaTeste=dados.emissoras.find(e=>e.dados?.certificadoA1)?.id||null;
-        if(btnAssinatura)btnAssinatura.disabled=!emissoraParaTeste;
-        if(btnTls)btnTls.disabled=!emissoraParaTeste;
         if (!dados.emissoras.length) {
           status.innerHTML = '<strong class="text-warning">Pendente:</strong> ainda não há empresa emissora cadastrada na SBA. Cadastre a empresa fiscal antes de solicitar homologação.';
         } else {

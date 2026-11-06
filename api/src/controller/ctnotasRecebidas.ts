@@ -1,3 +1,4 @@
+import {consultarRecebidasAdn,conferirRecebidaAdn} from "../services/recebidasAdnSba.service";
 import { Request, Response } from "express";
 import prisma from "../prisma";
 
@@ -17,12 +18,12 @@ async function emissora(req:Request,id:number){
   if(!Number.isSafeInteger(id)||id<=0)throw error("Selecione a empresa receptora.");
   const empresa=await prisma.empresaFiscal.findFirst({
     where:{empresafiscalid:id,empresaId:req.empresaId as number,ativo:true},
-    select:{empresafiscalid:true,empresaId:true,cnpj:true,ambiente:true,tokenProducao:true}
+    select:{empresafiscalid:true,empresaId:true,cnpj:true,ambiente:true,tokenProducao:true,provedor:true,padraoNfse:true,certificadoCriptografado:true}
   });
   if(!empresa)throw error("Empresa fiscal não encontrada neste acesso.",404);
   // Recebimento de notas reais usa o token de produção, mesmo quando
   // a emissão está em homologação. Nunca alterar o ambiente emissor.
-  if(!empresa.tokenProducao)throw error(
+  if(req.configuracaoSistema?.perfil!=="SBA"&&!empresa.tokenProducao)throw error(
     "Configure o token Focus de PRODUÇÃO nesta empresa para consultar notas recebidas reais. A emissão pode continuar em HOMOLOGAÇÃO. Habilite também o produto de recebimento correspondente na Focus.",422);
   if(DIG(empresa.cnpj).length!==14)throw error("CNPJ da empresa receptora inválido.");
   return empresa;
@@ -91,17 +92,18 @@ export const listar=async(req:Request,res:Response):Promise<void>=>{
   if(!tipoValido(req.query.tipo))throw error("Selecione o tipo de nota recebida.");
   const emp=await emissora(req,Number(req.query.empresaFiscalId));
   const versao=req.query.versao==null?0:Number(req.query.versao);
-  const consulta=await consultarFocus(emp,req.query.tipo,versao);
-  const docs=consulta.documentos
-    .map(n=>normalizar(n,req.query.tipo as TipoRecebida,DIG(emp.cnpj))).filter(Boolean);
+  const sba=req.configuracaoSistema?.perfil==='SBA';
+  if(sba&&(req.empresaId!==2||req.query.tipo!=='NFSE_NACIONAL'))throw error('Na SBA, NFS-e recebidas são consultadas no Portal Nacional. NF-e de mercadorias permanecem na SIEG.',422);
+  const consulta=sba?await consultarRecebidasAdn(prisma,emp,versao):await consultarFocus(emp,req.query.tipo,versao);
+  const docs=sba?consulta.documentos:consulta.documentos.map((n:any)=>normalizar(n,req.query.tipo as TipoRecebida,DIG(emp.cnpj))).filter(Boolean);
   const chaves=docs.map((d:any)=>"RECEBIDA:"+emp.empresaId+":"+d.tipo+":"+d.chave);
   const existentes=chaves.length?await prisma.lancamentoFinanceiro.findMany({
     where:{empresaId:emp.empresaId,tipo:"SAIDA",chaveOrigem:{in:chaves}},
     select:{chaveOrigem:true,lancamentofinanceiroid:true,status:true}
   }):[];
-  res.json({empresaFiscalId:emp.empresafiscalid,tipo:req.query.tipo,versao,proximaVersao:Math.max(versao,consulta.maxVersion,...docs.map((d:any)=>d.versao)),total:consulta.total,
+  res.json({empresaFiscalId:emp.empresafiscalid,tipo:req.query.tipo,versao,proximaVersao:sba?(consulta as any).proximaVersao:Math.max(versao,(consulta as any).maxVersion,...docs.map((d:any)=>d.versao)),total:consulta.total,...(sba?{fonte:'PORTAL_NACIONAL',temMais:(consulta as any).temMais}:{}),
     documentos:docs.map((d:any)=>({...d,contaExistente:existentes.find(x=>x.chaveOrigem==="RECEBIDA:"+emp.empresaId+":"+d.tipo+":"+d.chave)||null})),
-    aviso:"Somente consulta. A Focus deve ter o recebimento habilitado para o CNPJ; documentos cancelados não devem ser pagos. Uma nota recebida não é, por si só, uma dívida vencida."});
+    aviso:sba?(consulta as any).aviso:"Somente consulta. A Focus deve ter o recebimento habilitado para o CNPJ; documentos cancelados não devem ser pagos. Uma nota recebida não é, por si só, uma dívida vencida."});
  }catch(e:any){respostaErro(res,e);}
 };
 export const importarParaPagar=async(req:Request,res:Response):Promise<void>=>{
@@ -114,8 +116,10 @@ export const importarParaPagar=async(req:Request,res:Response):Promise<void>=>{
   if(!chave||chave.length>120||!/^[\w-]+$/.test(chave)||!Number.isSafeInteger(versao)||versao<0)
     throw error("Chave ou versão fiscal inválida.");
   if(!dataValida(req.body?.vencimento))throw error("Informe o vencimento acordado com o fornecedor.");
-  const rows=(await consultarFocus(emp,req.body.tipo,Math.max(0,versao-1))).documentos;
-  const documento=rows.map(n=>normalizar(n,req.body.tipo,DIG(emp.cnpj))).find((d:any)=>d?.chave===chave&&d?.versao===versao);
+  const sba=req.configuracaoSistema?.perfil==='SBA';
+  if(sba&&(req.empresaId!==2||req.body.tipo!=='NFSE_NACIONAL'))throw error('Consulte NFS-e pelo Portal Nacional; mercadorias permanecem na SIEG.');
+  const rows=sba?[]:(await consultarFocus(emp,req.body.tipo,Math.max(0,versao-1))).documentos;
+  const documento=sba?await conferirRecebidaAdn(prisma,emp,chave,versao):rows.map(n=>normalizar(n,req.body.tipo,DIG(emp.cnpj))).find((d:any)=>d?.chave===chave&&d?.versao===versao);
   if(!documento)throw error("Nota não encontrada na consulta atual da Focus. Atualize a lista para conferir.",409);
   if(!["autorizada","autorizado"].includes(documento.situacao))
     throw error("Somente notas autorizadas podem ser lançadas para pagamento. Confira cancelamentos/substituições.");
@@ -133,7 +137,7 @@ export const importarParaPagar=async(req:Request,res:Response):Promise<void>=>{
       favorecido:documento.emissor,valor:documento.valor,
       dataCompetencia:documento.dataEmissao&&!Number.isNaN(Date.parse(documento.dataEmissao))?new Date(documento.dataEmissao):new Date(),
       dataVencimento:new Date(req.body.vencimento+"T15:00:00Z"),
-      observacoes:"Documento fiscal recebido via Focus NFe; CNPJ emitente: "+documento.documentoEmissor+
+      observacoes:"Documento fiscal recebido via "+(sba?"Portal Nacional (ADN)":"Focus NFe")+"; CNPJ emitente: "+documento.documentoEmissor+
         "; chave: "+chave+". Valor bruto. Revisar retenções, condições e quitação antes de baixar.",
     }
   });

@@ -6,19 +6,25 @@
   if(!token)return;
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const dinheiro=v=>Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-  let docs=[],cursor=0,carregando=false,consultaFalhou=false;
+  let docs=[],cursor=0,carregando=false,consultaFalhou=false,sba=false;
+  const perfil=fetch(API_URL+'/empresas/me',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(t=>{
+    sba=t?.slug==='sba'&&t?.configuracaoSistema?.perfil==='SBA';if(!sba)return;
+    const p=$('tabFiscalRecebidas').querySelector('p');if(p)p.textContent='Consulte NFS-e recebidas pelo Portal Nacional (ADN), em produção, usando o A1 da SBA. A consulta não cria contas nem realiza pagamentos. NF-e de mercadorias permanecem na SIEG.';
+    $('nrTipo').querySelector('option[value="NFE"]')?.remove();
+  }).catch(()=>{});
+  const fonte=()=>sba?'Portal Nacional':'Focus';
   const api=async(path,opts={})=>{
     const response=await fetch(API_URL+path,{
       ...opts,headers:{Authorization:"Bearer "+token,...(opts.body?{"Content-Type":"application/json"}:{})}
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok)throw Error(data.error||"Falha na consulta à Focus.");
+    if(!response.ok)throw Error(data.error||"Falha na consulta fiscal.");
     return data;
   };
   function render(){
     $("nrTabela").innerHTML=docs.length?docs.map((d,i)=> {
       const quitacao=d.contaExistente;
-      const autorizado=["autorizado","autorizada"].includes(d.situacao);
+      const autorizado=["autorizado","autorizada",...(sba?["recebida"]:[])].includes(d.situacao);
       return '<tr><td><strong>'+esc(d.emissor)+'</strong><small class="d-block">'+esc(d.documentoEmissor||"-")+
         '</small></td><td>'+esc(d.dataEmissao?new Date(d.dataEmissao).toLocaleDateString("pt-BR"):"-")+
         '<small class="d-block text-break">'+esc(d.chave)+'</small></td><td>'+dinheiro(d.valor)+'</td><td>'+
@@ -26,21 +32,23 @@
         '<span class="text-success">Já importada · '+esc(quitacao.status)+'</span>':
         autorizado?'<button type="button" class="btn-secondary-fiscal" data-nr-pagar="'+i+'">Gerar conta a pagar</button>':
         '<span class="text-muted">Não importável</span>')+'</td></tr>';
-    }).join(""):'<tr><td colspan="5">'+(consultaFalhou?"Consulta não realizada: verifique o erro acima.":"Nenhuma nota retornada pela Focus.")+'</td></tr>';
+    }).join(""):'<tr><td colspan="5">'+(consultaFalhou?"Consulta não realizada: verifique o erro acima.":"Nenhuma nota retornada pelo "+fonte()+".")+'</td></tr>';
   }
   async function carregarEmpresas(){
+    await perfil;
     const empresas=await api("/fiscal/empresas");
     $("nrEmpresa").innerHTML='<option value="">Selecione uma empresa emissora cadastrada</option>'+
       empresas.map(e=>'<option value="'+Number(e.empresafiscalid)+'">'+esc(e.razaoSocial)+' · '+esc(e.cnpj)+
-      (e.ambiente==="PRODUCAO"?" · Produção":" · Emissão em homologação (recepção requer token de produção)")+'</option>').join("");
+      (sba?" · Recepção em produção":e.ambiente==="PRODUCAO"?" · Produção":" · Emissão em homologação (recepção requer token de produção)")+'</option>').join("");
   }
   async function consultar(mais=false){
     if(carregando)return;
+    await perfil;
     const empresaFiscalId=Number($("nrEmpresa").value);
     const tipo=$("nrTipo").value;
     if(!empresaFiscalId){$("nrAviso").textContent="Selecione a empresa destinatária.";return;}
     carregando=true;$("nrConsultar").disabled=true;$("nrMais").disabled=true;
-    $("nrAviso").textContent="Consultando documentos recebidos pela Focus...";
+    $("nrAviso").textContent="Consultando documentos recebidos pelo "+fonte()+"...";
     consultaFalhou=false;
     try{
       const url=new URLSearchParams({empresaFiscalId:String(empresaFiscalId),tipo,versao:String(mais?cursor:0)});
@@ -51,7 +59,7 @@
       const previous=cursor;
       cursor=result.proximaVersao;
       $("nrAviso").textContent=result.aviso+" Foram retornados "+result.documentos.length+" documento(s) nesta página.";
-      $("nrMais").classList.toggle("d-none",result.documentos.length<100||mais&&cursor<=previous);
+      $("nrMais").classList.toggle("d-none",result.temMais===undefined?(result.documentos.length<100||mais&&cursor<=previous):!result.temMais);
       render();
     }catch(e){consultaFalhou=true;$("nrAviso").textContent=e.message;if(!mais)docs=[];render();}
     finally{carregando=false;$("nrConsultar").disabled=false;$("nrMais").disabled=false;}
