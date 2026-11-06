@@ -39,6 +39,8 @@ import requireRole from "../middlewares/requireRole";
 const routes = express.Router();
 routes.use('/superadmin',auth,superadmin.somenteSuperAdmin);
 routes.get('/superadmin/resumo',superadmin.resumo);
+routes.get('/superadmin/negocios',superadmin.negocios);
+routes.get('/superadmin/negocios/detalhes',superadmin.negociosDetalhes);
 routes.get('/superadmin/logs',superadmin.logs);
 routes.get('/superadmin/pendencias',superadmin.pendencias);
 routes.patch('/superadmin/empresas/:id',superadmin.editar);

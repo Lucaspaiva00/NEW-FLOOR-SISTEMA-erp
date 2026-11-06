@@ -1,3 +1,4 @@
+import {filtrosNegocios,obterNegocios,detalhesNegocios} from '../services/superadminNegocios.service';
 import {resumoKpis,validadeA1} from '../services/superadminKpis.service';
 import {Request,Response,NextFunction} from 'express';
 import prisma from '../prisma';
@@ -66,3 +67,6 @@ export const pendencias=handle(async(req,res)=>{
  }
  res.setHeader('Cache-Control','no-store');res.json({linhas,total,pagina,paginas:Math.max(1,Math.ceil(total/50))});
 });
+
+export const negocios=handle(async(req,res)=>{const dados=await obterNegocios(prisma,filtrosNegocios(req.query));res.setHeader("Cache-Control","no-store");res.json(dados);});
+export const negociosDetalhes=handle(async(req,res)=>{const dados=await detalhesNegocios(prisma,String(req.query.tipo||""),filtrosNegocios(req.query));res.setHeader("Cache-Control","no-store");res.json(dados);});
