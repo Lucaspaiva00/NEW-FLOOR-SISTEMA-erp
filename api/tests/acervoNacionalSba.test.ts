@@ -56,3 +56,17 @@ test('sincronização automatiza emitidas em lotes limitados e preserva uma cont
 });
 
 test('conta antiga com mesmo número sem chave fiscal exige vínculo em vez de duplicar receita',async()=>{const b=banco();b.tx.$queryRaw=async(q:any)=>String(q.text||q).includes('SELECT dados')?[{dados:{...nota,valorLiquido:90}}]:[];b.tx.lancamentoFinanceiro.findFirst=async()=>({status:'PAGO',documento:'24'});await assert.rejects(conciliarAcervo(b.db,empresa,{confirmar:true,chave,acao:'ABERTO'},async()=>({httpStatus:200,data:[]}),true),/evitar duplicidade/);assert.equal(b.criada(),null);});
+
+import {situacaoEventosAdn} from '../src/services/situacaoEventosAdn.service';
+test('confirmação do tomador preserva validade; cancelamento, rejeição e chave diferente bloqueiam automação',()=>{
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:[{TipoEvento:205204,ChaveAcesso:chave}]},chave),true);
+ for(const tipo of [101101,105102,105104,305101,203206,999999])assert.equal(situacaoEventosAdn({httpStatus:200,data:[{TipoEvento:tipo,ChaveAcesso:chave}]},chave),false);
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:[{TipoEvento:205204,ChaveAcesso:'4'.repeat(50)}]},chave),false);
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:[{}]},chave),false);
+ const xml=(codigo:string,key=chave)=>`<evento xmlns="http://www.sped.fazenda.gov.br/nfse"><infEvento><chNFSe>${key}</chNFSe><tpAmb>1</tpAmb><e${codigo}/></infEvento></evento>`;
+ const encoded=(s:string)=>gzipSync(s).toString('base64');
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:[{ArquivoXml:encoded(xml('205204'))}]},chave),true);
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:{StatusProcessamento:'DOCUMENTOS_LOCALIZADOS',LoteDFe:[{ArquivoXml:encoded(xml('205204'))}]}},chave),true);
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:[{ArquivoXml:encoded(xml('101101'))}]},chave),false);
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:[{ArquivoXml:encoded(xml('205204','4'.repeat(50)))}]},chave),false);
+});

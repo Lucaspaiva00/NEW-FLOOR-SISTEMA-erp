@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {DOMParser} from '@xmldom/xmldom';
 import {Prisma} from '@prisma/client';
+import {situacaoEventosAdn} from './situacaoEventosAdn.service';
 import {comA1Sba} from './sefinTransmissaoSba.service';
 const NS='http://www.sped.fazenda.gov.br/nfse';
 const falha=(message:string,statusCode=422)=>Object.assign(Error(message),{statusCode});
@@ -50,7 +51,7 @@ export function lerLoteAdn(r:{httpStatus:number,data:any},cnpj:string,ultimoNsu:
  let nsu=ultimoNsu;const notas:any[]=[],eventos:any[]=[],arquivos:Record<string,string>={};
  for(const item of d.LoteDFe){const atual=validarNsu(item.NSU);if(atual<=ultimoNsu)continue;nsu=Math.max(nsu,atual);const tipo=String(item.TipoDocumento||'').toUpperCase();
   if(tipo==='NFSE'){const nota=lerNotaRecebidaAdn(item,cnpj,incluirEmitidas);if(nota){notas.push(nota);arquivos[nota.chave]=item.ArquivoXml;}}
-  else if(tipo==='EVENTO'){if(!/^\d{50}$/.test(String(item.ChaveAcesso||'')))throw falha('Evento ADN com chave inválida.',502);const tipoEvento=String(item.TipoEvento||'').toUpperCase();eventos.push({chave:item.ChaveAcesso,situacao:tipoEvento.includes('CANCEL')?'cancelada':tipoEvento.includes('SUBSTIT')?'substituida':'revisar_eventos'});}
+  else if(tipo==='EVENTO'){if(!/^\d{50}$/.test(String(item.ChaveAcesso||'')))throw falha('Evento ADN com chave inválida.',502);const tipoEvento=String(item.TipoEvento||'').toUpperCase();if(!['202201','203202','204203','205204'].includes(tipoEvento))eventos.push({chave:item.ChaveAcesso,situacao:tipoEvento==='105102'||tipoEvento.includes('SUBSTIT')?'substituida':['101101','105104','305101'].includes(tipoEvento)||tipoEvento.includes('CANCEL')?'cancelada':'revisar_eventos'});}
   else throw falha('Tipo de documento ADN ainda não reconhecido. A consulta não avançou.',502);
  }
  if(nsu<=ultimoNsu)throw falha('O ADN não avançou o NSU da consulta. Aguarde para consultar novamente.',502);
@@ -82,9 +83,6 @@ export async function conferirRecebidaAdn(db:any,empresa:any,chave:string,versao
  if(!n||n.cnpjTomador!==String(empresa.cnpj).replace(/\D/g,''))throw falha('Documento não encontrado na consulta desta empresa.',404);
  if(n.situacao!=='recebida')throw falha('Documento com evento fiscal. Confira cancelamentos ou substituições no Portal Nacional.');
  const r=await solicitar(empresa,'/NFSe/'+chave+'/Eventos');
- const d=r.data,status=String(d?.StatusProcessamento||'').replace(/_/g,'').toUpperCase();
- const lista=Array.isArray(d)?d:Array.isArray(d?.Eventos)?d.Eventos:Array.isArray(d?.LoteDFe)?d.LoteDFe:null;
- const semEventos=status==='NENHUMDOCUMENTOLOCALIZADO'&&[200,404].includes(r.httpStatus)||r.httpStatus===200&&lista!==null&&lista.length===0;
- if(!semEventos)throw falha('Não foi possível confirmar ausência de cancelamento ou substituição. Confira a nota no Portal Nacional antes de lançar a conta.');
+ if(!situacaoEventosAdn(r,chave))throw falha('Não foi possível confirmar ausência de cancelamento ou substituição. Confira a nota no Portal Nacional antes de lançar a conta.');
  return {...n,situacao:'autorizada'};
 }
