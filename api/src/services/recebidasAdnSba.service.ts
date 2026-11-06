@@ -37,7 +37,8 @@ export function lerNotaRecebidaAdn(item:any,cnpj:string,incluirEmitidas=false){
  const valor=Number(text(doc,'vServ'));if(!Number.isFinite(valor)||valor<=0||valor>=1e12)throw falha('Valor inválido no documento recebido.',502);
  const dataEmissao=text(doc,'dhEmi');if(!Number.isFinite(Date.parse(dataEmissao)))throw falha('Data inválida no documento recebido.',502);
  if(!/^\d{11}(?:\d{3})?$/.test(documentoEmissor)||!/^\d+$/.test(text(doc,'nNFSe')))throw falha('Identificação do emitente ou número da NFS-e inválido.',502);
- return {tipo:'NFSE_NACIONAL',chave,versao:nsu,direcao,cnpjTomador,tomador:destinatario?text(destinatario,'xNome')||'Tomador não identificado':'Tomador não identificado',documentoTomador:cnpjTomador,emissor:(emit?text(emit,'xNome'):'')||'Fornecedor',documentoEmissor,dataEmissao,valor:Math.round(valor*100)/100,situacao:'recebida',numero:text(doc,'nNFSe')};
+ const liquidoTexto=text(doc,'vLiq'),valorLiquido=liquidoTexto===''?null:Number(liquidoTexto);if(valorLiquido!==null&&(!Number.isFinite(valorLiquido)||valorLiquido<0||valorLiquido>valor))throw falha('Valor líquido inválido no documento recebido.',502);
+ return {tipo:'NFSE_NACIONAL',chave,versao:nsu,direcao,valorLiquido,cnpjTomador,tomador:destinatario?text(destinatario,'xNome')||'Tomador não identificado':'Tomador não identificado',documentoTomador:cnpjTomador,emissor:(emit?text(emit,'xNome'):'')||'Fornecedor',documentoEmissor,dataEmissao,valor:Math.round(valor*100)/100,situacao:'recebida',numero:text(doc,'nNFSe')};
 }
 export function lerLoteAdn(r:{httpStatus:number,data:any},cnpj:string,ultimoNsu:number,incluirEmitidas=false){
  const d=r.data||{},status=String(d.StatusProcessamento||'').replace(/_/g,'').toUpperCase();
@@ -62,7 +63,7 @@ export async function consultarRecebidasAdn(db:any,empresa:any,versao=0,solicita
  if(lease.length){try{
   const ultimo=Number(lease[0].nsu),lote=lerLoteAdn(await solicitar(empresa,caminhoAdn(String(empresa.cnpj).replace(/\D/g,''),ultimo)),String(empresa.cnpj).replace(/\D/g,''),ultimo,true);
   await db.$transaction(async(tx:any)=>{
-   for(const n of lote.notas)await tx.$executeRaw(Prisma.sql`INSERT INTO "DocumentoRecebidoSba" ("empresaId","empresaFiscalId",chave,nsu,dados,"xmlCompactado") VALUES (${tenant},${id},${n.chave},${n.versao},${JSON.stringify(n)}::jsonb,${lote.arquivos[n.chave]}) ON CONFLICT ("empresaFiscalId",chave) DO UPDATE SET "xmlCompactado"=EXCLUDED."xmlCompactado"`);
+   for(const n of lote.notas)await tx.$executeRaw(Prisma.sql`INSERT INTO "DocumentoRecebidoSba" ("empresaId","empresaFiscalId",chave,nsu,dados,"xmlCompactado") VALUES (${tenant},${id},${n.chave},${n.versao},${JSON.stringify(n)}::jsonb,${lote.arquivos[n.chave]}) ON CONFLICT ("empresaFiscalId",chave) DO UPDATE SET "xmlCompactado"=EXCLUDED."xmlCompactado",dados="DocumentoRecebidoSba".dados || jsonb_build_object('valorLiquido',EXCLUDED.dados->'valorLiquido')`);
    for(const e of lote.eventos)await tx.$executeRaw(Prisma.sql`UPDATE "DocumentoRecebidoSba" SET dados=jsonb_set(dados,'{situacao}',${JSON.stringify(e.situacao)}::jsonb) WHERE "empresaId"=${tenant} AND "empresaFiscalId"=${id} AND chave=${e.chave}`);
    await tx.$executeRaw(Prisma.sql`UPDATE "SincronizacaoRecebidasSba" SET nsu=${lote.nsu},"proximaConsulta"=CURRENT_TIMESTAMP+${lote.fim?'60 minutes':'1 second'}::interval,"leaseAte"=NULL,"leaseToken"=NULL,"updatedAt"=CURRENT_TIMESTAMP WHERE "empresaFiscalId"=${id} AND "empresaId"=${tenant} AND "leaseToken"=${token}`);
   });

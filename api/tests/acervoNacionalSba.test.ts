@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {gzipSync} from 'node:zlib';
 import {lerNotaRecebidaAdn} from '../src/services/recebidasAdnSba.service';
-import {listarAcervo,situacaoFinanceira,conciliarAcervo,validarFiltros} from '../src/services/acervoNacionalSba.service';
+import {listarAcervo,situacaoFinanceira,conciliarAcervo,validarFiltros,automatizarRecebiveisAcervo} from '../src/services/acervoNacionalSba.service';
 const chave='3'.repeat(50),cnpj='08775345000129',empresa={empresaId:2,empresafiscalid:2,cnpj};
 const nota={chave,versao:1,direcao:'EMITIDA',situacao:'recebida',numero:'24',valor:100,dataEmissao:'2026-03-01T12:00:00Z',tomador:'Cliente',cnpjTomador:'47051253000158'};
 test('acervo reconhece emitidas e recebidas e não infere pagamento pela idade',()=>{
@@ -33,3 +33,26 @@ test('vincular preserva baixa anterior e rejeita conta fora do tenant ou valor i
  b.tx.lancamentoFinanceiro.findFirst=async({where}:any)=>{assert.equal(where.empresaId,2);assert.equal(where.tipo,'ENTRADA');return {status:'PAGO',valor:100};};
  b.tx.$queryRaw=async(q:any)=>String(q.text||q).includes('SELECT dados')?[{dados:{...nota}}]:[];b.tx.$executeRaw=async()=>{salvo=true;};await conciliarAcervo(b.db,empresa,body);assert.equal(salvo,true);assert.equal(b.criada(),null);assert.equal(b.pagamento(),null);
 });
+
+test('automação cria recebível líquido sem vencimento inventado nem baixa, e exige XML líquido confirmado',async()=>{
+ const b=banco();b.tx.$queryRaw=async(q:any)=>String(q.text||q).includes('SELECT dados')?[{dados:{...nota,valorLiquido:90}}]:[];
+ await conciliarAcervo(b.db,empresa,{confirmar:true,chave,acao:'ABERTO'},async()=>({httpStatus:200,data:[]}),true);
+ assert.equal(b.criada().valor,90);assert.equal(b.criada().dataVencimento,null);assert.equal(b.criada().tipo,'ENTRADA');assert.equal(b.pagamento(),null);
+ const c=banco();await assert.rejects(conciliarAcervo(c.db,empresa,{confirmar:true,chave,acao:'ABERTO'},async()=>({httpStatus:200,data:[]}),true),/líquido não confirmado/);assert.equal(c.criada(),null);
+ const d=banco();d.tx.$queryRaw=async()=>[{dados:{...nota,direcao:'RECEBIDA',valorLiquido:90}}];await assert.rejects(conciliarAcervo(d.db,empresa,{confirmar:true,chave,acao:'ABERTO'},undefined,true),/restrita/);
+});
+test('automação não recria nem modifica conta já paga e respeita parcelas vinculadas a proposta',async()=>{
+ const b=banco();b.tx.lancamentoFinanceiro.findMany=async()=>[{status:'PAGO',valor:90,valorPago:90}];await assert.rejects(conciliarAcervo(b.db,empresa,{confirmar:true,chave,acao:'ABERTO'},undefined,true),/já está conciliada/);assert.equal(b.criada(),null);
+ const c=banco();c.tx.notaFiscal.findMany=async()=>[{propostaId:8}];await assert.rejects(conciliarAcervo(c.db,empresa,{confirmar:true,chave,acao:'ABERTO'},undefined,true),/preservar parcelas/);assert.equal(c.criada(),null);
+});
+
+test('sincronização automatiza emitidas em lotes limitados e preserva uma conta quitada na repetição',async()=>{
+ const b=banco();let transacoes=0,marcadores=0;
+ b.tx.$queryRaw=async(q:any)=>String(q.text||q).includes('SELECT dados')?[{dados:{...nota,valorLiquido:90}}]:[];
+ const db:any={...b.tx,$transaction:async(fn:any)=>{transacoes++;return fn(b.tx);},$queryRaw:async()=>[{dados:{...nota,valorLiquido:90}}],$executeRaw:async(q:any)=>{assert.match(q.text,/automacaoFinanceira/);marcadores++;},lancamentoFinanceiro:{findMany:async()=>b.criada()?[{...b.criada(),status:'PAGO',valorPago:90}]:[]}};
+ const r=await automatizarRecebiveisAcervo(db,empresa,async()=>({httpStatus:200,data:[]}));assert.equal(r.financeiroAutomatico.criadas,1);assert.equal(b.criada().tipo,'ENTRADA');assert.equal(b.pagamento(),null);
+ const repetida=await automatizarRecebiveisAcervo(db,empresa);assert.equal(repetida.financeiroAutomatico.existentes,1);assert.equal(transacoes,1);assert.equal(marcadores,2);
+ await assert.rejects(automatizarRecebiveisAcervo(db,{empresaId:1}),/apenas para a SBA/);
+});
+
+test('conta antiga com mesmo número sem chave fiscal exige vínculo em vez de duplicar receita',async()=>{const b=banco();b.tx.$queryRaw=async(q:any)=>String(q.text||q).includes('SELECT dados')?[{dados:{...nota,valorLiquido:90}}]:[];b.tx.lancamentoFinanceiro.findFirst=async()=>({status:'PAGO',documento:'24'});await assert.rejects(conciliarAcervo(b.db,empresa,{confirmar:true,chave,acao:'ABERTO'},async()=>({httpStatus:200,data:[]}),true),/evitar duplicidade/);assert.equal(b.criada(),null);});
