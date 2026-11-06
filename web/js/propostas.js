@@ -2302,7 +2302,7 @@ async function atualizarDestinatarios(prefixo,clienteId,proposta={}) {
  const contato=document.getElementById(prefixo?"editarContatoDestinatario":"contatoDestinatario"), email=document.getElementById(prefixo?"editarEmailDestinatario":"emailDestinatario");
  if(!contato||!email)return;
  const response=await fetch(`${API_URL}/clientes/${clienteId}`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok)return;const c=await response.json();
- for(const [el,values,selected] of [[contato,[c.responsavel,...[1,2,3,4].flatMap(i=>[c["nomeEmail"+i],c["nomeTelefone"+i]])],proposta.contatoDestinatario],[email,[1,2,3,4].map(i=>c["email"+i]),proposta.emailDestinatario]]) {
+ for(const [el,values,selected] of [[contato,[c.responsavel,...window.contatosDoCliente(c).flatMap(x=>[x.nomeEmail,x.nomeTelefone])],proposta.contatoDestinatario],[email,window.contatosDoCliente(c).map(x=>x.email),proposta.emailDestinatario]]) {
  el.replaceChildren(new Option("Selecione",""));for(const v of new Set(values.filter(Boolean)))el.add(new Option(v,v));if(selected){if(![...el.options].some(o=>o.value===selected))el.add(new Option(selected,selected));el.value=selected;}
  }
 }

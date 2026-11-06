@@ -94,6 +94,7 @@ model Cliente {
   dataNascimento    DateTime?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+  contatosAdicionais Json?
   email1            String?
   email2            String?
   email3            String?

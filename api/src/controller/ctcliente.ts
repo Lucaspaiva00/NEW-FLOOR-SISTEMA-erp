@@ -1,3 +1,4 @@
+import {ContatoInvalido,validarContatosAdicionais} from "../services/clienteContatos.service";
 import { Request, Response } from "express";
 import prisma from "../prisma";
 
@@ -30,7 +31,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         nomeTelefone3: body.nomeTelefone3,
         nomeTelefone4: body.nomeTelefone4,
 
-        ...(req.configuracaoSistema?.perfil === "SBA" ? dadosPagamentoCliente(body) : {}),
+        ...(req.configuracaoSistema?.perfil === "SBA" ? {...dadosPagamentoCliente(body), ...(body.contatosAdicionais !== undefined ? {contatosAdicionais:validarContatosAdicionais(body.contatosAdicionais)} : {})} : {}),
         reformaTributaria: req.configuracaoSistema?.reformaTributaria ? body.reformaTributaria : undefined,
         email1: body.email1,
         email2: body.email2,
@@ -65,8 +66,8 @@ export const create = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json(cliente);
   } catch (error) {
     console.log(error);
-    res.status(error instanceof Error && error.message.startsWith("Prazo de pagamento") ? 400 : 500).json({
-      error: error instanceof Error && error.message.startsWith("Prazo de pagamento") ? error.message : "Erro ao cadastrar cliente"
+    res.status((error instanceof ContatoInvalido || error instanceof Error && error.message.startsWith("Prazo de pagamento")) ? 400 : 500).json({
+      error: (error instanceof ContatoInvalido || error instanceof Error && error.message.startsWith("Prazo de pagamento")) ? error.message : "Erro ao cadastrar cliente"
     });
   }
 };
@@ -162,7 +163,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
         nomeTelefone3: body.nomeTelefone3,
         nomeTelefone4: body.nomeTelefone4,
 
-        ...(req.configuracaoSistema?.perfil === "SBA" ? dadosPagamentoCliente(body) : {}),
+        ...(req.configuracaoSistema?.perfil === "SBA" ? {...dadosPagamentoCliente(body), ...(body.contatosAdicionais !== undefined ? {contatosAdicionais:validarContatosAdicionais(body.contatosAdicionais)} : {})} : {}),
         reformaTributaria: req.configuracaoSistema?.reformaTributaria ? body.reformaTributaria : undefined,
         email1: body.email1,
         email2: body.email2,
@@ -208,8 +209,8 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json(cliente);
   } catch (error) {
     console.log(error);
-    res.status(error instanceof Error && error.message.startsWith("Prazo de pagamento") ? 400 : 500).json({
-      error: error instanceof Error && error.message.startsWith("Prazo de pagamento") ? error.message : "Erro ao atualizar cliente"
+    res.status((error instanceof ContatoInvalido || error instanceof Error && error.message.startsWith("Prazo de pagamento")) ? 400 : 500).json({
+      error: (error instanceof ContatoInvalido || error instanceof Error && error.message.startsWith("Prazo de pagamento")) ? error.message : "Erro ao atualizar cliente"
     });
   }
 };

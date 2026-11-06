@@ -1,5 +1,6 @@
 import prisma from "../prisma";
 export async function garantirSchemaConfiguracao() {
+ await prisma.$executeRawUnsafe(`ALTER TABLE "Cliente" ADD COLUMN IF NOT EXISTS "contatosAdicionais" JSONB;`);
  await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmailUsuario" (
  "usuarioId" INTEGER PRIMARY KEY REFERENCES "Usuario"("usuarioid") ON DELETE CASCADE,
  "empresaId" INTEGER NOT NULL REFERENCES "Empresa"("empresaid") ON DELETE CASCADE,

@@ -1,3 +1,4 @@
+import {contatosCliente,destinatariosCliente} from "../services/clienteContatos.service";
 import {enviarOriginalJose} from "./ctpropostaPdfJose";
 import {obterContaEmailUsuario} from "../services/emailUsuario.service";
 import { Prisma } from "@prisma/client";
@@ -42,8 +43,8 @@ async function prepararBody(req: Request, res: Response): Promise<any> {
    if(req.empresaId===1 && body.emailDestinatario) {
     body.emailDestinatario=String(body.emailDestinatario).trim();
     if(body.emailDestinatario.length>254 || !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(body.emailDestinatario))throw Error('Informe um e-mail adicional válido para a New Floor.');
-   } else if(body.emailDestinatario && ![cliente.email1,cliente.email2,cliente.email3,cliente.email4].includes(body.emailDestinatario)) throw new Error("Selecione um e-mail cadastrado no cliente.");
-   if(body.contatoDestinatario && ![cliente.responsavel,cliente.nomeEmail1,cliente.nomeEmail2,cliente.nomeEmail3,cliente.nomeEmail4,cliente.nomeTelefone1,cliente.nomeTelefone2,cliente.nomeTelefone3,cliente.nomeTelefone4].includes(body.contatoDestinatario)) throw new Error("Selecione um contato cadastrado no cliente.");
+   } else if(body.emailDestinatario && !contatosCliente(cliente).some(c=>c.email===body.emailDestinatario)) throw new Error("Selecione um e-mail cadastrado no cliente.");
+   if(body.contatoDestinatario && ![cliente.responsavel,...contatosCliente(cliente).flatMap(c=>[c.nomeEmail,c.nomeTelefone])].includes(body.contatoDestinatario)) throw new Error("Selecione um contato cadastrado no cliente.");
  }
  return body;
  } catch(error) {res.status(400).json({error:(error as Error).message}); return null;}
@@ -1036,7 +1037,7 @@ export const enviarEmail = async (
       proposta.cliente?.email1 ||
       proposta.cliente?.email2;
 
-    if (!destinatario) {
+    if (!destinatario && !(req.configuracaoSistema?.perfil === "SBA" && Array.isArray(req.body?.destinatarios) && req.body.destinatarios.length)) {
       res.status(400).json({
         error: "Cliente sem e-mail",
       });
@@ -1051,7 +1052,9 @@ export const enviarEmail = async (
     if(req.empresaId === 1 && (!emailValido(String(destinatario)) || (extraNewFloor && !emailValido(extraNewFloor)))) {
       res.status(400).json({error:'Informe endereços de e-mail válidos antes de enviar.'});return;
     }
-    const destinatarios = req.empresaId === 1
+    const listaSba = req.configuracaoSistema?.perfil === "SBA"
+      ? destinatariosCliente(proposta.cliente,req.body?.destinatarios ?? [destinatario]) : undefined;
+    const destinatarios = listaSba ? listaSba.join(", ") : req.empresaId === 1
       ? [...new Set([String(destinatario).trim(),extraNewFloor].filter(Boolean).map(e=>e.toLowerCase()))].join(", ")
       : destinatario;
     // Remetente autenticado do usuário SBA; nunca cair no SMTP da New Floor.
@@ -1117,7 +1120,8 @@ export const enviarEmail = async (
           ? "E-mail enviado com PDF em anexo"
           : "E-mail enviado com link para download do PDF",
 
-      destinatario,
+      destinatario: destinatarios,
+      ...(listaSba ? {destinatarios:listaSba} : {}),
 
       linkDownload,
 

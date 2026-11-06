@@ -168,20 +168,21 @@ async function enviarEmailProposta(id, btn) {
     (p) => Number(p.propostaid) === Number(id),
   );
 
-  const emailPadrao =
-    proposta?.cliente?.email1 || proposta?.cliente?.email2 || "";
-
-  if (!emailPadrao) {
-    toastErro("Cliente sem e-mail cadastrado.");
-    return;
+  const sba = window.__configuracaoSistema?.perfil === 'SBA';
+  let destinatario, destinatarios;
+  if(sba){
+    try{
+      // O Kanban é resumido: consulte a proposta completa para obter todos os contatos atuais.
+      const completa=await request(`${API_URL}/propostas/${id}`);
+      destinatarios=await window.escolherEmailsCliente(completa.cliente,completa.emailDestinatario);
+      if(!destinatarios)return;
+      destinatario=destinatarios.join(', ');
+    }catch(e){toastErro(e.message||'Não foi possível carregar os contatos.');return;}
+  }else{
+    const emailPadrao=proposta?.cliente?.email1||proposta?.cliente?.email2||'';
+    if(!emailPadrao){toastErro('Cliente sem e-mail cadastrado.');return;}
+    destinatario=prompt('E-mail do destinatário:',emailPadrao)?.trim();if(!destinatario)return;
   }
-
-  const destinatario = prompt(
-    "E-mail do destinatário:",
-    emailPadrao,
-  )?.trim();
-
-  if (!destinatario) return;
 
   const textoOriginal = btn?.textContent;
   if (btn) {
@@ -194,7 +195,7 @@ async function enviarEmailProposta(id, btn) {
   try {
     const data = await request(`${API_URL}/propostas/${id}/email`, {
       method: "POST",
-      body: JSON.stringify({ destinatario }),
+      body: JSON.stringify(sba ? {destinatarios} : {destinatario}),
     });
 
     toastSucesso(

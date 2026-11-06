@@ -14,7 +14,7 @@ const pesquisaCliente = document.getElementById("pesquisaCliente");
 
 let clientesCache = [];
 
-const MAX_CONTATOS = 4;
+let MAX_CONTATOS = 4;
 
 function idCampoContato(tipo, index, prefixo = "") {
   const nome = `${tipo}${index}`;
@@ -83,7 +83,7 @@ function sincronizarVisibilidadeContatos(prefixo = "") {
 
     for (let i = 2; i <= MAX_CONTATOS; i++) {
       const item = lista.querySelector(`[data-index="${i}"]`);
-      const valor = pegarValor(idCampoContato(tipo, i, prefixo));
+      const valor = pegarValor(idCampoContato(tipo, i, prefixo)) || pegarValor(idCampoContato("nome"+tipo[0].toUpperCase()+tipo.slice(1), i, prefixo));
 
       if (item) {
         item.classList.toggle("campo-oculto", !valor);
@@ -155,6 +155,10 @@ function montarBodyCliente(prefixo = "") {
   };
 
   return {
+    ...(MAX_CONTATOS > 4 ? {contatosAdicionais:Array.from({length:MAX_CONTATOS-4},(_,i)=>({
+      email:pegarValor(campo('email'+(i+5))),nomeEmail:pegarValor(campo('nomeEmail'+(i+5))),
+      telefone:pegarValor(campo('telefone'+(i+5))),nomeTelefone:pegarValor(campo('nomeTelefone'+(i+5)))
+    })).filter(c=>Object.values(c).some(Boolean))} : {}),
     tipo: pegarValor(campo("tipo")) || "PESSOA_JURIDICA",
 
     nomeFantasia: pegarValor(campo("nomeFantasia")),
@@ -583,6 +587,7 @@ function renderizarClientes(clientes) {
                   cliente.telefone2,
                   cliente.telefone3,
                   cliente.telefone4,
+                  ...(cliente.contatosAdicionais||[]).map(c=>c.telefone),
                 ])}</strong>
             </div>
 
@@ -593,6 +598,7 @@ function renderizarClientes(clientes) {
                   cliente.email2,
                   cliente.email3,
                   cliente.email4,
+                  ...(cliente.contatosAdicionais||[]).map(c=>c.email),
                 ])}</strong>
             </div>
 
@@ -639,6 +645,7 @@ if (pesquisaCliente) {
         cliente.nomeFantasia?.toLowerCase().includes(termo) ||
         cliente.nomeFantasia?.toLowerCase().includes(termo) ||
         cliente.razaoSocial?.toLowerCase().includes(termo) ||
+        window.contatosDoCliente(cliente).some(c=>Object.values(c).some(v=>String(v||"").toLowerCase().includes(termo))) ||
         cliente.email1?.toLowerCase().includes(termo) ||
         cliente.email2?.toLowerCase().includes(termo) ||
         cliente.email3?.toLowerCase().includes(termo) ||
@@ -769,6 +776,10 @@ async function abrirModalCliente(id) {
     preencherCampo("editarNomeEmail3", cliente.nomeEmail3);
     preencherCampo("editarNomeEmail4", cliente.nomeEmail4);
 
+    for(let i=5;i<=MAX_CONTATOS;i++){
+      const c=cliente.contatosAdicionais?.[i-5]||{};
+      for(const k of ['email','nomeEmail','telefone','nomeTelefone'])preencherCampo(idCampoContato(k,i,'editar'),c[k]||'');
+    }
     preencherCampo("editarSite", cliente.site);
 
     preencherCampoMascarado("editarCep", cliente.cep, "cep");
@@ -1170,3 +1181,21 @@ window.addEventListener('configuracao-sistema',({detail:c})=>{
   }step.append(section);
  }
 });
+
+function ampliarContatosSba(config) {
+ if(config?.perfil!=='SBA' || MAX_CONTATOS===50)return;
+ MAX_CONTATOS=50;
+ document.querySelectorAll('[data-contato-grupo]').forEach(grupo=>{
+  const prefixo=grupo.dataset.prefix||'',lista=grupo.querySelector('.contato-lista'),tipo=lista.dataset.tipo;
+  grupo.querySelector('.contato-grupo-dica').textContent=tipo==='email'?'Até 50 contatos com nome e e-mail':'Até 50 números de contato';
+  const modelo=lista.querySelector('[data-index="4"]');
+  for(let i=5;i<=MAX_CONTATOS;i++){
+   const item=modelo.cloneNode(true);item.dataset.index=String(i);item.classList.add('campo-oculto');
+   item.querySelectorAll('input').forEach(input=>{const nome=input.id.toLowerCase().includes('nome')?'nome'+tipo[0].toUpperCase()+tipo.slice(1):tipo;const antigo=input.id;input.id=idCampoContato(nome,i,prefixo);input.value='';const label=item.querySelector('label[for="'+antigo+'"]');if(label)label.htmlFor=input.id;});
+   item.querySelector('.btn-contato-remover').onclick=()=>removerContato(item,prefixo,tipo);lista.append(item);configurarMascaras(item);
+  }
+  atualizarBotaoAdicionarContato(grupo,tipo);
+ });
+}
+window.addEventListener('configuracao-sistema',({detail})=>ampliarContatosSba(detail));
+if(window.__configuracaoSistema)ampliarContatosSba(window.__configuracaoSistema);

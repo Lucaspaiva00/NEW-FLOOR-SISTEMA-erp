@@ -1,0 +1,11 @@
+.contatos-envio-dialog{width:600px;border:0;border-radius:20px;padding:24px;color:#23344b;box-shadow:0 20px 65px #15243e44}
+.contatos-envio-dialog::backdrop{background:#12243c88}
+.contatos-envio-dialog header,.contatos-envio-dialog footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.contatos-envio-dialog h2{font-size:21px;margin:0}.contatos-envio-dialog p{margin:16px 0;font-size:14px}
+.contatos-envio-dialog button{border:1px solid #dce3ed;background:#f1f5fa;border-radius:8px;padding:10px 16px;color:inherit;cursor:pointer}
+.contatos-envio-dialog .contatos-enviar{background:#14243b;color:white}.contatos-envio-dialog button:disabled{opacity:.5;cursor:default}
+.contatos-envio-lista{max-height:42dvh;overflow:auto;border:1px solid #e0e7f0;border-radius:10px;margin-top:12px}
+.contatos-envio-lista label{display:flex;gap:12px;align-items:center;padding:12px;border-bottom:1px solid #edf1f6;cursor:pointer;text-align:left}
+.contatos-envio-lista span{min-width:0}.contatos-envio-lista strong,.contatos-envio-lista small{display:block;overflow-wrap:anywhere}.contatos-envio-lista small{color:#60738d}
+.contatos-envio-dialog input[type=checkbox]{width:18px;height:18px;flex-shrink:0;margin:0;accent-color:#1d4f83}.contatos-todos{display:flex;align-items:center;gap:12px}
+@media(max-width:500px){.contatos-envio-dialog{padding:18px}.contatos-envio-dialog h2{font-size:18px}.contatos-envio-dialog footer{flex-wrap:wrap}}
