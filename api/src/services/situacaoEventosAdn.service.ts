@@ -13,14 +13,15 @@ export function situacaoEventosAdn(r:{httpStatus:number,data:any},chave:string){
   const tipo=String(e?.TipoEvento||e?.tipoEvento||''),identidade=String(e?.ChaveAcesso||e?.chaveAcesso||'');
   if(confirmacoes.has(tipo)&&identidade===chave)return true;
   let arquivo=e?.ArquivoXml||e?.arquivoXml||e?.eventoXmlGZipB64;
-  if(typeof arquivo!=='string'||arquivo.length>3000000)return false;
+  if(typeof arquivo!=='string'||arquivo.length>3000000){console.warn('ADN classificação',JSON.stringify({motivo:'arquivo ausente',tipo,campos:e&&typeof e==='object'?Object.keys(e):[]}));return false;}
   try{
    let bytes=Buffer.from(arquivo,'base64');if(bytes[0]!==0x1f||bytes[1]!==0x8b)bytes=Buffer.from(bytes.toString('ascii').trim(),'base64');
    const xml=gunzipSync(bytes,{maxOutputLength:4000000}).toString('utf8');if(/<!DOCTYPE|<!ENTITY/i.test(xml))return false;
    const doc=new DOMParser({onError:()=>{throw Error('Evento inválido');}}).parseFromString(xml,'application/xml'),nodes=(n:string)=>doc.getElementsByTagNameNS(NS,n);
-   if(!doc.documentElement||doc.documentElement.localName!=='evento'||doc.documentElement.namespaceURI!==NS||nodes('infEvento').length!==1||nodes('chNFSe').length!==1||nodes('chNFSe')[0].textContent?.trim()!==chave||nodes('tpAmb')[0]?.textContent?.trim()!=='1')return false;
    const codigos=Array.from(doc.getElementsByTagNameNS(NS,'*')).map(n=>n.localName||'').filter(n=>/^e\d{6}$/.test(n));
+   console.warn('ADN classificação',JSON.stringify({tipo,raiz:doc.documentElement?.localName,namespace:doc.documentElement?.namespaceURI,infos:nodes('infEvento').length,chaves:nodes('chNFSe').length,ambiente:nodes('tpAmb')[0]?.textContent?.trim(),codigos}));
+   if(!doc.documentElement||doc.documentElement.localName!=='evento'||doc.documentElement.namespaceURI!==NS||nodes('infEvento').length!==1||nodes('chNFSe').length!==1||nodes('chNFSe')[0].textContent?.trim()!==chave||nodes('tpAmb')[0]?.textContent?.trim()!=='1')return false;
    return codigos.length===1&&confirmacoes.has(codigos[0].slice(1));
-  }catch{return false;}
+  }catch{console.warn('ADN classificação: XML não decodificado');return false;}
  });
 }
