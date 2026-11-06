@@ -70,3 +70,13 @@ test('confirmação do tomador preserva validade; cancelamento, rejeição e cha
  assert.equal(situacaoEventosAdn({httpStatus:200,data:[{ArquivoXml:encoded(xml('101101'))}]},chave),false);
  assert.equal(situacaoEventosAdn({httpStatus:200,data:[{ArquivoXml:encoded(xml('205204','4'.repeat(50)))}]},chave),false);
 });
+
+test('ADN retorna a NFS-e original junto dos eventos: aceita a nota correta, mas não oculta cancelamento nem rejeição',()=>{
+ const xml=(key=chave)=>`<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse"><infNFSe Id="NFS${key}"><DPS><infDPS><tpAmb>1</tpAmb></infDPS></DPS></infNFSe></NFSe>`;
+ const original={ArquivoXml:gzipSync(xml()).toString('base64')};
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:{StatusProcessamento:'DOCUMENTOS_LOCALIZADOS',LoteDFe:[original]}},chave),true);
+ const cancelado={ArquivoXml:gzipSync(`<evento xmlns="http://www.sped.fazenda.gov.br/nfse"><infEvento><chNFSe>${chave}</chNFSe><tpAmb>1</tpAmb><e101101/></infEvento></evento>`).toString('base64')};
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:{StatusProcessamento:'DOCUMENTOS_LOCALIZADOS',LoteDFe:[original,cancelado]}},chave),false);
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:{StatusProcessamento:'REJEICAO',LoteDFe:[]}},chave),false);
+ assert.equal(situacaoEventosAdn({httpStatus:200,data:{LoteDFe:[{ArquivoXml:gzipSync(xml('4'.repeat(50))).toString('base64')}]}},chave),false);
+});

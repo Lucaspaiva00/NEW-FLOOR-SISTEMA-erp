@@ -83,7 +83,7 @@ export async function conciliarAcervo(db:any,empresa:any,b:any,solicitar=solicit
 // Runs only as part of the user's explicit invoice synchronization. No automatic payment or proposal mutation.
 export async function automatizarRecebiveisAcervo(db:any,empresa:any,solicitar=solicitarAdnSba){
  if(empresa.empresaId!==2)throw erro('Automação disponível apenas para a SBA.');
- const rows=await db.$queryRaw(Prisma.sql`SELECT dados,nsu,"xmlCompactado" FROM "DocumentoRecebidoSba" WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND dados->>'direcao'='EMITIDA' AND dados->>'situacao' IN ('recebida','autorizada') AND ((dados->'automacaoFinanceira'->>'versao') IS DISTINCT FROM '2' OR (dados->'automacaoFinanceira'->>'status'='PENDENTE' AND (dados->'automacaoFinanceira'->>'tentarApos')::bigint<${Date.now()})) ORDER BY nsu LIMIT 4`);
+ const rows=await db.$queryRaw(Prisma.sql`SELECT dados,nsu,"xmlCompactado" FROM "DocumentoRecebidoSba" WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND dados->>'direcao'='EMITIDA' AND dados->>'situacao' IN ('recebida','autorizada') AND ((dados->'automacaoFinanceira'->>'versao') IS DISTINCT FROM '3' OR (dados->'automacaoFinanceira'->>'status'='PENDENTE' AND (dados->'automacaoFinanceira'->>'tentarApos')::bigint<${Date.now()})) ORDER BY nsu LIMIT 4`);
  let criadas=0,existentes=0,pendentes=0;
  for(const row of rows.slice(0,3)){
   const n=row.dados;let estado:any;
@@ -94,7 +94,7 @@ export async function automatizarRecebiveisAcervo(db:any,empresa:any,solicitar=s
    if(contas.length){existentes++;estado={status:'VINCULADA'};}
    else{await conciliarAcervo(db,empresa,{confirmar:true,chave:n.chave,acao:'ABERTO'},solicitar,true);criadas++;estado={status:'CRIADA'};}
   }catch(e:any){pendentes++;estado={status:'PENDENTE',motivo:String(e?.message||'Conferência necessária.').slice(0,250),tentarApos:Date.now()+15*60*1000};}
-  await db.$executeRaw(Prisma.sql`UPDATE "DocumentoRecebidoSba" SET dados=jsonb_set(dados,'{automacaoFinanceira}',${JSON.stringify({...estado,versao:2})}::jsonb) WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND chave=${n.chave}`);
+  await db.$executeRaw(Prisma.sql`UPDATE "DocumentoRecebidoSba" SET dados=jsonb_set(dados,'{automacaoFinanceira}',${JSON.stringify({...estado,versao:3})}::jsonb) WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND chave=${n.chave}`);
  }
  return {continuarFinanceiro:rows.length>3,financeiroAutomatico:{criadas,existentes,pendentes}};
 }
