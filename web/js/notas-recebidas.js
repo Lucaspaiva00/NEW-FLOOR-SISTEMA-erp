@@ -6,9 +6,9 @@
   if(!token)return;
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const dinheiro=v=>Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-  let docs=[],cursor=0,carregando=false,consultaFalhou=false,sba=false;
+  let docs=[],cursor=0,carregando=false,consultaFalhou=false,sba=false,acervoAtivo=false;
   const perfil=fetch(API_URL+'/empresas/me',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(t=>{
-    sba=t?.slug==='sba'&&t?.configuracaoSistema?.perfil==='SBA';if(!sba)return;
+    sba=t?.slug==='sba'&&t?.configuracaoSistema?.perfil==='SBA';acervoAtivo=sba||t?.slug==='new-floor';if(!sba)return;
     const p=$('tabFiscalRecebidas').querySelector('p');if(p)p.textContent='Consulte NFS-e recebidas pelo Portal Nacional (ADN), em produção, usando o A1 da SBA. A consulta não cria contas nem realiza pagamentos. NF-e de mercadorias permanecem na SIEG.';
     $('nrTipo').querySelector('option[value="NFE"]')?.remove();
   }).catch(()=>{});
@@ -35,7 +35,7 @@
     }).join(""):'<tr><td colspan="5">'+(consultaFalhou?"Consulta não realizada: verifique o erro acima.":"Nenhuma nota retornada pelo "+fonte()+".")+'</td></tr>';
   }
   async function carregarEmpresas(){
-    await perfil;if(sba)return;
+    await perfil;if(acervoAtivo)return;
     const empresas=await api("/fiscal/empresas");
     $("nrEmpresa").innerHTML='<option value="">Selecione uma empresa emissora cadastrada</option>'+
       empresas.map(e=>'<option value="'+Number(e.empresafiscalid)+'">'+esc(e.razaoSocial)+' · '+esc(e.cnpj)+
@@ -43,7 +43,7 @@
   }
   async function consultar(mais=false){
     if(carregando)return;
-    await perfil;if(sba)return;
+    await perfil;if(acervoAtivo)return;
     const empresaFiscalId=Number($("nrEmpresa").value);
     const tipo=$("nrTipo").value;
     if(!empresaFiscalId){$("nrAviso").textContent="Selecione a empresa destinatária.";return;}

@@ -4,21 +4,20 @@ import {gunzipSync} from 'node:zlib';
 import {DOMParser} from '@xmldom/xmldom';
 import {Prisma} from '@prisma/client';
 import {situacaoEventosAdn} from './situacaoEventosAdn.service';
-import {comA1Sba} from './sefinTransmissaoSba.service';
+import {comA1ConsultaNacional} from './sefinTransmissaoSba.service';
 const NS='http://www.sped.fazenda.gov.br/nfse';
 const falha=(message:string,statusCode=422)=>Object.assign(Error(message),{statusCode});
 export const validarNsu=(v:any)=>{const n=Number(v);if(!Number.isSafeInteger(n)||n<0||!/^\d{1,15}$/.test(String(v)))throw falha('NSU da consulta inválido.');return n;};
 export function caminhoAdn(cnpj:string,nsu:number){if(!/^\d{14}$/.test(cnpj))throw falha('CNPJ destinatário inválido.');return '/DFe/'+validarNsu(nsu)+'?cnpjConsulta='+cnpj+'&lote=true';}
 export async function solicitarAdnSba(empresa:any,path:string){
  if(!(/^\/DFe\/\d{1,15}\?cnpjConsulta=\d{14}&lote=true$/.test(path)||/^\/NFSe\/\d{50}\/Eventos$/.test(path)))throw falha('Consulta ADN não permitida.');
- const nota={empresaId:empresa.empresaId,empresaFiscalId:empresa.empresafiscalid,empresa:{slug:'sba'},tipo:'NFSE',ambienteEmissao:'PRODUCAO',empresaFiscal:empresa};
- return comA1Sba(nota,(pfx,senha)=>new Promise<{httpStatus:number,data:any}>((resolve,reject)=>{
+ return comA1ConsultaNacional(empresa,(pfx,senha)=>new Promise<{httpStatus:number,data:any}>((resolve,reject)=>{
   const req=request('https://adn.nfse.gov.br/contribuintes'+path,{method:'GET',pfx,passphrase:senha,minVersion:'TLSv1.2',rejectUnauthorized:true,headers:{Accept:'application/json'}},res=>{
    const chunks:Buffer[]=[];let tamanho=0;res.on('data',b=>{tamanho+=b.length;if(tamanho>8_000_000){req.destroy(falha('Retorno do Portal Nacional excedeu o limite de leitura.',502));return;}chunks.push(b);});
    res.on('error',()=>reject(falha('Consulta interrompida pelo Portal Nacional. Tente novamente mais tarde.',502)));
    res.on('end',()=>{try{resolve({httpStatus:res.statusCode||502,data:JSON.parse(Buffer.concat(chunks).toString('utf8'))});}catch{reject(falha('Portal Nacional indisponível ou sem resposta válida. Tente novamente mais tarde.',502));}});
-  });const timer=setTimeout(()=>req.destroy(falha('O Portal Nacional não respondeu no prazo. Tente novamente mais tarde.',504)),20000);req.on('close',()=>clearTimeout(timer));req.on('error',()=>reject(falha('Não foi possível consultar o Portal Nacional com o A1 da SBA. Confira a validade do certificado e tente novamente mais tarde.',502)));req.end();
- }),true);
+  });const timer=setTimeout(()=>req.destroy(falha('O Portal Nacional não respondeu no prazo. Tente novamente mais tarde.',504)),20000);req.on('close',()=>clearTimeout(timer));req.on('error',()=>reject(falha('Não foi possível consultar o Portal Nacional com o A1 desta empresa. Confira a validade do certificado e tente novamente mais tarde.',502)));req.end();
+ }));
 }
 function xmlDocumento(arquivo:any){
  if(typeof arquivo!=='string'||arquivo.length>6_000_000||!/^[A-Za-z0-9+/=\r\n]+$/.test(arquivo))throw falha('Documento recebido do ADN tem formato inválido.',502);
@@ -76,7 +75,7 @@ export async function consultarRecebidasAdn(db:any,empresa:any,versao=0,solicita
  ]);
  const documentos=rows.map((r:any)=>r.dados),proximaVersao=Math.max(versao,...documentos.map((n:any)=>n.versao)),meta=sync[0];
  const aguardando=meta?.proximaConsulta&&+new Date(meta.proximaConsulta)>Date.now()+5000;
- return {documentos,proximaVersao,total:Number(total[0]?.total||0),temMais:documentos.length===50||!aguardando,fonte:'PORTAL_NACIONAL',aviso:'NFS-e recebidas pelo Portal Nacional (ADN), em produção, com o A1 da SBA. '+(aguardando?'Exibindo documentos já consultados; próxima atualização a partir de '+new Date(meta.proximaConsulta).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+'. ':'Use Próximos documentos para continuar a consulta. ')+'A consulta não gera pagamentos. A situação fiscal será conferida antes de criar uma conta a pagar.'};
+ return {documentos,proximaVersao,total:Number(total[0]?.total||0),temMais:documentos.length===50||!aguardando,fonte:'PORTAL_NACIONAL',aviso:'NFS-e emitidas e recebidas pelo Portal Nacional (ADN), em produção, com o A1 desta empresa. '+(aguardando?'Exibindo documentos já consultados; próxima atualização a partir de '+new Date(meta.proximaConsulta).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+'. ':'Use Próximos documentos para continuar a consulta. ')+'A consulta não gera pagamentos. A situação fiscal será conferida antes de criar uma conta a pagar.'};
 }
 export async function conferirRecebidaAdn(db:any,empresa:any,chave:string,versao:number,solicitar=solicitarAdnSba){
  const rows=await db.$queryRaw(Prisma.sql`SELECT dados FROM "DocumentoRecebidoSba" WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND chave=${chave} AND nsu=${validarNsu(versao)}`);const n=rows[0]?.dados;

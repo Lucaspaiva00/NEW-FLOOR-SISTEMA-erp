@@ -14,7 +14,7 @@ const dataValida = (v:unknown):v is string =>
   typeof v==="string" && /^\d{4}-\d{2}-\d{2}$/.test(v) &&
     !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10)===v;
 const error = (message:string,statusCode=400)=>Object.assign(new Error(message),{statusCode});
-async function emissora(req:Request,id:number){
+async function emissora(req:Request,id:number,paraAcervo=false){
   if(!Number.isSafeInteger(id)||id<=0)throw error("Selecione a empresa receptora.");
   const empresa=await prisma.empresaFiscal.findFirst({
     where:{empresafiscalid:id,empresaId:req.empresaId as number,ativo:true},
@@ -23,7 +23,7 @@ async function emissora(req:Request,id:number){
   if(!empresa)throw error("Empresa fiscal não encontrada neste acesso.",404);
   // Recebimento de notas reais usa o token de produção, mesmo quando
   // a emissão está em homologação. Nunca alterar o ambiente emissor.
-  if(req.configuracaoSistema?.perfil!=="SBA"&&!empresa.tokenProducao)throw error(
+  if(!paraAcervo&&req.configuracaoSistema?.perfil!=="SBA"&&!empresa.tokenProducao)throw error(
     "Configure o token Focus de PRODUÇÃO nesta empresa para consultar notas recebidas reais. A emissão pode continuar em HOMOLOGAÇÃO. Habilite também o produto de recebimento correspondente na Focus.",422);
   if(DIG(empresa.cnpj).length!==14)throw error("CNPJ da empresa receptora inválido.");
   return empresa;
@@ -150,11 +150,11 @@ export const importarParaPagar=async(req:Request,res:Response):Promise<void>=>{
 
 import {listarAcervo,sincronizarAcervo,conciliarAcervo} from '../services/acervoNacionalSba.service';
 async function empresaAcervo(req:Request){
- if(req.empresaId!==2||req.configuracaoSistema?.perfil!=='SBA')throw error('Acervo disponível apenas no perfil SBA.',403);
- return emissora(req,Number(req.query.empresaFiscalId||req.body?.empresaFiscalId));
+ if(!(req.empresaId===1||req.empresaId===2&&req.configuracaoSistema?.perfil==='SBA'))throw error('Acervo nacional não habilitado neste perfil.',403);
+ return emissora(req,Number(req.query.empresaFiscalId||req.body?.empresaFiscalId),true);
 }
 export const acervo=async(req:Request,res:Response):Promise<void>=>{try{res.json(await listarAcervo(prisma,await empresaAcervo(req),req.query));}catch(e){respostaErro(res,e);}};
-export const sincronizar=async(req:Request,res:Response):Promise<void>=>{try{res.json(await sincronizarAcervo(prisma,await empresaAcervo(req)));}catch(e){respostaErro(res,e);}};
+export const sincronizar=async(req:Request,res:Response):Promise<void>=>{try{const emp=await empresaAcervo(req);if(!emp.certificadoCriptografado)throw error('Cadastre o certificado A1 desta empresa no ERP para consultar o Portal Nacional. A emissão em produção pela Focus permanece disponível.',422);res.json(await sincronizarAcervo(prisma,emp));}catch(e){respostaErro(res,e);}};
 export const conciliar=async(req:Request,res:Response):Promise<void>=>{try{res.json(await conciliarAcervo(prisma,await empresaAcervo(req),req.body));}catch(e:any){if(e?.code==='P2002'){res.status(409).json({error:'Documento já conciliado. Atualize a lista.'});return;}respostaErro(res,e);}};
 
 export const xmlAcervo=async(req:Request,res:Response):Promise<void>=>{try{const emp=await empresaAcervo(req),chave=String(req.query.chave||'');if(!/^\d{50}$/.test(chave))throw error('Chave inválida.');const rows:any[]=await prisma.$queryRaw`SELECT "xmlCompactado" FROM "DocumentoRecebidoSba" WHERE "empresaId"=${emp.empresaId} AND "empresaFiscalId"=${emp.empresafiscalid} AND chave=${chave}`;if(!rows[0]?.xmlCompactado)throw error('XML ainda não sincronizado. Use Puxar notas.',404);const {gunzipSync}=await import('node:zlib');const xml=gunzipSync(Buffer.from(rows[0].xmlCompactado,'base64'),{maxOutputLength:4000000});res.setHeader('Content-Disposition','attachment; filename="NFSe-'+chave+'.xml"');res.setHeader('Content-Type','application/xml; charset=utf-8');res.setHeader('Cache-Control','no-store');res.send(xml);}catch(e){respostaErro(res,e);}};

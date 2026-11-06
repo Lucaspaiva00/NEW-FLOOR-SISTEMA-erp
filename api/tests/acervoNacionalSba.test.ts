@@ -52,7 +52,7 @@ test('sincronização automatiza emitidas em lotes limitados e preserva uma cont
  const db:any={...b.tx,$transaction:async(fn:any)=>{transacoes++;return fn(b.tx);},$queryRaw:async()=>[{dados:{...nota,valorLiquido:90}}],$executeRaw:async(q:any)=>{assert.match(q.text,/automacaoFinanceira/);marcadores++;},lancamentoFinanceiro:{findMany:async()=>b.criada()?[{...b.criada(),status:'PAGO',valorPago:90}]:[]}};
  const r=await automatizarRecebiveisAcervo(db,empresa,async()=>({httpStatus:200,data:[]}));assert.equal(r.financeiroAutomatico.criadas,1);assert.equal(b.criada().tipo,'ENTRADA');assert.equal(b.pagamento(),null);
  const repetida=await automatizarRecebiveisAcervo(db,empresa);assert.equal(repetida.financeiroAutomatico.existentes,1);assert.equal(transacoes,1);assert.equal(marcadores,2);
- await assert.rejects(automatizarRecebiveisAcervo(db,{empresaId:1}),/apenas para a SBA/);
+ await assert.rejects(automatizarRecebiveisAcervo(db,{empresaId:99}),/não habilitada/);
 });
 
 test('conta antiga com mesmo número sem chave fiscal exige vínculo em vez de duplicar receita',async()=>{const b=banco();b.tx.$queryRaw=async(q:any)=>String(q.text||q).includes('SELECT dados')?[{dados:{...nota,valorLiquido:90}}]:[];b.tx.lancamentoFinanceiro.findFirst=async()=>({status:'PAGO',documento:'24'});await assert.rejects(conciliarAcervo(b.db,empresa,{confirmar:true,chave,acao:'ABERTO'},async()=>({httpStatus:200,data:[]}),true),/evitar duplicidade/);assert.equal(b.criada(),null);});
@@ -85,4 +85,18 @@ test('mesmo número em outro ano com chave fiscal própria não bloqueia uma not
  const b=banco();b.tx.$queryRaw=async(q:any)=>String(q.text||q).includes('SELECT dados')?[{dados:{...nota,valorLiquido:90}}]:[];
  b.tx.lancamentoFinanceiro.findFirst=async({where}:any)=>{if(where?.documento){assert.equal(where.notaFiscalId,null);assert.equal(where.propostaId,null);assert.equal(where.OR[1].NOT.OR[0].chaveOrigem.startsWith,'EMITIDA:');return null;}return b.criada();};
  await conciliarAcervo(b.db,empresa,{confirmar:true,chave,acao:'ABERTO'},async()=>({httpStatus:200,data:[]}),true);assert.equal(b.criada().valor,90);
+});
+
+import {comA1ConsultaNacional,validarDestinoSba,validarTitularCertificadoA1} from '../src/services/sefinTransmissaoSba.service';
+import forge from 'node-forge';
+test('New Floor: consulta exige A1 próprio e não libera transmissão SEFIN nem outros tenants',async()=>{
+ let chamado=false;await assert.rejects(comA1ConsultaNacional({empresaId:1,empresafiscalid:1,padraoNfse:'NACIONAL',provedor:'FOCUS_NFE'},async()=>{chamado=true;}),/Cadastre o certificado A1/);assert.equal(chamado,false);
+ await assert.rejects(comA1ConsultaNacional({empresaId:99,padraoNfse:'NACIONAL',provedor:'FOCUS_NFE'},async()=>{}),/não habilitada/);
+ assert.throws(()=>validarDestinoSba({empresaId:1,empresa:{slug:'new-floor'},tipo:'NFSE',empresaFiscal:{empresaId:1,provedor:'FOCUS_NFE',padraoNfse:'NACIONAL'}},true),/exclusiva/);
+ const keys=forge.pki.rsa.generateKeyPair(1024),cert=forge.pki.createCertificate();cert.publicKey=keys.publicKey;cert.serialNumber='01';cert.validity.notBefore=new Date(Date.now()-86400000);cert.validity.notAfter=new Date(Date.now()+86400000);cert.setSubject([{name:'commonName',value:'A1 Teste:11111111000111'}]);cert.setIssuer(cert.subject.attributes);cert.sign(keys.privateKey,forge.md.sha256.create());const pfx=Buffer.from(forge.asn1.toDer(forge.pkcs12.toPkcs12Asn1(keys.privateKey,[cert],'ficticia',{algorithm:'3des'})).getBytes(),'binary');
+ assert.doesNotThrow(()=>validarTitularCertificadoA1(pfx,'ficticia','11111111000111'));assert.throws(()=>validarTitularCertificadoA1(pfx,'ficticia','22222222000122'),/não corresponde/);
+});
+test('New Floor: recebível tem a chave do tenant 1 e nenhum lançamento é criado para a SBA',async()=>{
+ const b=banco();b.tx.$queryRaw=async(q:any)=>{assert.ok(q.values.includes(1));return [{dados:{...nota,valorLiquido:90}}];};
+ await conciliarAcervo(b.db,{empresaId:1,empresafiscalid:1,cnpj:'46429017000160'},{confirmar:true,chave,acao:'ABERTO'},async()=>({httpStatus:200,data:[]}),true);assert.equal(b.criada().empresaId,1);assert.equal(b.criada().chaveOrigem,'EMITIDA:1:NFSE_NACIONAL:'+chave);assert.equal(b.pagamento(),null);
 });

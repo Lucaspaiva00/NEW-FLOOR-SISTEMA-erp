@@ -41,6 +41,15 @@ export function validarTesteProducaoSba(nota:any){
 export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promise<T>,apenasConsulta=false):Promise<T>{
  if(apenasConsulta){if(nota?.empresaId!==2||nota.empresa?.slug!=='sba'||nota.empresaFiscal?.empresaId!==2||nota.empresaFiscal?.provedor!=='PORTAL_NACIONAL_DIRETO'||nota.empresaFiscal?.padraoNfse!=='NACIONAL')throw erro('Consulta direta exclusiva da SBA.',403);}
  else validarDestinoSba(nota,true);
+ return usarA1Validado(nota,usar);
+}
+/** Read-only ADN access: does not relax any SEFIN issuance guard. */
+export async function comA1ConsultaNacional<T>(empresa:any,usar:(pfx:Buffer,senha:string)=>Promise<T>):Promise<T>{
+ if(![1,2].includes(empresa?.empresaId)||empresa.padraoNfse!=='NACIONAL'||(empresa.empresaId===1?empresa.provedor!=='FOCUS_NFE':empresa.provedor!=='PORTAL_NACIONAL_DIRETO'))throw erro('Consulta nacional não habilitada para esta emissora.',403);
+ if(!empresa.certificadoCriptografado)throw erro('Cadastre o certificado A1 desta empresa no ERP para consultar notas emitidas e recebidas pelo Portal Nacional. A emissão na Focus permanece independente.');
+ return usarA1Validado({empresaId:empresa.empresaId,empresaFiscalId:empresa.empresafiscalid,empresaFiscal:empresa},usar);
+}
+async function usarA1Validado<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promise<T>):Promise<T>{
  const segredo=process.env.CERTIFICADO_ENCRYPTION_KEY||process.env.JWT_SECRET;
  if(!segredo)throw erro('Chave de criptografia do A1 indisponível no servidor.');
  let claro:Buffer|undefined,pfx:Buffer|undefined,pfxTls:Buffer|undefined,senha='';
@@ -55,9 +64,20 @@ export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promi
    claro=Buffer.concat([dec.update(Buffer.from(env.data,'base64')),dec.final()]);
    const pacote=JSON.parse(claro.toString('utf8'));senha=pacote.senha;
    pfx=validarCertificadoA1Sba(pacote.arquivo,senha);
+   validarTitularCertificadoA1(pfx,senha,String(nota.empresaFiscal.cnpj));
+  }catch(e:any){
+   if(e.message==='O CNPJ titular do A1 não corresponde à empresa emissora.')throw e;
+   throw erro('Não foi possível validar o A1 armazenado da empresa emissora. Confira validade, senha e vínculo.');
+  }
+  pfxTls=prepararPfxTlsSba(pfx!,senha);
+  return await usar(pfxTls,senha);
+ }finally{claro?.fill(0);pfxTls?.fill(0);pfx?.fill(0);senha='';}
+}
+
+export function validarTitularCertificadoA1(pfx:Buffer,senha:string,cnpj:string){
    const pkcs=forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(pfx.toString('binary')),senha);
    const certs=(pkcs.getBags({bagType:forge.pki.oids.certBag})[forge.pki.oids.certBag]||[]).map(b=>b.cert).filter(Boolean);
-   const cnpj=String(nota.empresaFiscal.cnpj).replace(/\D/g,'');
+   cnpj=String(cnpj).replace(/\D/g,'');
    // e-CNPJ ICP-Brasil: CNPJ no CN ou no otherName 2.16.76.1.3.3.
    const pertence=certs.some((cert:any)=>{
     if(cert.subject.attributes.some((a:any)=>a.name==='commonName'&&new RegExp('(?:^|:)'+cnpj+'$').test(String(a.value))))return true;
@@ -73,14 +93,7 @@ export async function comA1Sba<T>(nota:any,usar:(pfx:Buffer,senha:string)=>Promi
      });
     }catch{return false;}
    });
-   if(!pertence)throw erro('O CNPJ titular do A1 não corresponde à emissora SBA.');
-  }catch(e:any){
-   if(e.message==='O CNPJ titular do A1 não corresponde à emissora SBA.')throw e;
-   throw erro('Não foi possível validar o A1 armazenado da emissora SBA. Confira validade, senha e vínculo.');
-  }
-  pfxTls=prepararPfxTlsSba(pfx!,senha);
-  return await usar(pfxTls,senha);
- }finally{claro?.fill(0);pfxTls?.fill(0);pfx?.fill(0);senha='';}
+   if(!pertence)throw erro('O CNPJ titular do A1 não corresponde à empresa emissora.');
 }
 
 export async function solicitarSefinSba(nota:any,method:'GET'|'POST',path:string,body?:any):Promise<{httpStatus:number,data:any}>{

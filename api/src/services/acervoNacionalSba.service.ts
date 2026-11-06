@@ -53,7 +53,7 @@ export async function conciliarAcervo(db:any,empresa:any,b:any,solicitar=solicit
  return db.$transaction(async(tx:any)=>{
  const rows=await tx.$queryRaw(Prisma.sql`SELECT dados FROM "DocumentoRecebidoSba" WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND chave=${b.chave} FOR UPDATE`);
  const n=rows[0]?.dados;if(!n)throw erro('Nota não encontrada no acervo desta empresa.');n.direcao=n.direcao||'RECEBIDA';
- if(automatico&&(empresa.empresaId!==2||n.direcao!=='EMITIDA'||b.acao!=='ABERTO'))throw erro('Automação restrita às notas emitidas pela SBA.');
+ if(automatico&&(![1,2].includes(empresa.empresaId)||n.direcao!=='EMITIDA'||b.acao!=='ABERTO'))throw erro('Automação restrita às notas emitidas por esta empresa.');
  if(automatico){const internas=await tx.notaFiscal.findMany({where:{empresaId:empresa.empresaId,chave:n.chave},select:{propostaId:true}});if(internas.some((x:any)=>x.propostaId))throw erro('Nota vinculada a proposta: use o fluxo de faturamento da proposta para preservar parcelas e valores.');}
  const contas=await contasDoDocumento(tx,empresa.empresaId,n);
  if(contas.length)throw erro('Esta nota já está conciliada. Use o financeiro para registrar ou estornar pagamentos.');
@@ -61,7 +61,7 @@ export async function conciliarAcervo(db:any,empresa:any,b:any,solicitar=solicit
   const id=Number(b.lancamentoId);if(!Number.isSafeInteger(id)||id<=0)throw erro('Selecione uma conta financeira existente.');
   await tx.$queryRaw`SELECT "lancamentofinanceiroid" FROM "LancamentoFinanceiro" WHERE "empresaId"=${empresa.empresaId} AND "lancamentofinanceiroid"=${id} FOR UPDATE`;
   const l=await tx.lancamentoFinanceiro.findFirst({where:{empresaId:empresa.empresaId,lancamentofinanceiroid:id,tipo:n.direcao==='EMITIDA'?'ENTRADA':'SAIDA'}});
-  if(!l||l.status==='CANCELADO'||Math.round(Number(l.valor)*100)!==Math.round(n.valor*100))throw erro('A conta deve pertencer à SBA, ter o mesmo valor e o mesmo tipo da nota.');
+  if(!l||l.status==='CANCELADO'||Math.round(Number(l.valor)*100)!==Math.round(n.valor*100))throw erro('A conta deve pertencer à empresa, ter o mesmo valor e o mesmo tipo da nota.');
   if(l.chaveOrigem?.startsWith('RECEBIDA:')||l.chaveOrigem?.startsWith('EMITIDA:')||l.notaFiscalId)throw erro('Esta conta já tem vínculo fiscal. Confira pelo financeiro.');
   const outros=await tx.$queryRaw(Prisma.sql`SELECT chave FROM "DocumentoRecebidoSba" WHERE "empresaId"=${empresa.empresaId} AND dados->>'lancamentoVinculado'=${String(id)} LIMIT 1`);if(outros.length)throw erro('Conta já vinculada a outra nota.');
   await tx.$executeRaw(Prisma.sql`UPDATE "DocumentoRecebidoSba" SET dados=jsonb_set(dados,'{lancamentoVinculado}',${String(id)}::jsonb) WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND chave=${n.chave}`);return {mensagem:'Conta existente vinculada. Seu pagamento foi preservado.'};
@@ -82,7 +82,7 @@ export async function conciliarAcervo(db:any,empresa:any,b:any,solicitar=solicit
 
 // Runs only as part of the user's explicit invoice synchronization. No automatic payment or proposal mutation.
 export async function automatizarRecebiveisAcervo(db:any,empresa:any,solicitar=solicitarAdnSba){
- if(empresa.empresaId!==2)throw erro('Automação disponível apenas para a SBA.');
+ if(![1,2].includes(empresa.empresaId))throw erro('Automação não habilitada para esta empresa.');
  const rows=await db.$queryRaw(Prisma.sql`SELECT dados,nsu,"xmlCompactado" FROM "DocumentoRecebidoSba" WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND dados->>'direcao'='EMITIDA' AND dados->>'situacao' IN ('recebida','autorizada') AND ((dados->'automacaoFinanceira'->>'versao') IS DISTINCT FROM '4' OR (dados->'automacaoFinanceira'->>'status'='PENDENTE' AND (dados->'automacaoFinanceira'->>'tentarApos')::bigint<${Date.now()})) ORDER BY nsu LIMIT 4`);
  let criadas=0,existentes=0,pendentes=0;
  for(const row of rows.slice(0,3)){

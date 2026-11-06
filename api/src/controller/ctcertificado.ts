@@ -1,6 +1,7 @@
 import {Request,Response} from "express";
 import {createCipheriv,hkdfSync,randomBytes} from "crypto";
 import forge from "node-forge";
+import {validarTitularCertificadoA1} from "../services/sefinTransmissaoSba.service";
 import prisma from "../prisma";
 import {validarCertificadoA1Sba} from "../services/certificadoA1Sba.service";
 export function validarCertificado(base64:string,senha:string) {
@@ -39,17 +40,18 @@ export async function prevalidarSba(req:Request,res:Response):Promise<void>{
  }
 }
 export async function upload(req:Request,res:Response):Promise<void>{
- if(!req.configuracaoSistema?.certificadoA1){res.status(403).json({error:"Certificado A1 desabilitado para esta empresa"});return;}
+ if(req.empresaId!==1&&!req.configuracaoSistema?.certificadoA1){res.status(403).json({error:"Certificado A1 desabilitado para esta empresa"});return;}
  const id=Number(req.params.id);
  try{const emissora=await prisma.empresaFiscal.findFirst({where:{empresafiscalid:id,empresaId:req.empresaId as number}});if(!emissora){res.status(404).json({error:"Empresa emissora não encontrada"});return;}
  const {arquivo,senha,nome}=req.body;
  if(typeof nome!=="string"||!/^.+\.(pfx|p12)$/i.test(nome))throw new Error("Selecione um arquivo PFX ou P12");
- if(req.configuracaoSistema?.perfil==="SBA")validarCertificadoA1Sba(arquivo,senha);
+ if(req.empresaId===1){const pfx=validarCertificadoA1Sba(arquivo,senha);try{validarTitularCertificadoA1(pfx,senha,emissora.cnpj);}finally{pfx.fill(0);}}
+ else if(req.configuracaoSistema?.perfil==="SBA")validarCertificadoA1Sba(arquivo,senha);
  else validarCertificado(arquivo,senha);
  const certificadoCriptografado=criptografarCertificado(arquivo,senha,req.empresaId as number,id);
  // Nomes de arquivos podem conter senhas em texto claro; nunca persistir
  // o nome original dos arquivos do Luiz.
- const certificadoNome=req.configuracaoSistema?.perfil==="SBA"?"certificado-a1.pfx":nome.slice(0,200);
+ const certificadoNome=[1,2].includes(req.empresaId as number)?"certificado-a1.pfx":nome.slice(0,200);
  await prisma.empresaFiscal.update({where:{empresafiscalid:id},data:{certificadoCriptografado,certificadoNome}});
  res.json({temCertificado:true,certificadoNome});
  }catch(e){res.status(400).json({error:(e as Error).message});}
