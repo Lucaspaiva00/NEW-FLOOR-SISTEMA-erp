@@ -1,3 +1,4 @@
+import {sincronizarRecebidasFocus,conferirSituacaoFocus} from './acervoFocusNewFloor.service';
 import {Prisma} from '@prisma/client';
 import {consultarRecebidasAdn,solicitarAdnSba,lerNotaRecebidaAdn} from './recebidasAdnSba.service';
 import {situacaoEventosAdn} from './situacaoEventosAdn.service';
@@ -39,10 +40,10 @@ export async function listarAcervo(db:any,empresa:any,b:any){
  return {documentos:documentos.slice((pagina-1)*f.tamanho,pagina*f.tamanho),total,pagina,paginas,tamanho:f.tamanho};
 }
 export async function sincronizarAcervo(db:any,empresa:any){
- const r=await consultarRecebidasAdn(db,empresa,0);
+ const r=empresa.empresaId===1?await sincronizarRecebidasFocus(db,empresa):await consultarRecebidasAdn(db,empresa,0);
  const rows=await db.$queryRaw(Prisma.sql`SELECT nsu,"proximaConsulta","updatedAt" FROM "SincronizacaoRecebidasSba" WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid}`);
  const automatico=await automatizarRecebiveisAcervo(db,empresa);
- const s=rows[0];return {...automatico,nsu:Number(s?.nsu||0),continuar:!!s&&(!s.proximaConsulta||+new Date(s.proximaConsulta)<Date.now()+5000),aviso:r.aviso};
+ const s=rows[0];return {...automatico,nsu:Number(s?.nsu||0),continuar:empresa.empresaId===1?(r as any).continuar:!!s&&(!s.proximaConsulta||+new Date(s.proximaConsulta)<Date.now()+5000),falhaRecebidas:(r as any).falhaRecebidas||false,aviso:r.aviso};
 }
 export async function conciliarAcervo(db:any,empresa:any,b:any,solicitar=solicitarAdnSba,automatico=false){
  if(b.confirmar!==true||!/^\d{50}$/.test(String(b.chave||'')))throw erro('Confirme a conciliação da nota.');
@@ -67,14 +68,14 @@ export async function conciliarAcervo(db:any,empresa:any,b:any,solicitar=solicit
   await tx.$executeRaw(Prisma.sql`UPDATE "DocumentoRecebidoSba" SET dados=jsonb_set(dados,'{lancamentoVinculado}',${String(id)}::jsonb) WHERE "empresaId"=${empresa.empresaId} AND "empresaFiscalId"=${empresa.empresafiscalid} AND chave=${n.chave}`);return {mensagem:'Conta existente vinculada. Seu pagamento foi preservado.'};
  }
  if(!['recebida','autorizada'].includes(n.situacao))throw erro('Nota com evento fiscal: confira cancelamento ou substituição antes de conciliar.');
- const r=await solicitar(empresa,'/NFSe/'+n.chave+'/Eventos');
- if(!situacaoEventosAdn(r,n.chave))throw erro('Não foi possível confirmar a situação atual da nota no Portal Nacional. Confira os eventos fiscais antes de conciliar.');
+ const situacaoConfirmada=empresa.empresaId===1&&solicitar===solicitarAdnSba?await conferirSituacaoFocus(tx,empresa,n):situacaoEventosAdn(await solicitar(empresa,'/NFSe/'+n.chave+'/Eventos'),n.chave);
+ if(!situacaoConfirmada)throw erro('Não foi possível confirmar a situação atual da nota no provedor fiscal. Confira os eventos fiscais antes de conciliar.');
  const valorFinanceiro=automatico?n.valorLiquido:n.valor;
  if(automatico&&(!Number.isFinite(valorFinanceiro)||valorFinanceiro<=0))throw erro('Valor líquido não confirmado no XML. Confira a nota antes de lançar o recebível.');
  if(automatico&&n.numero&&await tx.lancamentoFinanceiro.findFirst({where:{empresaId:empresa.empresaId,tipo:'ENTRADA',documento:n.numero,notaFiscalId:null,propostaId:null,OR:[{chaveOrigem:null},{NOT:{OR:[{chaveOrigem:{startsWith:'EMITIDA:'}},{chaveOrigem:{startsWith:'RECEBIDA:'}}]}}]}}))throw erro('Há uma conta com este número de nota, sem chave fiscal vinculada. Confira e vincule a conta existente para evitar duplicidade.');
  const tipo=n.direcao==='EMITIDA'?'ENTRADA':'SAIDA',nome=tipo==='ENTRADA'?'Receitas de NFS-e':'Fornecedores',favorecido=tipo==='ENTRADA'?n.tomador:n.emissor;
  const categoria=await tx.categoriaFinanceira.upsert({where:{empresaId_nome_tipo:{empresaId:empresa.empresaId,nome,tipo}},update:{},create:{empresaId:empresa.empresaId,nome,tipo}});
- const l=await tx.lancamentoFinanceiro.create({data:{empresaId:empresa.empresaId,tipo,status:'ABERTO',origem:'MANUAL',chaveOrigem:chaveFinanceira(empresa.empresaId,n),categoriaFinanceiraId:categoria.categoriafinanceiraid,descricao:'NFS-e '+(n.numero||'')+' · '+favorecido,documento:n.numero||n.chave,favorecido,valor:valorFinanceiro,dataCompetencia:new Date(n.dataEmissao),dataVencimento:automatico?null:new Date(b.vencimento+'T15:00:00Z'),observacoes:automatico?'Importação automática de NFS-e emitida. Chave: '+n.chave+'. Valor líquido do XML. Vencimento a definir; quitação não confirmada.':'Conciliada com acervo Portal Nacional. Chave: '+n.chave+'. Valor bruto conferido pelo usuário.'}});
+ const l=await tx.lancamentoFinanceiro.create({data:{empresaId:empresa.empresaId,tipo,status:'ABERTO',origem:'MANUAL',chaveOrigem:chaveFinanceira(empresa.empresaId,n),categoriaFinanceiraId:categoria.categoriafinanceiraid,descricao:'NFS-e '+(n.numero||'')+' · '+favorecido,documento:n.numero||n.chave,favorecido,valor:valorFinanceiro,dataCompetencia:new Date(n.dataEmissao),dataVencimento:automatico?null:new Date(b.vencimento+'T15:00:00Z'),observacoes:automatico?'Importação automática de NFS-e emitida. Chave: '+n.chave+'. Valor líquido do XML. Vencimento a definir; quitação não confirmada.':'Conciliada com acervo fiscal. Chave: '+n.chave+'. Valor bruto conferido pelo usuário.'}});
  if(b.acao==='PAGO')await movimentarConta(l.lancamentofinanceiroid,empresa.empresaId,{valorPago:n.valor,dataPagamento:b.dataPagamento,contaFinanceiraId:Number(b.contaFinanceiraId),formaPagamento:'Conciliação histórica'},false,{$transaction:(fn:any)=>fn(tx)});
  return {lancamentofinanceiroid:l.lancamentofinanceiroid,mensagem:b.acao==='PAGO'?'Quitação já realizada registrada no financeiro. Nenhum pagamento bancário foi enviado.':'Conta registrada em aberto no financeiro.'};
  },{timeout:30000});

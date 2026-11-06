@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS "SincronizacaoRecebidasFocus" ("empresaId" INTEGER NOT NULL REFERENCES "Empresa"("empresaid"),"empresaFiscalId" INTEGER PRIMARY KEY REFERENCES "EmpresaFiscal"("empresafiscalid"),versao BIGINT NOT NULL DEFAULT 0);

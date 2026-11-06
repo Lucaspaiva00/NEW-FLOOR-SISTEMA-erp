@@ -14,6 +14,6 @@ test('nova instância carrega notas salvas e outros perfis permanecem inalterado
  const {dom,d}=setup(false);try{await new Promise(r=>setTimeout(r,20));assert.equal(d.getElementById('tabFiscalRecebidas').textContent,'Original');}finally{dom.window.close();}
 });
 
-test('New Floor recebe o mesmo acervo, usa sua rota isolada e pede A1 quando não cadastrado',async()=>{
- const {dom,d,calls}=setup(false,true);try{await wait(()=>!!d.querySelector('#acTabela a'));assert.equal(d.getElementById('acEmpresa').value,'1');assert.equal(d.getElementById('acCertificado').hidden,false);assert.match(d.getElementById('acAviso').textContent,/A1 da New Floor/);assert.match(d.getElementById('acCertificado').textContent,/Focus/);assert.ok(calls.some(c=>c.url.includes('/fiscal/acervo-nacional?')));assert.equal(calls.some(c=>c.url.includes('/fiscal/sba/')),false);assert.match(d.getElementById('tabFiscalRecebidas').textContent,/New Floor/);}finally{dom.window.close();}
+test('New Floor usa Focus sem novo campo de certificado nem bloqueio por A1',async()=>{
+ const {dom,d,calls}=setup(false,true);try{await wait(()=>!!d.querySelector('#acTabela a'));assert.equal(d.getElementById('acEmpresa').value,'1');assert.equal(d.getElementById('acCertificado'),null);assert.equal(d.getElementById('acA1Arquivo'),null);assert.match(d.getElementById('tabFiscalRecebidas').textContent,/Focus/);assert.ok(calls.some(c=>c.url.includes('/fiscal/acervo-nacional?')));assert.equal(calls.some(c=>c.url.includes('/fiscal/sba/')),false);assert.equal(d.querySelector('[data-fiscal-tab=recebidas]').textContent,'Notas emitidas e recebidas');}finally{dom.window.close();}
 });
