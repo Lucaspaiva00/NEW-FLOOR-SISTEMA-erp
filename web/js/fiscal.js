@@ -228,7 +228,7 @@
     $("nfEmpresa").innerHTML = `<option value="">Selecione a empresa emitente...</option>` +
       empresas
         .filter((e) => e.ativo !== false)
-        .map((e) => `<option value="${e.empresafiscalid}">${esc(nomeEmpresa(e))} · ${esc(cnpjFormatado(e.cnpj))} · ${e.ambiente === "PRODUCAO" ? "Produção" : "Homologação"}</option>`)
+        .map((e) => `<option value="${e.empresafiscalid}" data-cnpj="${soDigitos(e.cnpj)}" data-municipio="${soDigitos(e.codigoMunicipioIbge)}" data-padrao-nfse="${esc(e.padraoNfse || "")}">${esc(nomeEmpresa(e))} · ${esc(cnpjFormatado(e.cnpj))} · ${e.ambiente === "PRODUCAO" ? "Produção" : "Homologação"}</option>`)
         .join("");
     if ([...$("nfEmpresa").options].some((o) => o.value === String(atual))) $("nfEmpresa").value = atual;
   }
