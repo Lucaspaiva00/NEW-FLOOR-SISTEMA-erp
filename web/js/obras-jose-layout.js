@@ -34,17 +34,71 @@
  const percentual=valor=>percent.format(valor/100);
  const centavos=valor=>Math.round(Number(valor)*100);
  let medicaoSelecionada;
+ let fonteImportada;
+ let abasImportadas=[];
+ let abaImportada;
+ let versaoFonte=0;
+ const listasImportadas=new Map();
+
+ function montarEscopoImportado(aba){
+  const etapas=aba.itens.map(i=>({id:i.linha,codigo:i.item,nome:[i.etapa,i.descricao].filter(Boolean).join(' · '),valor:i.valor}));
+  const anteriores=new Map();
+  const medicoes=aba.medicoes.map(m=>{
+   const itens=aba.itens.map(i=>{
+    const anterior=anteriores.get(i.linha)||0;
+    const percentual=Number(fonteImportada.edicoes?.[aba.indice+':'+i.linha+':'+m.numero]??i.percentuais[m.numero]??0);
+    const atual=anterior+percentual;
+    anteriores.set(i.linha,atual);
+    return {etapaId:i.linha,anterior,atual,valor:i.valoresMedidos?.[m.numero]??i.valor*percentual/100};
+   });
+   return {id:m.numero,titulo:m.titulo,fim:m.data,prevista:m.prevista,status:'APROVADA',itens,valor:itens.reduce((s,i)=>s+Number(i.valor),0)};
+  });
+  return {etapas,medicoes,financeiro:[],valorContrato:etapas.reduce((s,e)=>s+centavos(e.valor),0)/100};
+ }
+
+ async function listarImportadas(painel,obraId){
+  const seletor=painel.querySelector('#joseEscopoFonte');
+  if(!listasImportadas.has(obraId)){
+   const consulta=u.api('/obras/planilhas?obraId='+obraId).catch(erro=>{listasImportadas.delete(obraId);throw erro;});
+   listasImportadas.set(obraId,consulta);
+  }
+  const lista=await listasImportadas.get(obraId);
+  if(!seletor.isConnected)return;
+  for(const arquivo of lista)seletor.add(new Option(arquivo.nome,String(arquivo.id)));
+  seletor.value=String(fonteImportada?.id||'');
+  seletor.disabled=false;
+  seletor.onchange=async()=>{
+   const versao=++versaoFonte;
+   try{
+    const fonte=seletor.value?await u.api('/obras/planilhas/'+seletor.value):null;
+    if(versao!==versaoFonte||!seletor.isConnected||u.obra?.id!==obraId)return;
+    if(fonte&&fonte.obraId!==obraId)throw Error('Planilha vinculada a outra obra.');
+    const abas=fonte?.abas.filter(a=>a.reconhecida)||[];
+    if(fonte&&!abas.length)throw Error('Esta planilha não possui abas de medição reconhecidas.');
+    fonteImportada=fonte;
+    abasImportadas=abas;
+    abaImportada=abas[0];
+    medicaoSelecionada=undefined;
+    escopoCivil();
+    $('joseEscopoFonte').focus();
+   }catch(erro){if(seletor.isConnected){seletor.value=String(fonteImportada?.id||'');u.erro(erro);}}
+  };
+ }
+
 
  function escopoCivil(){
-  const obra=u.obra;
+  if(fonteImportada?.obraId!==u.obra.id){fonteImportada=null;abasImportadas=[];abaImportada=null;}
+  const importada=Boolean(abaImportada);
+  const obra=importada?montarEscopoImportado(abaImportada):u.obra;
+  const emCentavos=importada?valor=>Number(valor)*100:centavos;
   const medicoes=obra.medicoes.filter(m=>m.status!=='CANCELADA')
-   .sort((a,b)=>String(a.fim).localeCompare(String(b.fim))||a.id-b.id);
-  const selecionada=medicoes.find(m=>m.id===medicaoSelecionada)||medicoes.at(-1);
+   .sort(importada?(a,b)=>a.id-b.id:(a,b)=>String(a.fim).localeCompare(String(b.fim))||a.id-b.id);
+  const selecionada=medicoes.find(m=>m.id===medicaoSelecionada)||medicoes.filter(m=>!m.prevista).at(-1)||medicoes.at(-1);
   const acumulados=new Map();
   for(const medicao of medicoes){
    if(medicao===selecionada||medicao.status==='APROVADA'){
     for(const item of medicao.itens){
-     acumulados.set(item.etapaId,(acumulados.get(item.etapaId)||0)+centavos(item.valor));
+     acumulados.set(item.etapaId,(acumulados.get(item.etapaId)||0)+emCentavos(item.valor));
     }
    }
    if(medicao===selecionada)break;
@@ -58,7 +112,7 @@
    const item=itens.get(etapa.id);
    const valor=centavos(etapa.valor);
    const acumulado=acumulados.get(etapa.id)||0;
-   return `<tr><td>${indice+1}</td><th scope="row">${u.esc(etapa.nome)}</th><td>${u.brl(etapa.valor)}</td>
+   return `<tr><td>${u.esc(etapa.codigo||indice+1)}</td><th scope="row">${u.esc(etapa.nome)}</th><td>${u.brl(etapa.valor)}</td>
     <td>${percentual(contrato?valor/contrato*100:0)}</td>
     <td>${percentual(Number(item?.atual||0)-Number(item?.anterior||0))}</td>
     <td>${percentual(Number(item?.atual||0))}</td><td>${u.brl(item?.valor)}</td>
@@ -69,19 +123,31 @@
   painel.id='joseEscopoCivil';
   painel.innerHTML=`<div class="jose-escopo-cabecalho">
    <div><h3>Escopo de mão de obra civil</h3><p>Valor total da obra <strong>${u.brl(obra.valorContrato)}</strong></p></div>
+   <label>Origem dos dados<select id="joseEscopoFonte" disabled><option value="">Medições do ERP</option></select></label>
+   ${abasImportadas.length>1?`<label>Aba<select id="joseEscopoAba">${abasImportadas.map(a=>`<option value="${a.indice}" ${a===abaImportada?'selected':''}>${u.esc(a.nome)}</option>`).join('')}</select></label>`:''}
    ${medicoes.length?`<label>Medição<select id="joseEscopoMedicao">${medicoes.map((m,i)=>
-    `<option value="${m.id}" ${m===selecionada?'selected':''}>Medição ${String(i+1).padStart(2,'0')} · ${u.dia(m.fim)}${m.status==='RASCUNHO'?' · Rascunho':''}</option>`).join('')}</select></label>`:''}
+    `<option value="${m.id}" ${m===selecionada?'selected':''}>${u.esc(m.titulo||('Medição '+String(i+1).padStart(2,'0')))} · ${m.fim?u.dia(m.fim):'Sem data'}${m.status==='RASCUNHO'?' · Rascunho':''}</option>`).join('')}</select></label>`:''}
    </div>
    <div class="obra-table-wrap">${u.tabela(['Item','Etapa / descrição','Valor da etapa','% do contrato','% na medição','% acumulado','Valor medido','Valor acumulado','Saldo a medir'],linhas)
     .replace('</table>',`<tfoot><tr><th colspan="2" scope="row">Total da obra</th><td>${u.brl(obra.valorContrato)}</td>
-    <td>${percentual(contrato?100:0)}</td><td>${percentual(contrato?centavos(selecionada?.valor||0)/contrato*100:0)}</td>
+    <td>${percentual(contrato?100:0)}</td><td>${percentual(contrato?emCentavos(selecionada?.valor||0)/contrato*100:0)}</td>
     <td>${percentual(contrato?totalAcumulado/contrato*100:0)}</td><td>${u.brl(selecionada?.valor)}</td>
     <td>${u.brl(totalAcumulado/100)}</td><td>${u.brl((contrato-totalAcumulado)/100)}</td></tr></tfoot></table>`)}</div>
-   ${selecionada?`<div class="jose-escopo-recebimento"><span>Recebido nesta medição <strong>${u.brl(recebido/100)}</strong></span>
+   ${importada?`<div class="jose-escopo-recebimento">Dados da planilha vinculada à obra. Consulte as medições do ERP para aprovações e recebimentos.
+   ${obra.etapas.some(e=>(acumulados.get(e.id)||0)-centavos(e.valor)>0.5)?'<strong>Confira as etapas com valor acumulado acima do valor vigente.</strong>':''}</div>`:selecionada?`<div class="jose-escopo-recebimento"><span>Recebido nesta medição <strong>${u.brl(recebido/100)}</strong></span>
    ${lancamento?`<span>Saldo a receber <strong>${u.brl(saldo/100)}</strong></span>`:''}
    ${u.fin&&saldo>0?'<button type="button" id="joseReceberMedicao">Registrar recebimento</button>':''}</div>`:''}`;
   if($('joseEscopoCivil'))$('joseEscopoCivil').replaceWith(painel);
   else $('consultaObras')?.before(painel);
+  listarImportadas(painel,u.obra.id).catch(erro=>{
+   if(painel.isConnected)painel.querySelector('#joseEscopoFonte').options[0].text='Medições do ERP · Planilhas indisponíveis';
+  });
+  painel.querySelector('#joseEscopoAba')?.addEventListener('change',evento=>{
+   abaImportada=abasImportadas.find(a=>a.indice===Number(evento.target.value));
+   medicaoSelecionada=undefined;
+   escopoCivil();
+   $('joseEscopoAba').focus();
+  });
   painel.querySelector('#joseEscopoMedicao')?.addEventListener('change',evento=>{
    medicaoSelecionada=Number(evento.target.value);
    escopoCivil();

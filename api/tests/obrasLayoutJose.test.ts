@@ -16,6 +16,11 @@ function ambiente(empresaId=5,semEquipe=false){
  w.fetch=async(url:any,options:any={})=>{const p=new URL(url).pathname;let data:any={};
  if(p==='/empresas/me')data={empresaid:empresaId,slug:empresaId===5?'construarty':'sba',configuracaoSistema:{modulos:{obras:true,propostas:true}}};
  else if(p==='/obras')data=[obra];else if(p==='/obras/colaboradores'){if(options.method==='POST'){const b=JSON.parse(options.body);writes.push(b);data={id:2,...b};equipe.push(data);}else data=equipe;}else if(p.endsWith('/consulta'))data={itens:[],total:0,paginas:1};else if(p==='/obras/9')data=obra;else if(p==='/obras/propostas-disponiveis')data=[];
+ else if(p==='/obras/planilhas')data=[{id:77,nome:'Escopo importado'}];
+ else if(p==='/obras/planilhas/77')data={id:77,obraId:9,edicoes:{},abas:[{
+  indice:0,reconhecida:true,itens:[{linha:12,item:'A1',etapa:'Fundação',descricao:'Perfuração',valor:10000,percentuais:{1:20,2:15},valoresMedidos:{1:2000,2:1500}}],
+  medicoes:[{numero:1,titulo:'Medição 01',data:'2026-10-10'},{numero:2,titulo:'Medição 02 — Previsão',data:'2026-10-25',prevista:true}],
+ }]};
  else if(p==='/financeiro/contas')data=[{contafinanceiraid:3,nome:'Banco',ativo:true}];
  else if(p==='/financeiro/lancamentos/20/baixar'){
   const b=JSON.parse(options.body);writes.push(b);
@@ -102,5 +107,28 @@ test('sem equipe, lançar abre cadastro direto; salvar disponibiliza o colaborad
  assert.equal(writes[0].ativo,true);assert.equal(writes[0].nome,'Colaborador de validação');assert.equal(writes[0].diaria,'150');
  (d.getElementById('apontar') as HTMLElement).click();assert.ok(d.querySelector('[data-jose-pessoa="2"]'));assert.match(d.getElementById('tituloEditor')!.textContent!,/Lançar mão de obra/);
  (d.getElementById('cancelarEditor') as HTMLElement).click();await new Promise(r=>setTimeout(r,15));
+ }finally{dom.window.close();}
+});
+
+test('planilha importada aparece no mesmo escopo e mantém as previsões separadas da medição selecionada',async()=>{
+ const {dom,w,d}=ambiente();
+ try{
+  await wait(()=>!!d.getElementById('joseObraEquipeAcoes'));
+  (d.querySelector('[data-tab="medicoes"]') as HTMLElement).click();
+  const selecionar=(id:string,v:string)=>{
+   const el=d.getElementById(id) as HTMLSelectElement;
+   el.value=v;el.dispatchEvent(new w.Event('change',{bubbles:true}));
+  };
+  await wait(()=>Boolean(d.querySelector('#joseEscopoFonte option[value="77"]')));
+  selecionar('joseEscopoFonte','77');
+  await wait(()=>d.getElementById('joseEscopoCivil')?.textContent?.includes('Perfuração')===true);
+  assert.equal((d.getElementById('joseEscopoMedicao') as HTMLSelectElement).value,'1');
+  assert.match(d.querySelector('#joseEscopoCivil tbody tr')!.textContent!,/2\.000,00/);
+  selecionar('joseEscopoMedicao','2');
+  assert.match(d.querySelector('#joseEscopoCivil tbody tr')!.textContent!,/3\.500,00/);
+  assert.equal(d.getElementById('joseReceberMedicao'),null);
+  await wait(()=>Boolean(d.querySelector('#joseEscopoFonte option[value="77"]')));
+  selecionar('joseEscopoFonte','');
+  await wait(()=>!d.getElementById('joseEscopoCivil')?.textContent?.includes('Perfuração'));
  }finally{dom.window.close();}
 });

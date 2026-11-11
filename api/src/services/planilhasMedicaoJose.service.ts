@@ -46,22 +46,33 @@ async function abrirWorkbook(bytes: Buffer) {
   await workbook.xlsx.load(bytes as any);
   return workbook;
 }
-type Medicao = { numero: number; coluna: number; titulo: string };
-type Linha = { linha: number; item: string; etapa: string; descricao: string; unidade: string; quantidade: number; valor: number; percentuais: Record<string, number> };
+type Medicao = { numero: number; coluna: number; titulo: string; data?: string; prevista?: boolean };
+type Linha = { linha: number; item: string; etapa: string; descricao: string; unidade: string; quantidade: number; valor: number; percentuais: Record<string, number>; valoresMedidos?: Record<string, number> };
 export type AbaPlanilha = {
   indice: number; nome: string; reconhecida: boolean; cabecalho: number;
-  itens: Linha[]; medicoes: Medicao[]; aviso?: string;
+  itens: Linha[]; medicoes: Medicao[]; aviso?: string; somenteConsulta?: boolean;
   amostra?: {linha:number; celulas:{coluna:string; valor:string}[]}[];
 };
+function dataMedicao(cell: any): string | undefined {
+  const v = valor(cell);
+  if (v instanceof Date && Number.isFinite(v.getTime())) return v.toISOString().slice(0, 10);
+  if (typeof v !== "string") return;
+  const br = v.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const iso = br ? br[3] + "-" + br[2] + "-" + br[1] : v.trim();
+  const d = new Date(iso + "T00:00:00Z");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso) && Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === iso) return iso;
+}
+
 export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, permitirMapeamento = false): Promise<{ hash: string; abas: AbaPlanilha[]; avisos: string[]; valida: boolean }> {
   const workbook = await abrirWorkbook(bytes);
   if (workbook.worksheets.length > 20) throw Error("Limite de 20 abas por planilha.");
   const abas: AbaPlanilha[] = [], avisos: string[] = [], erros: string[] = [];
   for (let indice = 0; indice < workbook.worksheets.length; indice++) {
     const sheet = workbook.worksheets[indice];
+    let escopoCivil = false;
     let cabecalho = 0, colItem = 0, colEtapa = 0, colDescricao = 0, colUnidade = 0, colQuantidade = 0, colValor = 0, precoUnitario = true;
     for (let r = 1; r <= Math.min(sheet.rowCount, 30); r++) {
-      const cols = Math.min(sheet.columnCount, 180);
+      const cols = Math.min(sheet.columnCount, 512);
       let item = 0, etapa = 0, descricao = 0, unidade = 0, qtd = 0, preco = 0, unitario = true;
       for (let c = 1; c <= cols; c++) {
         const cell = sheet.getCell(r, c);
@@ -73,11 +84,12 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
         if (["UNI","UNIDADE","UN","UND"].includes(t)) unidade = c;
         if (["QUANTIDADE","QTD","QTDE","QTDE."].includes(t)) qtd = c;
         if (t.includes("VALOR UNITARIO") || t === "PRECO UNITARIO") { preco = c; unitario = true; }
-        else if (t === "VALOR TOTAL" && !preco) { preco = c; unitario = false; }
+        else if (["VALOR TOTAL", "VALOR VIGENTE DA ETAPA", "VALOR CONTRATADO", "VALOR DA ETAPA"].includes(t) && !preco) { preco = c; unitario = false; }
       }
       if (descricao && (item || etapa) && preco) {
         cabecalho = r; colItem = item; colEtapa = etapa; colDescricao = descricao;
         colUnidade = unidade; colQuantidade = qtd; colValor = preco; precoUnitario = unitario;
+        escopoCivil = semAcentos(valor(sheet.getCell(r, preco))) === "VALOR VIGENTE DA ETAPA" && semAcentos(valor(sheet.getCell(r, preco + 1))).startsWith("PAGO DA COMPOSICAO");
         break;
       }
     }
@@ -89,10 +101,11 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
       const n = /^[A-Z]{1,3}$/.test(str)
         ? [...str].reduce((t, c) => t * 26 + c.charCodeAt(0) - 64, 0)
         : Number(str);
-      if (!Number.isSafeInteger(n) || n < (aceitaZero ? 0 : 1) || n > 180) throw Error("Mapeamento de coluna inválido na aba " + sheet.name);
+      if (!Number.isSafeInteger(n) || n < (aceitaZero ? 0 : 1) || n > 512) throw Error("Mapeamento de coluna inválido na aba " + sheet.name);
       return n;
     };
     if (manual) {
+      escopoCivil = false;
       const linha = Number(manual.cabecalho);
       if (!Number.isInteger(linha) || linha < 1 || linha > 200) throw Error("Linha de cabeçalho inválida na aba " + sheet.name);
       cabecalho = linha;
@@ -108,14 +121,14 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
     const medicoes: Medicao[] = [];
     if (cabecalho) {
       for (let r = Math.max(1, cabecalho - 3); r <= cabecalho; r++) {
-        for (let c = 1; c <= Math.min(sheet.columnCount, 180); c++) {
+        for (let c = 1; c <= Math.min(sheet.columnCount, 512); c++) {
           const cell = sheet.getCell(r, c);
         if(cell.isMerged && cell.master.address !== cell.address)continue;
         const t = semAcentos(valor(cell));
           const match = t.match(/MEDICAO\s*(?:N[ºO°.]?\s*)?(\d{1,3})/) || t.match(/(\d{1,3})\s*[ªº°AO.]*\s*MEDICAO/);
           if (match) {
             const n = Number(match[1]);
-            if (!medicoes.some(m => m.numero === n)) medicoes.push({ numero: n, coluna: c, titulo: texto(valor(sheet.getCell(r, c))) });
+            if (!medicoes.some(m => m.numero === n)) medicoes.push({ numero: n, coluna: c, titulo: texto(valor(cell)), data: r > 1 ? dataMedicao(sheet.getCell(r - 1, c)) : undefined, prevista: t.includes("PREVISAO") });
           }
         }
       }
@@ -123,19 +136,24 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
     if (manual) {
       medicoes.length = 0;
       const colunas = String(manual.colunasMedicoes || "").split(/[;, ]+/).map(s => s.trim()).filter(Boolean);
-      if (!colunas.length || colunas.length > 40) throw Error("Informe de 1 a 40 colunas de medição na aba " + sheet.name);
+      if (!colunas.length || colunas.length > 100) throw Error("Informe de 1 a 100 colunas de medição na aba " + sheet.name);
+      const linhaDatas = Number(manual.linhaDatas || 0);
+      if (!Number.isInteger(linhaDatas) || linhaDatas < 0 || linhaDatas > 200) throw Error("Informe uma linha de datas válida.");
       const usadas = new Set<number>();
       colunas.forEach((c, index) => {
         const coluna = col(c);
         if (usadas.has(coluna) || coluna === colValor || coluna === colDescricao) throw Error("Colunas de medição repetidas ou incorretas na aba " + sheet.name);
         usadas.add(coluna);
-        medicoes.push({ numero: index + 1, coluna, titulo: "MEDIÇÃO " + String(index + 1).padStart(2, "0") });
+        medicoes.push({ numero: index + 1, coluna, titulo: "MEDIÇÃO " + String(index + 1).padStart(2, "0"), data: linhaDatas ? dataMedicao(sheet.getCell(linhaDatas, coluna)) : undefined });
       });
     }
     medicoes.sort((a, b) => a.numero - b.numero);
+    const acumulado = manual?.tipoPercentual === "acumulado";
+    const somenteConsulta = escopoCivil || acumulado;
     const itens: Linha[] = [];
     if (cabecalho && medicoes.length) {
       for (let r = cabecalho + 1; r <= Math.min(sheet.rowCount, 3000); r++) {
+        if (escopoCivil && /^TOTAL GERAL$/.test(semAcentos(valor(sheet.getCell(r, colItem))))) break;
         const descricao = texto(valor(sheet.getCell(r, colDescricao)));
         const etapa = colEtapa ? texto(valor(sheet.getCell(r, colEtapa))) : "";
         const item = colItem ? texto(valor(sheet.getCell(r, colItem))) : "";
@@ -152,12 +170,27 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
         }
         if (/^(TOTAL|SUBTOTAL|RESUMO|OBSERVACOES)/.test(semAcentos(descricao))) continue;
         const percentuais: Record<string, number> = {};
+        const valoresMedidos: Record<string, number> = {};
+        let anterior = 0;
         for (const m of medicoes) {
-          const n = percentualPlanilha(sheet.getCell(r, m.coluna));
+          const calculado = escopoCivil ? valor(sheet.getCell(r, m.coluna + 2)) : null;
+          const valorMedido = escopoCivil && calculado !== null && typeof calculado === "object" &&
+            percentualPlanilha(sheet.getCell(r, m.coluna)) === 0 ? 0 : calculado;
+          if (escopoCivil && (typeof valorMedido !== "number" || !Number.isFinite(valorMedido) || valorMedido < 0)) {
+            erros.push(sheet.name + " linha " + r + ": confira o valor medido em " + m.titulo + ".");
+          }
+          if (escopoCivil && typeof valorMedido === "number") valoresMedidos[String(m.numero)] = valorMedido;
+          const celula = sheet.getCell(r, m.coluna);
+          const informado = acumulado && valor(celula) === "" ? anterior : percentualPlanilha(celula);
+          const n = escopoCivil ? (preco > 0 ? (valoresMedidos[String(m.numero)] || 0) / preco * 100 : 0) : acumulado ? informado - anterior : informado;
+          anterior = informado;
           if(!Number.isFinite(n)||n<0||n>100){
             erros.push(sheet.name+" linha "+r+": percentual inválido na coluna "+sheet.getColumn(m.coluna).letter+". Recalcule fórmulas e confira o valor no Excel.");
           }
           percentuais[String(m.numero)] = Number.isFinite(n) ? n : 0;
+        }
+        if (escopoCivil && preco === 0 && Object.values(valoresMedidos).some(v => v > 0)) {
+          avisos.push(sheet.name + " linha " + r + ": valor medido em etapa sem valor vigente.");
         }
         const quantidadeInformada = colQuantidade ? valor(sheet.getCell(r, colQuantidade)) : null;
         const quantidade = quantidadeInformada === null || quantidadeInformada === undefined || quantidadeInformada === ""
@@ -168,9 +201,13 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
           unidade: colUnidade ? texto(valor(sheet.getCell(r, colUnidade))) : "",
           quantidade,
           valor: Math.round(preco * (precoUnitario ? quantidade : 1) * 100) / 100,
-          percentuais,
+          percentuais, ...(escopoCivil ? { valoresMedidos } : {}),
         });
       }
+    }
+    for (const item of itens) {
+      const soma = Object.values(item.percentuais).reduce((total, n) => total + n, 0);
+      if (soma > 100.00001) (escopoCivil ? avisos : erros).push(sheet.name + " linha " + item.linha + ": medições ultrapassam 100% do valor da etapa.");
     }
     const reconhecida = Boolean(cabecalho && medicoes.length && itens.length);
     const aviso = reconhecida ? undefined : "Não foi reconhecida uma tabela de serviços com colunas de medição. Esta aba será preservada, sem edição automática.";
@@ -185,7 +222,7 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
       }
       if(celulas.length)amostra.push({linha:r,celulas});
     }
-    abas.push({ indice, amostra, nome: sheet.name, reconhecida, cabecalho, itens, medicoes, ...(aviso ? { aviso } : {}),
+    abas.push({ indice, amostra, nome: sheet.name, reconhecida, cabecalho, itens, medicoes, ...(somenteConsulta ? { somenteConsulta } : {}), ...(aviso ? { aviso } : {}),
       ...(!manual && cabecalho ? { mapeamento: {cabecalho, item: colItem, etapa: colEtapa, descricao: colDescricao, unidade: colUnidade, quantidade: colQuantidade, valor: colValor, tipoValor: precoUnitario ? "unitario" : "total", colunasMedicoes: medicoes.map(m=>sheet.getColumn(m.coluna).letter).join(",")} } : {}),
     } as any);
   }
@@ -198,6 +235,7 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
 }
 export function aplicarEdicoes(aba: AbaPlanilha, medicoes: Record<string, number>, numeroMedicao: number) {
   const med = aba.medicoes.find(m => m.numero === numeroMedicao);
+  if (aba.somenteConsulta) throw Error("Esta aba usa fórmulas ou percentuais acumulados e está disponível para consulta.");
   if (!aba.reconhecida || !med) throw Error("Aba ou medição não encontrada na planilha importada.");
   const rows = new Set(aba.itens.map(i => i.linha));
   for (const [linha, porcentagem] of Object.entries(medicoes)) {
@@ -209,6 +247,7 @@ export function evolucaoAtual(linha: Linha, edicoes: Record<string, number>, aba
   return Number(edicoes[aba.indice + ":" + linha.linha + ":" + medicao] ?? linha.percentuais[String(medicao)] ?? 0);
 }
 export async function gerarExcel(bytes: Buffer, abas: AbaPlanilha[], edicoes: Record<string, number>) {
+  if (!Object.keys(edicoes).length) return bytes;
   const workbook = await abrirWorkbook(bytes);
   for (const [chave, percent] of Object.entries(edicoes)) {
     const [abaId, linha, numeroMedicao] = chave.split(":").map(Number);

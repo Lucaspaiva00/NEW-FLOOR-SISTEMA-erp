@@ -74,7 +74,7 @@
         '</strong><small>' + esc(item.etapa) + '</small></td><td>' + esc(item.descricao) +
         '<small>' + esc(item.quantidade) + ' ' + esc(item.unidade) + '</small></td><td>' + brl(item.valor) + '</td><td class="pm-historico">' + antes.toLocaleString("pt-BR") +
         '%</td><td><input type="number" min="0" max="100" step="0.01" inputmode="decimal" ' +
-        'aria-label="Percentual medido do serviço ' + esc(item.item) + '" value="' + atual +
+        (aba.somenteConsulta ? 'readonly ' : '') + 'aria-label="Percentual medido do serviço ' + esc(item.item) + '" value="' + atual +
         '" data-progresso="' + item.linha + '"></td><td class="pm-historico" data-acumulado="' + item.linha +
         '">—</td><td data-valor="' + item.linha + '">—</td></tr>';
     }).join("");
@@ -96,18 +96,20 @@
       const atual = valorProgresso(aba, item, n);
       const acumulado = aba.medicoes.reduce((total, m) => total + valorProgresso(aba, item, m.numero), 0);
       const celula = $("pmLinhas").querySelector('[data-linha="' + item.linha + '"]');
-      const estaInvalido = !Number.isFinite(atual) || atual < 0 || atual > 100 || acumulado > 100.00001;
+      const medido = item.valoresMedidos?.[n] ?? item.valor * atual / 100;
+      const estaInvalido = !aba.somenteConsulta && (!Number.isFinite(atual) || atual < 0 || atual > 100 || acumulado > 100.00001);
       if (estaInvalido) invalido = true;
       if (celula) {
         celula.classList.toggle("pm-invalido", estaInvalido);
         celula.querySelector("[data-acumulado]").textContent = acumulado.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + "%";
-        celula.querySelector("[data-valor]").textContent = brl(item.valor * atual / 100);
+        celula.querySelector("[data-valor]").textContent = brl(medido);
       }
-      if (Number.isFinite(atual)) valorTotal += item.valor * atual / 100;
+      if (Number.isFinite(atual)) valorTotal += medido;
     }
     $("pmResumo").innerHTML = '<span>' + aba.itens.length + ' serviços reconhecidos</span><strong>Medição atual: ' +
       brl(valorTotal) + '</strong>' + (invalido ? '<em>Confira os percentuais: máximo acumulado de 100% por serviço.</em>' : "");
-    $("pmSalvar").disabled = !admin || invalido;
+    $("pmSalvar").disabled = !admin || invalido || aba.somenteConsulta === true;
+    $("pmSalvar").hidden = aba.somenteConsulta === true;
   }
   async function abrirPlanilha(id) {
     estado.planilha = await api("/obras/planilhas/" + id);
@@ -150,6 +152,17 @@
       estado.arquivoNome = arquivo.name;
       estado.mapeamentos = {};
       estado.previa = await api("/obras/planilhas/previa", "POST", { arquivo: estado.arquivo });
+      const mapas = mapasSalvos();
+      const sugeridos = {};
+      for (const aba of estado.previa.abas) {
+        if (aba.reconhecida) continue;
+        const mapa = mapas.find(m => assinaturaCabecalho(aba, m.config.cabecalho) === m.assinatura);
+        if (mapa) sugeridos[aba.indice] = mapa.config;
+      }
+      if (Object.keys(sugeridos).length) {
+        estado.previa = await api("/obras/planilhas/previa", "POST", { arquivo: estado.arquivo, mapeamentos: sugeridos });
+        estado.mapeamentos = sugeridos;
+      }
       mostrarPrevia();
       status("Prévia carregada. Confira as abas e a quantidade de serviços antes de confirmar.");
     }, $("pmPrever"));
@@ -188,6 +201,16 @@
       $("pmObra").value = obraInicial; $("pmObra").dispatchEvent(new Event("change"));
     }
     status("Escolha a obra para abrir ou adicionar uma planilha.");
+  }
+  const chaveMapas = "construarty-mapeamentos-medicao";
+  function mapasSalvos() {
+    try { return JSON.parse(localStorage.getItem(chaveMapas) || "[]"); }
+    catch { return []; }
+  }
+  function assinaturaCabecalho(aba, linha) {
+    const cabecalho = aba.amostra?.find(r => r.linha === Number(linha));
+    if (!cabecalho?.celulas.length) return "";
+    return JSON.stringify([aba.nome.trim().toUpperCase(), cabecalho.celulas.map(c => [c.coluna, c.valor.trim().toUpperCase()])]);
   }
   function mostrarPrevia() {
     const p = estado.previa;
@@ -228,6 +251,8 @@
           '<option value="unitario" ' + (m.tipoValor !== "total" ? "selected" : "") + '>Unitário (multiplicar pela quantidade)</option>' +
           '<option value="total" ' + (m.tipoValor === "total" ? "selected" : "") + '>Total da linha</option></select></label>' +
           campo("colunasMedicoes", "Colunas dos percentuais (ex.: L,P,T)", m.colunasMedicoes || a.medicoes.map(n => letra(n.coluna)).join(",") || "L,P,T") +
+          campo("linhaDatas", "Linha das datas das medições (opcional)", m.linhaDatas || "") +
+          '<label>Tipo de percentual<select data-pm-campo="tipoPercentual"><option value="periodo">Do período</option><option value="acumulado" ' + (m.tipoPercentual === "acumulado" ? "selected" : "") + '>Acumulado</option></select></label>' +
           '</div><p>Utilize as letras que aparecem no Excel. Cada coluna informada corresponde a uma medição. O sistema somente altera os percentuais dessas colunas.</p>' +
           '</details><details><summary>Ver dados lidos do arquivo</summary><div style="overflow:auto;max-height:360px"><table><thead><tr><th>Linha</th><th>Colunas e valores</th></tr></thead><tbody>' +
           (a.amostra || []).map(r => '<tr><td>' + r.linha + '</td><td>' +
@@ -243,7 +268,10 @@
     function renderServicosPrevia() {
       const a = p.abas.find(a => String(a.indice) === $("pmPreviaAba").value);
       if (!a?.reconhecida) { $("pmServicosPrevia").innerHTML = '<p class="pm-aviso">Esta aba não foi reconhecida. Use “Ajustar leitura” se ela contiver serviços.</p>'; return; }
-      $("pmServicosPrevia").innerHTML = '<p><strong>' + a.itens.length + ' serviços · ' + brl(a.itens.reduce((t, i) => t + Number(i.valor || 0), 0)) + '</strong></p><div class="pm-grid-scroll pm-servicos-previa"><table><thead><tr><th>Serviço</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>' + a.itens.map(i => '<tr><td><strong>' + esc(i.item) + '</strong> ' + esc(i.descricao) + '</td><td>' + esc(i.quantidade) + ' ' + esc(i.unidade) + '</td><td>' + brl(i.valor) + '</td></tr>').join('') + '</tbody></table></div>';
+      $("pmServicosPrevia").innerHTML = '<p><strong>' + a.itens.length + ' serviços · ' + a.medicoes.length + ' medições · ' + brl(a.itens.reduce((t, i) => t + Number(i.valor || 0), 0)) + '</strong></p><details><summary>Conferir medições e datas</summary><ul>' + a.medicoes.map(m =>
+        '<li>' + esc(m.titulo) + ' · ' + esc(m.data ? m.data.split('-').reverse().join('/') : 'Sem data') +
+        ' · ' + brl(a.itens.reduce((total, i) => total + (i.valoresMedidos?.[m.numero] ?? i.valor * (i.percentuais[m.numero] || 0) / 100), 0)) + '</li>').join('') +
+        '</ul></details><div class="pm-grid-scroll pm-servicos-previa"><table><thead><tr><th>Serviço</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>' + a.itens.map(i => '<tr><td><strong>' + esc(i.item) + '</strong> ' + esc(i.descricao) + '</td><td>' + esc(i.quantidade) + ' ' + esc(i.unidade) + '</td><td>' + brl(i.valor) + '</td></tr>').join('') + '</tbody></table></div>';
     }
     $("pmPreviaAba").value = String(p.abas.find(a => a.reconhecida)?.indice ?? p.abas[0]?.indice ?? '');
     $("pmPreviaAba").onchange = renderServicosPrevia;
@@ -270,10 +298,17 @@
         obraId: estado.obraId, nome, arquivoNome: estado.arquivoNome,
         arquivo: estado.arquivo, hash: estado.previa.hash, mapeamentos: estado.mapeamentos
       });
+      const mapas = mapasSalvos();
+      for (const [indice, config] of Object.entries(estado.mapeamentos)) {
+        const aba = estado.previa.abas.find(a => String(a.indice) === indice);
+        const assinatura = aba && assinaturaCabecalho(aba, config.cabecalho);
+        if (assinatura) mapas.push({ assinatura, config });
+      }
+      try { localStorage.setItem(chaveMapas, JSON.stringify([...new Map(mapas.map(m => [m.assinatura, m])).values()].slice(-30))); } catch {}
       estado.arquivo = ""; estado.previa = null; estado.mapeamentos = {};
       $("pmPrevia").hidden = true; $("pmImportador").hidden = true; $("pmArquivo").value = "";
       await carregarLista(); await abrirPlanilha(resultado.id);
-      status("Planilha importada para a obra. Os pagamentos não foram alterados.");
+      status("Planilha importada. Ela está disponível em Evolução e medições, no seletor Origem dos dados.");
     }, $("pmConfirmar"));
   }
   iniciar().catch(e => status(e.message, true));
