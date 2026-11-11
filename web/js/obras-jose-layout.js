@@ -107,12 +107,16 @@
     return {continuar:true};
    });
   function mostrarPrevia(indice){
-   const aba=previa.abas.find(a=>a.indice===indice)||previa.abas.find(a=>a.reconhecida)||previa.abas[0];
+   const civil=previa.abas.find(a=>/^escopo\s+(?:mo|mão de obra)\s+civil$/i.test(a.nome.trim()));
+   const reconhecidas=previa.abas.filter(a=>a.reconhecida);
+   const candidatas=civil?[civil]:reconhecidas.length?reconhecidas:previa.abas;
+   const aba=candidatas.find(a=>a.indice===indice)||candidatas[0];
    if(!aba)throw Error('O Excel não possui abas disponíveis.');
    const campos=mapas[aba.indice]||aba.mapeamento||{};
    const pronto=aba.reconhecida&&previa.valida!==false;
    const total=aba.itens.reduce((s,i)=>s+Number(i.valor),0);
-   const listaAbas='<label class="wide">Aba do Excel<select id="joseAbaPrevia">'+previa.abas.map(a=>
+   const listaAbas=candidatas.length===1?`<p class="wide">Aba do Excel <strong>${u.esc(aba.nome)}</strong></p>`:
+    '<label class="wide">Aba do Excel<select id="joseAbaPrevia">'+candidatas.map(a=>
     `<option value="${a.indice}" ${a===aba?'selected':''}>${u.esc(a.nome)}${a.reconhecida?' · Reconhecida':''}</option>`).join('')+'</select></label>';
    const resumo=pronto?`<div class="wide jose-importacao-resumo"><strong>${aba.itens.length} itens · ${aba.medicoes.length} medições</strong><span>Valor das etapas ${u.brl(total)}</span></div>
     <div class="wide obra-table-wrap">${u.tabela(['Item','Etapa / descrição','Valor da etapa'],aba.itens.slice(0,8).map(i=>
@@ -120,9 +124,24 @@
     ${aba.itens.length>8?'<p class="wide">A prévia mostra os 8 primeiros itens. A importação inclui todos os itens reconhecidos.</p>':''}
     <details class="wide"><summary>Conferir medições e datas</summary><ul>${aba.medicoes.map(m=>`<li>${u.esc(m.titulo)} · ${m.data?u.dia(m.data):'Sem data identificada'}</li>`).join('')}</ul></details>`
     :'<p class="wide" role="status">Confira a linha de cabeçalho e indique as colunas da sua planilha.</p>';
-   const avisos=previa.avisos.filter(a=>a.startsWith(aba.nome+' '));
+   const avisos=previa.avisos.filter(a=>a.startsWith(aba.nome+' ')||a.startsWith(aba.nome+':'));
+   const revisarCivil=civil&&!pronto;
+   const avisosHtml=avisos.length?`<details class="wide" ${pronto?'':'open'}><summary>Avisos da aba (${avisos.length})</summary><ul>${avisos.map(a=>'<li>'+u.esc(a)+'</li>').join('')}</ul></details>`:'';
+   if(revisarCivil){
+    dialogo('Conferir importação',listaAbas+
+     '<p class="wide" role="status">A aba Escopo MO Civil usa fórmulas do contrato. Tente reconhecer o arquivo novamente. Se os avisos persistirem, confira os valores no Excel antes de importar.</p>'+
+     avisosHtml+'<button type="button" id="joseRelerExcel">Tentar reconhecer novamente</button>',null);
+    $('joseRelerExcel').onclick=async e=>{
+     const botao=e.currentTarget;
+     botao.disabled=true;
+     try{const nova=await u.api('/obras/planilhas/previa','POST',{arquivo});if(botao.isConnected&&vigente()){mapas={};previa=nova;mostrarPrevia();}}
+     catch(erro){if(botao.isConnected)$('erroEditor').textContent=erro.message;}
+     finally{botao.disabled=false;}
+    };
+    return;
+   }
    dialogo('Conferir importação',listaAbas+resumo+
-    (avisos.length?`<details class="wide" ${pronto?'':'open'}><summary>Avisos da aba (${avisos.length})</summary><ul>${avisos.map(a=>'<li>'+u.esc(a)+'</li>').join('')}</ul></details>`:'')+
+    avisosHtml+
     `<details class="wide" ${pronto?'':'open'}><summary>Conferir ou ajustar campos</summary>
     <label>Linha de cabeçalho<select id="joseLinhaCabecalho">${(aba.amostra||[]).map(r=>`<option value="${r.linha}">Linha ${r.linha} · ${u.esc(r.celulas.slice(0,5).map(c=>c.valor).join(' · ').slice(0,160))}</option>`).join('')}</select></label>
     <div id="joseCamposMapa" class="jose-importacao-mapa"></div>
@@ -139,10 +158,13 @@
      listasImportadas.delete(obraId);
      await selecionarFonte(salvo.id,obraId,aba.indice);
     }:null);
-   $('joseAbaPrevia').onchange=e=>mostrarPrevia(Number(e.target.value));
+   $('joseAbaPrevia')?.addEventListener('change',e=>mostrarPrevia(Number(e.target.value)));
    const cabecalho=$('joseLinhaCabecalho');
+   const linhasValidas=(aba.amostra||[]).filter(r=>r.celulas.length>=3);
+   const linhasPermitidas=new Set(linhasValidas.map(r=>String(r.linha)));
+   for(const opcao of cabecalho.options)opcao.disabled=!linhasPermitidas.has(opcao.value);
    const sugerirLinha=(aba.amostra||[]).find(r=>r.celulas.some(c=>/descri|serviço|atividade/i.test(c.valor))&&r.celulas.some(c=>/valor|preço|total/i.test(c.valor)));
-   cabecalho.value=String(campos.cabecalho||aba.cabecalho||sugerirLinha?.linha||aba.amostra?.[0]?.linha||'');
+   cabecalho.value=String(campos.cabecalho||aba.cabecalho||sugerirLinha?.linha||linhasValidas[0]?.linha||'');
    const letra=n=>{let s='';for(let i=Number(n);i>0;i=Math.floor((i-1)/26))s=String.fromCharCode(65+(i-1)%26)+s;return s||String(n||'');};
    const atualizarCampos=()=>{
     const colunas=aba.amostra?.find(r=>r.linha===Number(cabecalho.value))?.celulas||[];
@@ -169,7 +191,9 @@
      const camposEditor=$('joseCamposMapa');
      const mapa=Object.fromEntries([...camposEditor.querySelectorAll('[data-mapa]')].map(c=>[c.dataset.mapa,c.value]));
      const colunas=[...camposEditor.querySelectorAll('[data-coluna-medicao]:checked')].map(c=>c.dataset.colunaMedicao);
-     if(mapa.descricao==='0'||mapa.valor==='0'||(mapa.item==='0'&&mapa.etapa==='0')||!colunas.length)throw Error('Indique item ou etapa, descrição, valor e pelo menos uma coluna de medição.');
+     if(!linhasPermitidas.has(cabecalho.value)||mapa.descricao==='0'||mapa.valor==='0'||(mapa.item==='0'&&mapa.etapa==='0')||!colunas.length)throw Error('Indique item ou etapa, descrição, valor e pelo menos uma coluna de medição.');
+     const usadas=['item','etapa','descricao','valor','unidade','quantidade'].map(c=>mapa[c]).filter(c=>c!=='0');
+     if(new Set(usadas).size!==usadas.length||colunas.some(c=>usadas.includes(c)))throw Error('Escolha uma coluna diferente para cada campo e para as medições.');
      const tentativa={...mapas,[aba.indice]:{...mapa,cabecalho:cabecalho.value,linhaDatas:camposEditor.querySelector('[name="linhaDatas"]').value,colunasMedicoes:colunas.join(',')}};
      previa=await u.api('/obras/planilhas/previa','POST',{arquivo,mapeamentos:tentativa});
      mapas=tentativa;
