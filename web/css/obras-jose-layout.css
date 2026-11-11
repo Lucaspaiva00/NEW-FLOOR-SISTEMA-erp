@@ -55,3 +55,6 @@ body.jose-obras-organizada .obras-page .jose-obra-secondary{background:#edf2f7;c
 .jose-obras-organizada .jose-importacao-mapa fieldset{grid-column:1/-1}
 .jose-obras-organizada #joseEscopoCivil tbody th{width:30%;white-space:normal;overflow-wrap:anywhere}
 .jose-obras-organizada .jose-escopo-descricao{display:block;margin-top:4px;font-size:12px;font-weight:400;text-transform:none;color:#52647b}
+
+.jose-obras-organizada #joseEscopoCivil input[data-avanco-item]{width:84px;min-width:0;text-align:right;background:white}
+.jose-obras-organizada #joseEscopoCivil input[data-avanco-item]:disabled{background:#f1f5f9}

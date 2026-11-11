@@ -34,6 +34,8 @@
  const percentual=valor=>percent.format(valor/100);
  const centavos=valor=>Math.round(Number(valor)*100);
  let medicaoSelecionada;
+ let edicaoAvanco;
+ let abrindoAvanco=false;
  let fonteImportada;
  let abasImportadas=[];
  let abaImportada;
@@ -224,13 +226,96 @@
  }
 
 
+ function vincularPlanilhaOutraObra(){
+  const origem=u.obra,fonte=fonteImportada,aba=abaImportada;
+  const total=aba.itens.reduce((soma,item)=>soma+centavos(item.valor),0);
+  const candidatas=u.obras.filter(o=>o.id!==origem.id&&centavos(o.valorContrato)===total&&!['CANCELADA','CONCLUIDA'].includes(o.status));
+  const texto=`<p class="wide">Planilha <strong>${u.esc(fonte.nome)}</strong> · Contrato ${u.brl(total/100)}.</p>`;
+  if(!candidatas.length){
+   u.abrir('Vincular à obra correta',texto+'<p class="wide">Cadastre a obra com o cliente correto e esse valor de contrato. Depois volte à planilha e use este botão para mover o vínculo.</p>',null);
+   return;
+  }
+  u.abrir('Vincular à obra correta',texto+u.select('obraId','Obra de destino',candidatas)+
+   '<p class="wide">Confira o cliente na obra de destino antes de transferir.</p>',
+   async dados=>{
+    if(u.obra?.id!==origem.id)throw Error('A obra selecionada mudou.');
+    const resultado=await u.api('/obras/planilhas/'+fonte.id+'/transferir','POST',{...dados,aba:aba.indice});
+    listasImportadas.delete(origem.id);listasImportadas.delete(resultado.obraId);
+    $('obraSelecionada').value=String(resultado.obraId);
+    await u.detalhe();
+    await selecionarFonte(resultado.id,resultado.obraId,aba.indice);
+    $('editor').close();
+    return {continuar:true};
+   });
+  $('salvarEditor').textContent='Transferir vínculo';
+ }
+
+ function iniciarAvancoNaTabela(){
+  fonteImportada=null;abasImportadas=[];abaImportada=null;medicaoSelecionada=undefined;
+  edicaoAvanco={obraId:u.obra.id,percentuais:new Map()};
+  escopoCivil();
+  $('joseEscopoCivil').querySelector('input[data-avanco-item]:not([disabled])')?.focus();
+ }
+ function configurarAvanco(painel,etapas,contrato){
+  const entradas=[...painel.querySelectorAll('input[data-avanco-item]')];
+  const atualizar=()=>{
+   let total=0,totalAnterior=0,invalido=false;
+   for(const entrada of entradas){
+    const linha=entrada.closest('tr');
+    const avancou=Number(entrada.value||0);
+    const valor=Math.round(Number(entrada.dataset.valor)*avancou/100);
+    const jaMedido=Number(entrada.dataset.acumulado);
+    total+=valor;totalAnterior+=jaMedido;
+    invalido||=!entrada.validity.valid;
+    linha.querySelector('[data-avanco-valor]').textContent=u.brl(valor/100);
+    linha.querySelector('[data-avanco-acumulado]').textContent=percentual(Number(entrada.dataset.anterior)+avancou);
+    linha.querySelector('[data-avanco-valor-acumulado]').textContent=u.brl((jaMedido+valor)/100);
+    linha.querySelector('[data-avanco-saldo]').textContent=u.brl((Number(entrada.dataset.valor)-jaMedido-valor)/100);
+   }
+   painel.querySelector('#joseTotalAvanco').textContent=u.brl(total/100);
+   painel.querySelector('[data-total-avanco]').textContent=percentual(contrato?total/contrato*100:0);
+   painel.querySelector('[data-valor-avanco]').textContent=u.brl(total/100);
+   painel.querySelector('[data-total-acumulado-avanco]').textContent=percentual(contrato?(totalAnterior+total)/contrato*100:0);
+   painel.querySelector('[data-valor-acumulado-avanco]').textContent=u.brl((totalAnterior+total)/100);
+   painel.querySelector('[data-saldo-avanco]').textContent=u.brl((contrato-totalAnterior-total)/100);
+   painel.querySelector('#joseConferirAvanco').disabled=invalido||total<=0;
+  };
+  for(const entrada of entradas)entrada.oninput=()=>{
+   edicaoAvanco.percentuais.set(Number(entrada.dataset.avancoItem),entrada.value);atualizar();
+  };
+  painel.querySelector('#joseCancelarAvanco').onclick=()=>{edicaoAvanco=null;escopoCivil();};
+  painel.querySelector('#joseConferirAvanco').onclick=()=>{
+   abrindoAvanco=true;
+   try{$('medir')?.click();}finally{abrindoAvanco=false;}
+   const campos=$('camposEditor');
+   for(const etapa of etapas){
+    const campo=campos.querySelector('[name="etapa_'+etapa.id+'"]');
+    if(!campo)continue;
+    campo.value=edicaoAvanco.percentuais.get(etapa.id)||'0';
+    campo.parentElement.style.display='none';
+   }
+   const resumo=document.createElement('p');
+   resumo.className='wide';resumo.textContent='Valor da medição: '+painel.querySelector('#joseTotalAvanco').textContent+'. Informe o período e o vencimento para salvar o rascunho.';
+   campos.prepend(resumo);
+   $('salvarEditor').textContent='Salvar rascunho';
+  };
+  atualizar();
+ }
  function prepararNovaMedicaoImportada(evento){
-  if(!abaImportada||!fonteImportada)return;
+  if(abrindoAvanco)return;
   const obra=u.obra;
+  if(!abaImportada||!fonteImportada){
+   if(obra.medicoes.some(m=>m.observacoes?.startsWith('Marco inicial importado da engenharia'))&&!obra.medicoes.some(m=>m.status==='RASCUNHO')){
+    evento.stopImmediatePropagation();
+    if(edicaoAvanco)$('joseEscopoCivil')?.querySelector('input[data-avanco-item]:not([disabled])')?.focus();
+    else iniciarAvancoNaTabela();
+   }
+   return;
+  }
   const marco=obra.medicoes.find(m=>m.status==='APROVADA'&&!m.lancamentoId&&m.observacoes==='Marco inicial importado da engenharia · Planilha #'+fonteImportada.id+' · Aba #'+abaImportada.indice);
   if(marco){
-   fonteImportada=null;abasImportadas=[];abaImportada=null;medicaoSelecionada=undefined;
-   escopoCivil();
+   evento.stopImmediatePropagation();
+   iniciarAvancoNaTabela();
    return;
   }
   evento.stopImmediatePropagation();
@@ -258,7 +343,8 @@
     await u.api('/obras/planilhas/'+fonte.id+'/ativar-escopo','POST',{...dados,obraId:obra.id,aba:aba.indice});
     fonteImportada=null;abasImportadas=[];abaImportada=null;medicaoSelecionada=undefined;
     await u.detalhe();
-    $('medir')?.click();
+    $('editor').close();
+    iniciarAvancoNaTabela();
     return {continuar:true};
    });
   $('salvarEditor').textContent='Vincular itens e abrir medição';
@@ -285,12 +371,14 @@
 
  function escopoCivil(){
   if(fonteImportada?.obraId!==u.obra.id){fonteImportada=null;abasImportadas=[];abaImportada=null;}
+  if(edicaoAvanco?.obraId!==u.obra.id||u.obra.medicoes.some(m=>m.status==='RASCUNHO'))edicaoAvanco=null;
   const importada=Boolean(abaImportada);
+  const editando=!importada&&Boolean(edicaoAvanco);
   const obra=importada?montarEscopoImportado(abaImportada):u.obra;
   const emCentavos=importada?valor=>Number(valor)*100:centavos;
   const medicoes=obra.medicoes.filter(m=>m.status!=='CANCELADA')
    .sort(importada?(a,b)=>a.id-b.id:(a,b)=>String(a.fim).localeCompare(String(b.fim))||a.id-b.id);
-  const selecionada=medicoes.find(m=>m.id===medicaoSelecionada)||medicoes.filter(m=>!m.prevista).at(-1)||medicoes.at(-1);
+  const selecionada=editando?medicoes.filter(m=>m.status==='APROVADA').at(-1):medicoes.find(m=>m.id===medicaoSelecionada)||medicoes.filter(m=>!m.prevista).at(-1)||medicoes.at(-1);
   const acumulados=new Map();
   for(const medicao of medicoes){
    if(medicao===selecionada||medicao.status==='APROVADA'){
@@ -311,34 +399,40 @@
    const acumulado=acumulados.get(etapa.id)||0;
    return `<tr><td>${u.esc(etapa.codigo||indice+1)}</td><th scope="row">${u.esc(etapa.nome)}${etapa.descricao?`<small class="jose-escopo-descricao">${u.esc(etapa.descricao)}</small>`:''}</th><td>${u.brl(etapa.valor)}</td>
     <td>${percentual(contrato?valor/contrato*100:0)}</td>
-    <td>${percentual(Number(item?.atual||0)-Number(item?.anterior||0))}</td>
-    <td>${percentual(Number(item?.atual||0))}</td><td>${u.brl(item?.valor)}</td>
-    <td>${u.brl(acumulado/100)}</td><td>${u.brl((valor-acumulado)/100)}</td></tr>`;
+    <td>${editando?`<input type="number" inputmode="decimal" data-avanco-item="${etapa.id}" data-anterior="${Number(item?.atual||0)}"
+     data-valor="${valor}" data-acumulado="${acumulado}" min="0" max="${(100-Number(item?.atual||0)).toFixed(2)}" step="0.01"
+     aria-label="Avanço de ${u.esc(etapa.nome)}" value="${u.esc(edicaoAvanco.percentuais.get(etapa.id)||'')}" placeholder="0" ${Number(item?.atual||0)>=100?'disabled':''}>`:percentual(Number(item?.atual||0)-Number(item?.anterior||0))}</td>
+    <td data-avanco-acumulado>${percentual(Number(item?.atual||0))}</td><td data-avanco-valor>${u.brl(item?.valor)}</td>
+    <td data-avanco-valor-acumulado>${u.brl(acumulado/100)}</td><td data-avanco-saldo>${u.brl((valor-acumulado)/100)}</td></tr>`;
   });
   const totalAcumulado=[...acumulados.values()].reduce((soma,valor)=>soma+valor,0);
   const painel=document.createElement('section');
   painel.id='joseEscopoCivil';
   painel.innerHTML=`<div class="jose-escopo-cabecalho">
    <div><h3>Escopo de mão de obra civil</h3><p>Valor total da obra <strong>${u.brl(obra.valorContrato)}</strong></p></div>
-   <label>Origem dos dados<select id="joseEscopoFonte" disabled><option value="">Medições do ERP</option></select></label>
+   ${editando?'<p>Digite o avanço novo em cada item. Os valores mudam na hora.</p>':'<label>Origem dos dados<select id="joseEscopoFonte" disabled><option value="">Medições do ERP</option></select></label>'}
    ${abasImportadas.length>1?`<label>Aba<select id="joseEscopoAba">${abasImportadas.map(a=>`<option value="${a.indice}" ${a===abaImportada?'selected':''}>${u.esc(a.nome)}</option>`).join('')}</select></label>`:''}
-   ${medicoes.length?`<label>Medição<select id="joseEscopoMedicao">${medicoes.map((m,i)=>
+   ${importada&&u.admin?'<button type="button" class="jose-obra-secondary" id="joseTransferirPlanilha">Vincular à obra correta</button>':''}
+   ${!editando&&medicoes.length?`<label>Medição<select id="joseEscopoMedicao">${medicoes.map((m,i)=>
     `<option value="${m.id}" ${m===selecionada?'selected':''}>${u.esc(m.titulo||('Medição '+String(i+1).padStart(2,'0')))} · ${m.fim?u.dia(m.fim):'Sem data'}${m.status==='RASCUNHO'?' · Rascunho':m.observacoes?.startsWith('Marco inicial importado da engenharia')?' · Histórico importado':''}</option>`).join('')}</select></label>`:''}
    </div>
-   <div class="obra-table-wrap">${u.tabela(['Item','Etapa / descrição','Valor da etapa','% do contrato','% na medição','% acumulado','Valor medido','Valor acumulado','Saldo a medir'],linhas)
+   ${editando?'<div class="jose-escopo-recebimento"><strong>Valor desta medição <span id="joseTotalAvanco"></span></strong><button type="button" id="joseConferirAvanco">Conferir e salvar</button><button type="button" id="joseCancelarAvanco">Cancelar edição</button></div>':''}
+   <div class="obra-table-wrap">${u.tabela(['Item','Etapa / descrição','Valor da etapa','% do contrato',editando?'Avanço nesta medição (%)':'% na medição','% acumulado','Valor medido','Valor acumulado','Saldo a medir'],linhas)
     .replace('</table>',`<tfoot><tr><th colspan="2" scope="row">Total da obra</th><td>${u.brl(obra.valorContrato)}</td>
-    <td>${percentual(contrato?100:0)}</td><td>${percentual(contrato?emCentavos(selecionada?.valor||0)/contrato*100:0)}</td>
-    <td>${percentual(contrato?totalAcumulado/contrato*100:0)}</td><td>${u.brl(selecionada?.valor)}</td>
-    <td>${u.brl(totalAcumulado/100)}</td><td>${u.brl((contrato-totalAcumulado)/100)}</td></tr></tfoot></table>`)}</div>
-   ${importada?`<div class="jose-escopo-recebimento">Dados da planilha vinculada à obra. Consulte as medições do ERP para aprovações e recebimentos.
+    <td>${percentual(contrato?100:0)}</td><td data-total-avanco>${percentual(contrato?emCentavos(selecionada?.valor||0)/contrato*100:0)}</td>
+    <td data-total-acumulado-avanco>${percentual(contrato?totalAcumulado/contrato*100:0)}</td><td data-valor-avanco>${u.brl(selecionada?.valor)}</td>
+    <td data-valor-acumulado-avanco>${u.brl(totalAcumulado/100)}</td><td data-saldo-avanco>${u.brl((contrato-totalAcumulado)/100)}</td></tr></tfoot></table>`)}</div>
+   ${editando?'':importada?`<div class="jose-escopo-recebimento">Planilha importada · Clique em <strong>Nova medição</strong> para lançar avanço.
    ${obra.etapas.some(e=>(acumulados.get(e.id)||0)-centavos(e.valor)>0.5)?'<strong>Confira as etapas com valor acumulado acima do valor vigente.</strong>':''}</div>`:selecionada?.observacoes?.startsWith('Marco inicial importado da engenharia')?'<div class="jose-escopo-recebimento">Histórico de execução importado da planilha.</div>':selecionada?`<div class="jose-escopo-recebimento"><span>Recebido nesta medição <strong>${u.brl(recebido/100)}</strong></span>
    ${lancamento?`<span>Saldo a receber <strong>${u.brl(saldo/100)}</strong></span>`:''}
    ${u.fin&&saldo>0?'<button type="button" id="joseReceberMedicao">Registrar recebimento</button>':''}</div>`:''}`;
   if($('joseEscopoCivil'))$('joseEscopoCivil').replaceWith(painel);
   else $('consultaObras')?.before(painel);
+  if(editando){configurarAvanco(painel,obra.etapas,contrato);return;}
   listarImportadas(painel,u.obra.id).catch(erro=>{
    if(painel.isConnected)painel.querySelector('#joseEscopoFonte').options[0].text='Medições do ERP · Planilhas indisponíveis';
   });
+  painel.querySelector('#joseTransferirPlanilha')?.addEventListener('click',vincularPlanilhaOutraObra);
   painel.querySelector('#joseEscopoAba')?.addEventListener('change',evento=>{
    abaImportada=abasImportadas.find(a=>a.indice===Number(evento.target.value));
    medicaoSelecionada=undefined;

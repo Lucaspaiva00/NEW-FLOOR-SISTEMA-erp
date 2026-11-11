@@ -67,6 +67,7 @@ routes.post('/obras/planilhas/previa', requireRole(['ADMIN','SUPER_ADMIN']), pla
 routes.post('/obras/planilhas/importar', requireRole(['ADMIN','SUPER_ADMIN']), planilhasJose.somenteJose, planilhasJose.importar);
 routes.get('/obras/planilhas', planilhasJose.somenteJose, planilhasJose.listar);
 routes.get('/obras/planilhas/:id', planilhasJose.somenteJose, planilhasJose.detalhe);
+routes.post('/obras/planilhas/:id/transferir', requireRole(['ADMIN','SUPER_ADMIN']), planilhasJose.somenteJose, planilhasJose.transferirEscopo);
 routes.post('/obras/planilhas/:id/ativar-escopo', requireRole(['ADMIN','SUPER_ADMIN']), planilhasJose.somenteJose, planilhasJose.ativarEscopo);
 routes.put('/obras/planilhas/:id/medicao', requireRole(['ADMIN','SUPER_ADMIN']), planilhasJose.somenteJose, planilhasJose.salvarMedicao);
 routes.get('/obras/planilhas/:id/excel', planilhasJose.somenteJose, planilhasJose.excel);

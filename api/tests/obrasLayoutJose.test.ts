@@ -30,6 +30,7 @@ function ambiente(empresaId=5,semEquipe=false){
   indice:0,reconhecida:true,itens:[{linha:12,item:'A1',etapa:'Fundação',descricao:'Perfuração',valor:10000,percentuais:{1:20,2:15},valoresMedidos:{1:2000,2:1500}}],
   medicoes:[{numero:1,titulo:'Medição 01',data:'2026-10-10'},{numero:2,titulo:'Medição 02 — Previsão',data:'2026-10-25',prevista:true}],
  }]};
+ else if(p==='/obras/medicoes'){writes.push(JSON.parse(options.body));data={id:13};}
  else if(p==='/financeiro/contas')data=[{contafinanceiraid:3,nome:'Banco',ativo:true}];
  else if(p==='/financeiro/lancamentos/20/baixar'){
   const b=JSON.parse(options.body);writes.push(b);
@@ -162,5 +163,26 @@ test('importação na aba de medições permite corrigir os campos e abre o resu
   assert.equal(writes[0].mapeamentos[0].colunasMedicoes,'D');
   assert.equal(writes[0].mapeamentos[0].valor,'C');
   assert.equal(writes[0].obraId,9);
+ }finally{dom.window.close();}
+});
+
+test('avanço por item é editável na tabela, recalcula a cobrança e salva o acumulado',async()=>{
+ const {dom,w,d,writes,obra}=ambiente();
+ try{
+  obra.etapas=[{id:12,nome:'A1 Fundação',valor:10000}];
+  obra.valorContrato=10000;
+  obra.medicoes=[{id:12,status:'APROVADA',observacoes:'Marco inicial importado da engenharia · Planilha #77 · Aba #0',inicio:'2026-10-10',fim:'2026-10-10',valor:2000,itens:[{etapaId:12,anterior:0,atual:20,valor:2000}]}];
+  await wait(()=>!!d.getElementById('joseObraEquipeAcoes'));
+  (d.querySelector('[data-tab="medicoes"]') as HTMLElement).click();
+  (d.getElementById('medir') as HTMLElement).click();
+  const campo=d.querySelector('[data-avanco-item="12"]') as HTMLInputElement;
+  assert.ok(campo);campo.value='15';campo.dispatchEvent(new w.Event('input',{bubbles:true}));
+  assert.match(d.getElementById('joseTotalAvanco')!.textContent!,/1\.500,00/);
+  assert.equal(d.querySelector('[data-avanco-acumulado]')!.textContent,'35%');
+  (d.getElementById('joseConferirAvanco') as HTMLElement).click();
+  assert.equal((d.querySelector('#editor [name="etapa_12"]') as HTMLInputElement).value,'15');
+  d.getElementById('formEditor')!.dispatchEvent(new w.SubmitEvent('submit',{bubbles:true,cancelable:true}));
+  await wait(()=>writes.length===1&&!d.getElementById('editor')!.hasAttribute('open'));
+  assert.deepEqual(writes[0].itens,[{etapaId:12,atual:35}]);
  }finally{dom.window.close();}
 });

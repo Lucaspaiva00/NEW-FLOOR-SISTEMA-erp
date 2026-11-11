@@ -4,6 +4,9 @@ import { detectarPlanilha, validarXlsx, aplicarEdicoes, evolucaoAtual, gerarExce
 
 import { ativarEscopoJose, prepararEscopoJose } from "../services/escopoMedicaoJose.service";
 
+import { bloqueio, carregarObra, historico } from "../services/obrasOperacao.service";
+import { dinheiro, MARCA_ESCOPO_JOSE } from "../services/obras.service";
+
 const handle = (fn: (req: Request, res: Response) => Promise<void>) =>
   async (req: Request, res: Response) => {
     try { await fn(req, res); } catch (error: any) {
@@ -94,15 +97,48 @@ export const detalhe = handle(async (req, res) => {
   const row = await obter(id(req.params.id));
   res.json({ id: row.id, obraId: row.obraId, nome: row.nome, arquivoNome: row.arquivoNome, abas: row.abas, edicoes: row.edicoes });
 });
+export const transferirEscopo = handle(async (req, res) => {
+  const planilhaId = id(req.params.id), destinoId = id(req.body?.obraId);
+  const indice = Number(req.body?.aba);
+  if (!Number.isSafeInteger(indice) || indice < 0) throw Error("Selecione uma aba de medição.");
+  await prepararTabela();
+  const resultado = await prisma.$transaction(async db => {
+    await bloqueio(db, 5);
+    const [row] = await db.$queryRaw<Array<{ obraId: number; abas: unknown }>>`
+      SELECT "obraId", "abas" FROM "PlanilhaMedicaoJose" WHERE "id" = ${planilhaId} AND "empresaId" = 5 FOR UPDATE`;
+    if (!row) throw Error("Planilha não encontrada na ConstruArty.");
+    if (row.obraId === destinoId) return { id: planilhaId, obraId: destinoId };
+    const destino = await carregarObra(db, 5, destinoId);
+    if (destino.status === "CANCELADA" || destino.status === "CONCLUIDA") throw Error("Selecione uma obra ativa.");
+    const aba = (row.abas as AbaPlanilha[]).find(a => a.indice === indice && a.reconhecida);
+    if (!aba) throw Error("Aba de medição não reconhecida.");
+    const contrato = dinheiro(aba.itens.reduce((total, item) => total + dinheiro(item.valor), 0));
+    if (dinheiro(Number(destino.valorContrato)) !== contrato) throw Error("O contrato da obra de destino deve corresponder ao total da planilha.");
+    if (await db.medicaoObra.count({where:{empresaId:5,obraId:destinoId}})) throw Error("A obra de destino já tem medições.");
+    if (await db.medicaoObra.findFirst({where:{empresaId:5,obraId:row.obraId,observacoes:{
+      startsWith:MARCA_ESCOPO_JOSE + " · Planilha #" + planilhaId + " · Aba #",
+    }}})) throw Error("Esta planilha já integra o histórico de medições da obra de origem.");
+    await db.$executeRaw`UPDATE "PlanilhaMedicaoJose" SET "obraId" = ${destinoId}, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${planilhaId} AND "empresaId" = 5`;
+    await historico(db,5,destinoId,req.usuario?.id,"TRANSFERIR_PLANILHA_MEDICAO",{obraId:row.obraId},{obraId:destinoId,planilhaId});
+    return {id:planilhaId,obraId:destinoId};
+  }, {isolationLevel:"Serializable"});
+  res.json(resultado);
+});
 export const ativarEscopo = handle(async (req, res) => {
-  const row = await obter(id(req.params.id));
-  if (id(req.body?.obraId) !== row.obraId) throw Error("A planilha pertence a outra obra.");
+  const planilhaId = id(req.params.id), obraId = id(req.body?.obraId);
   const indice = Number(req.body?.aba), numero = Number(req.body?.medicao);
   if (!Number.isSafeInteger(indice) || indice < 0 || !Number.isSafeInteger(numero) || numero < 0) throw Error("Informe a aba e o histórico.");
-  const aba = (row.abas as AbaPlanilha[]).find(a => a.indice === indice);
-  if (!aba) throw Error("Aba de medição não encontrada.");
-  const base = prepararEscopoJose(aba, row.edicoes || {}, numero, req.body?.dataCorte, req.body?.confirmarExcedente === "on");
-  const resultado = await prisma.$transaction(db => ativarEscopoJose(db, {id: row.id, obraId: row.obraId, aba: indice}, base, req.usuario?.id), { timeout: 30000, isolationLevel: "Serializable" });
+  await prepararTabela();
+  const resultado = await prisma.$transaction(async db => {
+    await bloqueio(db, 5);
+    const [row] = await db.$queryRaw<Array<{ obraId: number; abas: unknown; edicoes: unknown }>>`
+      SELECT "obraId", "abas", "edicoes" FROM "PlanilhaMedicaoJose" WHERE "id" = ${planilhaId} AND "empresaId" = 5 FOR UPDATE`;
+    if (!row || obraId !== row.obraId) throw Error("A planilha pertence a outra obra.");
+    const aba = (row.abas as AbaPlanilha[]).find(a => a.indice === indice);
+    if (!aba) throw Error("Aba de medição não encontrada.");
+    const base = prepararEscopoJose(aba, row.edicoes as Record<string, number> || {}, numero, req.body?.dataCorte, req.body?.confirmarExcedente === "on");
+    return ativarEscopoJose(db, {id: planilhaId, obraId, aba: indice}, base, req.usuario?.id);
+  }, { timeout: 30000, isolationLevel: "Serializable" });
   res.status(201).json(resultado);
 });
 export const salvarMedicao = handle(async (req, res) => {
