@@ -46,3 +46,12 @@ body.jose-obras-organizada .obras-page .jose-obra-secondary{background:#edf2f7;c
 .jose-obras-organizada #joseEscopoCivil tfoot td{text-align:right}
 .jose-obras-organizada #joseEscopoCivil tfoot{background:#e8f0f7;font-weight:650}
 .jose-obras-organizada .jose-escopo-recebimento{justify-content:flex-start;border-top:1px solid #dfe7ee}
+
+.jose-obras-organizada .jose-importacao-resumo{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;background:#edf4f9;border-radius:9px;padding:14px}
+.jose-obras-organizada .jose-importacao-mapa{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0}
+.jose-obras-organizada .jose-importacao-mapa fieldset{max-height:180px;overflow:auto;padding:10px;border:1px solid #dfe7ee;border-radius:8px}
+.jose-obras-organizada .jose-importacao-mapa fieldset label{display:inline-flex;align-items:center;gap:6px;margin:5px 14px 5px 0}
+.jose-obras-organizada .jose-importacao-mapa input[type=checkbox]{width:auto}
+.jose-obras-organizada .jose-importacao-mapa fieldset{grid-column:1/-1}
+.jose-obras-organizada #joseEscopoCivil tbody th{width:30%;white-space:normal;overflow-wrap:anywhere}
+.jose-obras-organizada .jose-escopo-descricao{display:block;margin-top:4px;font-size:12px;font-weight:400;text-transform:none;color:#52647b}

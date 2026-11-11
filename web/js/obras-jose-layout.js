@@ -41,7 +41,7 @@
  const listasImportadas=new Map();
 
  function montarEscopoImportado(aba){
-  const etapas=aba.itens.map(i=>({id:i.linha,codigo:i.item,nome:[i.etapa,i.descricao].filter(Boolean).join(' · '),valor:i.valor}));
+  const etapas=aba.itens.map(i=>({id:i.linha,codigo:i.item,nome:i.etapa||i.descricao,descricao:i.etapa?i.descricao:'',valor:i.valor}));
   const anteriores=new Map();
   const medicoes=aba.medicoes.map(m=>{
    const itens=aba.itens.map(i=>{
@@ -56,6 +56,130 @@
   return {etapas,medicoes,financeiro:[],valorContrato:etapas.reduce((s,e)=>s+centavos(e.valor),0)/100};
  }
 
+ async function selecionarFonte(id,obraId,indice){
+  const versao=++versaoFonte;
+  const fonte=id?await u.api('/obras/planilhas/'+id):null;
+  if(versao!==versaoFonte||u.obra?.id!==obraId||u.tab!=='medicoes')return;
+  if(fonte&&fonte.obraId!==obraId)throw Error('Planilha vinculada a outra obra.');
+  const abas=fonte?.abas.filter(a=>a.reconhecida)||[];
+  if(fonte&&!abas.length)throw Error('Esta planilha não possui abas de medição reconhecidas.');
+  fonteImportada=fonte;
+  abasImportadas=abas;
+  abaImportada=abas.find(a=>a.indice===indice)||abas[0];
+  medicaoSelecionada=undefined;
+  escopoCivil();
+ }
+
+ function importarNoEscopo(){
+  const obraId=u.obra.id;
+  let arquivo, previa, nome, mapas={};
+  const chaveMapas='construarty-mapeamentos-medicao';
+  const assinatura=(aba,linha)=>{
+   const cabecalho=aba.amostra?.find(r=>r.linha===Number(linha));
+   return cabecalho?.celulas.length?JSON.stringify([aba.nome.trim().toUpperCase(),cabecalho.celulas.map(c=>[c.coluna,c.valor.trim().toUpperCase()])]):'';
+  };
+  let salvos=[];
+  try{const valor=JSON.parse(localStorage.getItem(chaveMapas)||'[]');if(Array.isArray(valor))salvos=valor;}catch{}
+  const vigente=()=>u.obra?.id===obraId;
+  const dialogo=(titulo,html,acao)=>{
+   u.abrir(titulo,html,acao);
+   $('salvarEditor').textContent=previa?'Importar para a obra':'Conferir planilha';
+  };
+  dialogo('Importar medições do Excel',
+   '<label class="wide">Arquivo Excel (.xlsx)<input id="joseExcelMedicao" type="file" accept=".xlsx" required></label>',
+   async()=>{
+    const campoArquivo=$('joseExcelMedicao');
+    const excel=campoArquivo.files[0];
+    if(!excel||!/\.xlsx$/i.test(excel.name)||excel.size>5000000)throw Error('Selecione um arquivo .xlsx de até 5 MB.');
+    nome=excel.name;
+    const bytes=new Uint8Array(await excel.arrayBuffer());
+    let binario='';
+    for(let i=0;i<bytes.length;i+=16384)binario+=String.fromCharCode(...bytes.subarray(i,i+16384));
+    arquivo=btoa(binario);
+    previa=await u.api('/obras/planilhas/previa','POST',{arquivo});
+    for(const aba of previa.abas){
+     if(aba.reconhecida)continue;
+     const salvo=salvos.find(m=>m?.config&&m.assinatura&&assinatura(aba,m.config.cabecalho)===m.assinatura);
+     if(salvo)mapas[aba.indice]=salvo.config;
+    }
+    if(Object.keys(mapas).length)previa=await u.api('/obras/planilhas/previa','POST',{arquivo,mapeamentos:mapas});
+    if(vigente()&&campoArquivo.isConnected&&$('editor').open)mostrarPrevia();
+    return {continuar:true};
+   });
+  function mostrarPrevia(indice){
+   const aba=previa.abas.find(a=>a.indice===indice)||previa.abas.find(a=>a.reconhecida)||previa.abas[0];
+   if(!aba)throw Error('O Excel não possui abas disponíveis.');
+   const campos=mapas[aba.indice]||aba.mapeamento||{};
+   const pronto=aba.reconhecida&&previa.valida!==false;
+   const total=aba.itens.reduce((s,i)=>s+Number(i.valor),0);
+   const listaAbas='<label class="wide">Aba do Excel<select id="joseAbaPrevia">'+previa.abas.map(a=>
+    `<option value="${a.indice}" ${a===aba?'selected':''}>${u.esc(a.nome)}${a.reconhecida?' · Reconhecida':''}</option>`).join('')+'</select></label>';
+   const resumo=pronto?`<div class="wide jose-importacao-resumo"><strong>${aba.itens.length} itens · ${aba.medicoes.length} medições</strong><span>Valor das etapas ${u.brl(total)}</span></div>
+    <div class="wide obra-table-wrap">${u.tabela(['Item','Etapa / descrição','Valor da etapa'],aba.itens.slice(0,8).map(i=>
+     `<tr><td>${u.esc(i.item)}</td><td>${u.esc([i.etapa,i.descricao].filter(Boolean).join(' · '))}</td><td>${u.brl(i.valor)}</td></tr>`))}</div>
+    ${aba.itens.length>8?'<p class="wide">A prévia mostra os 8 primeiros itens. A importação inclui todos os itens reconhecidos.</p>':''}
+    <details class="wide"><summary>Conferir medições e datas</summary><ul>${aba.medicoes.map(m=>`<li>${u.esc(m.titulo)} · ${m.data?u.dia(m.data):'Sem data identificada'}</li>`).join('')}</ul></details>`
+    :'<p class="wide" role="status">Confira a linha de cabeçalho e indique as colunas da sua planilha.</p>';
+   const avisos=previa.avisos.filter(a=>a.startsWith(aba.nome+' '));
+   dialogo('Conferir importação',listaAbas+resumo+
+    (avisos.length?`<details class="wide" ${pronto?'':'open'}><summary>Avisos da aba (${avisos.length})</summary><ul>${avisos.map(a=>'<li>'+u.esc(a)+'</li>').join('')}</ul></details>`:'')+
+    `<details class="wide" ${pronto?'':'open'}><summary>Conferir ou ajustar campos</summary>
+    <label>Linha de cabeçalho<select id="joseLinhaCabecalho">${(aba.amostra||[]).map(r=>`<option value="${r.linha}">Linha ${r.linha} · ${u.esc(r.celulas.slice(0,5).map(c=>c.valor).join(' · ').slice(0,160))}</option>`).join('')}</select></label>
+    <div id="joseCamposMapa" class="jose-importacao-mapa"></div>
+    <button type="button" id="joseValidarMapa">Validar campos</button></details>`,
+    pronto?async()=>{
+     if(!vigente())throw Error('A obra selecionada mudou. Abra a importação novamente.');
+     const salvo=await u.api('/obras/planilhas/importar','POST',{obraId,nome:nome.replace(/\.xlsx$/i,'').slice(0,180),arquivoNome:nome,arquivo,hash:previa.hash,mapeamentos:mapas});
+     for(const a of previa.abas){
+      const config=mapas[a.indice];
+      const chave=config&&assinatura(a,config.cabecalho);
+      if(chave)salvos.push({assinatura:chave,config});
+     }
+     try{localStorage.setItem(chaveMapas,JSON.stringify([...new Map(salvos.map(m=>[m.assinatura,m])).values()].slice(-30)));}catch{}
+     listasImportadas.delete(obraId);
+     await selecionarFonte(salvo.id,obraId,aba.indice);
+    }:null);
+   $('joseAbaPrevia').onchange=e=>mostrarPrevia(Number(e.target.value));
+   const cabecalho=$('joseLinhaCabecalho');
+   const sugerirLinha=(aba.amostra||[]).find(r=>r.celulas.some(c=>/descri|serviço|atividade/i.test(c.valor))&&r.celulas.some(c=>/valor|preço|total/i.test(c.valor)));
+   cabecalho.value=String(campos.cabecalho||aba.cabecalho||sugerirLinha?.linha||aba.amostra?.[0]?.linha||'');
+   const letra=n=>{let s='';for(let i=Number(n);i>0;i=Math.floor((i-1)/26))s=String.fromCharCode(65+(i-1)%26)+s;return s||String(n||'');};
+   const atualizarCampos=()=>{
+    const colunas=aba.amostra?.find(r=>r.linha===Number(cabecalho.value))?.celulas||[];
+    const definicoes=[['item','Item',/^(item|c[oó]digo|ref\.?)/i],['etapa','Etapa',/etapa|fase|grupo/i],
+     ['descricao','Descrição',/descri|serviço|atividade/i],['valor','Valor da etapa',/valor.*(total|contrat|etapa|vigente)|^total$/i],
+     ['unidade','Unidade',/^(un|uni|und|unidade)\.?$/i],['quantidade','Quantidade',/^(qtd|qtde|quantidade)\.?$/i]];
+    $('joseCamposMapa').innerHTML=definicoes.map(([chave,rotulo,regex])=>`<label>${rotulo}<select data-mapa="${chave}">
+     <option value="0">Sem coluna</option>${colunas.map(c=>`<option value="${u.esc(c.coluna)}" ${c.coluna===(letra(campos[chave])||colunas.find(col=>regex.test(col.valor))?.coluna)?'selected':''}>${u.esc(c.coluna+' · '+c.valor)}</option>`).join('')}</select></label>`).join('')+
+     '<label>Tipo de valor<select data-mapa="tipoValor"><option value="total">Total da etapa</option><option value="unitario">Valor unitário</option></select></label>'+
+     '<label>Percentual da medição<select data-mapa="tipoPercentual"><option value="periodo">Do período</option><option value="acumulado">Acumulado</option></select></label>'+
+     u.campo('linhaDatas','Linha das datas (opcional)','number',mapas[aba.indice]?.linhaDatas||'','min="1" max="200"')+
+     '<fieldset class="wide"><legend>Colunas de medição</legend>'+colunas.map(c=>`<label><input type="checkbox" data-coluna-medicao="${u.esc(c.coluna)}" ${(campos.colunasMedicoes||'').split(',').includes(c.coluna)||/medi[çc][aã]o\s*\d/i.test(c.valor)?'checked':''}> ${u.esc(c.coluna+' · '+c.valor)}</label>`).join('')+'</fieldset>';
+    for(const chave of ['tipoValor','tipoPercentual']){
+     const escolha=mapas[aba.indice]?.[chave]||campos[chave];
+     if(escolha)$('joseCamposMapa').querySelector('[data-mapa="'+chave+'"]').value=escolha;
+    }
+   };
+   cabecalho.onchange=atualizarCampos;
+   atualizarCampos();
+   $('joseValidarMapa').onclick=async e=>{
+    const botao=e.currentTarget;
+    botao.disabled=true;
+    try{
+     const camposEditor=$('joseCamposMapa');
+     const mapa=Object.fromEntries([...camposEditor.querySelectorAll('[data-mapa]')].map(c=>[c.dataset.mapa,c.value]));
+     const colunas=[...camposEditor.querySelectorAll('[data-coluna-medicao]:checked')].map(c=>c.dataset.colunaMedicao);
+     if(mapa.descricao==='0'||mapa.valor==='0'||(mapa.item==='0'&&mapa.etapa==='0')||!colunas.length)throw Error('Indique item ou etapa, descrição, valor e pelo menos uma coluna de medição.');
+     const tentativa={...mapas,[aba.indice]:{...mapa,cabecalho:cabecalho.value,linhaDatas:camposEditor.querySelector('[name="linhaDatas"]').value,colunasMedicoes:colunas.join(',')}};
+     previa=await u.api('/obras/planilhas/previa','POST',{arquivo,mapeamentos:tentativa});
+     mapas=tentativa;
+     if(vigente()&&botao.isConnected)mostrarPrevia(aba.indice);
+    }catch(erro){if(botao.isConnected)$('erroEditor').textContent=erro.message;}
+    finally{botao.disabled=false;}
+   };
+  }
+ }
+
  async function listarImportadas(painel,obraId){
   const seletor=painel.querySelector('#joseEscopoFonte');
   if(!listasImportadas.has(obraId)){
@@ -68,19 +192,9 @@
   seletor.value=String(fonteImportada?.id||'');
   seletor.disabled=false;
   seletor.onchange=async()=>{
-   const versao=++versaoFonte;
    try{
-    const fonte=seletor.value?await u.api('/obras/planilhas/'+seletor.value):null;
-    if(versao!==versaoFonte||!seletor.isConnected||u.obra?.id!==obraId)return;
-    if(fonte&&fonte.obraId!==obraId)throw Error('Planilha vinculada a outra obra.');
-    const abas=fonte?.abas.filter(a=>a.reconhecida)||[];
-    if(fonte&&!abas.length)throw Error('Esta planilha não possui abas de medição reconhecidas.');
-    fonteImportada=fonte;
-    abasImportadas=abas;
-    abaImportada=abas[0];
-    medicaoSelecionada=undefined;
-    escopoCivil();
-    $('joseEscopoFonte').focus();
+    await selecionarFonte(seletor.value,obraId);
+    $('joseEscopoFonte')?.focus();
    }catch(erro){if(seletor.isConnected){seletor.value=String(fonteImportada?.id||'');u.erro(erro);}}
   };
  }
@@ -112,7 +226,7 @@
    const item=itens.get(etapa.id);
    const valor=centavos(etapa.valor);
    const acumulado=acumulados.get(etapa.id)||0;
-   return `<tr><td>${u.esc(etapa.codigo||indice+1)}</td><th scope="row">${u.esc(etapa.nome)}</th><td>${u.brl(etapa.valor)}</td>
+   return `<tr><td>${u.esc(etapa.codigo||indice+1)}</td><th scope="row">${u.esc(etapa.nome)}${etapa.descricao?`<small class="jose-escopo-descricao">${u.esc(etapa.descricao)}</small>`:''}</th><td>${u.brl(etapa.valor)}</td>
     <td>${percentual(contrato?valor/contrato*100:0)}</td>
     <td>${percentual(Number(item?.atual||0)-Number(item?.anterior||0))}</td>
     <td>${percentual(Number(item?.atual||0))}</td><td>${u.brl(item?.valor)}</td>
@@ -193,6 +307,11 @@
    if(u.admin){const novo=document.createElement('button');novo.type='button';novo.id='novoColaboradorDireto';novo.className='jose-obra-secondary';novo.textContent='+ Novo colaborador';novo.onclick=()=>u.abrirColaborador();acoes.prepend(novo);}
   }
   if(u.tab==='medicoes'){
+   if(u.admin&&!$('joseImportarMedicao')){
+    const botao=document.createElement('button');
+    botao.type='button';botao.id='joseImportarMedicao';botao.textContent='Importar Excel';
+    botao.onclick=importarNoEscopo;acoes.prepend(botao);
+   }
    const planilhas=mover('abrirPlanilhasMedicaoJose',acoes);if(planilhas){planilhas.textContent='Planilhas da engenharia';planilhas.classList.add('jose-obra-secondary');}
    escopoCivil();
   }

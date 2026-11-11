@@ -78,13 +78,13 @@ export async function detectarPlanilha(bytes: Buffer, mapeamentos: any = {}, per
         const cell = sheet.getCell(r, c);
         if(cell.isMerged && cell.master.address !== cell.address)continue;
         const t = semAcentos(valor(cell));
-        if (t === "ITEM" || t === "CODIGO") item = c;
-        if (t === "ETAPA" || t === "FASE") etapa = c;
-        if (["DESCRICAO","DESCRICAO DO SERVICO","SERVICO","ATIVIDADE","DISCRIMINACAO"].includes(t)) descricao = c;
+        if (["ITEM", "CODIGO", "COD.", "REFERENCIA", "REF.", "ID"].includes(t)) item = c;
+        if (["ETAPA", "FASE", "GRUPO", "ETAPA / SERVICO"].includes(t)) etapa = c;
+        if (["DESCRICAO","DESCRICAO DO SERVICO","SERVICO","ATIVIDADE","DISCRIMINACAO","DESCRICAO DA ETAPA","DESCRICAO DOS SERVICOS","SERVICOS","SERVICO EXECUTADO","NOME DO SERVICO"].includes(t)) descricao = c;
         if (["UNI","UNIDADE","UN","UND"].includes(t)) unidade = c;
         if (["QUANTIDADE","QTD","QTDE","QTDE."].includes(t)) qtd = c;
         if (t.includes("VALOR UNITARIO") || t === "PRECO UNITARIO") { preco = c; unitario = true; }
-        else if (["VALOR TOTAL", "VALOR VIGENTE DA ETAPA", "VALOR CONTRATADO", "VALOR DA ETAPA"].includes(t) && !preco) { preco = c; unitario = false; }
+        else if (["VALOR TOTAL", "VALOR VIGENTE DA ETAPA", "VALOR CONTRATADO", "VALOR DA ETAPA", "VALOR DO SERVICO", "TOTAL CONTRATADO", "TOTAL (R$)", "VALOR TOTAL (R$)", "VALOR DA ETAPA (R$)", "VALOR CONTRATADO (R$)"].includes(t) && !preco) { preco = c; unitario = false; }
       }
       if (descricao && (item || etapa) && preco) {
         cabecalho = r; colItem = item; colEtapa = etapa; colDescricao = descricao;

@@ -16,6 +16,15 @@ function ambiente(empresaId=5,semEquipe=false){
  w.fetch=async(url:any,options:any={})=>{const p=new URL(url).pathname;let data:any={};
  if(p==='/empresas/me')data={empresaid:empresaId,slug:empresaId===5?'construarty':'sba',configuracaoSistema:{modulos:{obras:true,propostas:true}}};
  else if(p==='/obras')data=[obra];else if(p==='/obras/colaboradores'){if(options.method==='POST'){const b=JSON.parse(options.body);writes.push(b);data={id:2,...b};equipe.push(data);}else data=equipe;}else if(p.endsWith('/consulta'))data={itens:[],total:0,paginas:1};else if(p==='/obras/9')data=obra;else if(p==='/obras/propostas-disponiveis')data=[];
+ else if(p==='/obras/planilhas/previa'){
+  const b=JSON.parse(options.body);
+  const reconhecida=Boolean(b.mapeamentos?.[0]);
+  data={hash:'teste',valida:true,avisos:[],abas:[{indice:0,nome:'Engenharia',reconhecida,cabecalho:2,
+   amostra:[{linha:2,celulas:[{coluna:'A',valor:'Item'},{coluna:'B',valor:'Descrição'},{coluna:'C',valor:'Valor total'},{coluna:'D',valor:'Medição 1'}]}],
+   itens:reconhecida?[{item:'A1',descricao:'Perfuração',valor:10000}]:[],
+   medicoes:reconhecida?[{numero:1,titulo:'Medição 01',data:'2026-10-10'}]:[]}]};
+ }
+ else if(p==='/obras/planilhas/importar'){writes.push(JSON.parse(options.body));data={id:77};}
  else if(p==='/obras/planilhas')data=[{id:77,nome:'Escopo importado'}];
  else if(p==='/obras/planilhas/77')data={id:77,obraId:9,edicoes:{},abas:[{
   indice:0,reconhecida:true,itens:[{linha:12,item:'A1',etapa:'Fundação',descricao:'Perfuração',valor:10000,percentuais:{1:20,2:15},valoresMedidos:{1:2000,2:1500}}],
@@ -130,5 +139,28 @@ test('planilha importada aparece no mesmo escopo e mantém as previsões separad
   await wait(()=>Boolean(d.querySelector('#joseEscopoFonte option[value="77"]')));
   selecionar('joseEscopoFonte','');
   await wait(()=>!d.getElementById('joseEscopoCivil')?.textContent?.includes('Perfuração'));
+ }finally{dom.window.close();}
+});
+
+test('importação na aba de medições permite corrigir os campos e abre o resultado na mesma tela',async()=>{
+ const {dom,w,d,writes}=ambiente();
+ try{
+  await wait(()=>!!d.getElementById('joseObraEquipeAcoes'));
+  (d.querySelector('[data-tab="medicoes"]') as HTMLElement).click();
+  (d.getElementById('joseImportarMedicao') as HTMLElement).click();
+  const input=d.getElementById('joseExcelMedicao')!;
+  Object.defineProperty(input,'files',{value:[{name:'engenharia.xlsx',size:150,arrayBuffer:async()=>new Uint8Array([80,75]).buffer}]});
+  const enviar=()=>d.getElementById('formEditor')!.dispatchEvent(new w.SubmitEvent('submit',{bubbles:true,cancelable:true}));
+  enviar();
+  await wait(()=>!!d.getElementById('joseValidarMapa')&&!(d.getElementById('salvarEditor') as HTMLButtonElement).disabled);
+  assert.equal(d.getElementById('salvarEditor')?.hasAttribute('hidden'),true);
+  (d.getElementById('joseValidarMapa') as HTMLElement).click();
+  await wait(()=>d.getElementById('camposEditor')?.textContent?.includes('Perfuração')===true);
+  enviar();
+  await wait(()=>d.getElementById('joseEscopoCivil')?.textContent?.includes('Perfuração')===true);
+  await wait(()=>!d.getElementById('editor')?.hasAttribute('open'));
+  assert.equal(writes[0].mapeamentos[0].colunasMedicoes,'D');
+  assert.equal(writes[0].mapeamentos[0].valor,'C');
+  assert.equal(writes[0].obraId,9);
  }finally{dom.window.close();}
 });
