@@ -1,3 +1,4 @@
+export const MARCA_ESCOPO_JOSE = "Marco inicial importado da engenharia";
 export function texto(v:any, nome:string, max=2000) {
  const s=String(v??'').trim(); if(!s || s.length>max) throw Error(`Informe ${nome} (até ${max} caracteres).`); return s;
 }

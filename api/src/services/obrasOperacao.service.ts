@@ -1,5 +1,5 @@
 import {Prisma} from '@prisma/client';
-import {data,id,numero,texto,dinheiro,valorMedicao} from './obras.service';
+import {data,id,numero,texto,dinheiro,valorMedicao,MARCA_ESCOPO_JOSE} from './obras.service';
 export const json=(v:any)=>v===null?Prisma.JsonNull:JSON.parse(JSON.stringify(v,(k,v)=>k==='fotos'&&Array.isArray(v)?{quantidade:v.length}:v));
 export async function carregarObra(db:any,empresaId:number,obraId:number){const o=await db.obra.findFirst({where:{id:obraId,empresaId},include:{etapas:true}});if(!o)throw Error('Obra não encontrada.');return o;}
 export async function historico(db:any,empresaId:number,obraId:number,usuarioId:number|undefined,acao:string,antes:any,depois:any){return db.historicoObra.create({data:{empresaId,obraId,usuarioId,acao,antes:json(antes),depois:json(depois)}});}
@@ -64,6 +64,7 @@ export async function editarMedicao(db:any,empresaId:number,medicaoId:number,b:a
 }
 export async function cancelarMedicao(db:any,empresaId:number,medicaoId:number,motivo:any,usuarioId?:number){
  await bloqueio(db,empresaId);const m=await db.medicaoObra.findFirst({where:{id:medicaoId,empresaId},include:{itens:true}});if(!m)throw Error('Medição não encontrada.');if(m.status==='CANCELADA')return m;
+ if(empresaId===5&&m.status==='APROVADA'&&!m.lancamentoId&&m.observacoes?.startsWith(MARCA_ESCOPO_JOSE))throw Error('O marco inicial da planilha integra o histórico da obra.');
  const justificativa=texto(motivo,'motivo do cancelamento');
  if(m.status==='APROVADA'&&await db.medicaoObra.findFirst({where:{empresaId,obraId:m.obraId,id:{gt:m.id},status:{not:'CANCELADA'}}}))throw Error('Cancele primeiro as medições posteriores que dependem desta evolução.');
  if(m.lancamentoId){
@@ -77,6 +78,11 @@ export async function cancelarMedicao(db:any,empresaId:number,medicaoId:number,m
 
 export async function aprovarMedicao(db:any,empresaId:number,medicaoId:number,usuarioId?:number){
  await bloqueio(db,empresaId);const m=await db.medicaoObra.findFirst({where:{id:medicaoId,empresaId},include:{obra:true}});if(!m)throw Error('Medição não encontrada.');if(m.status==='APROVADA')return m;if(m.status!=='RASCUNHO')throw Error('Medição cancelada não pode ser aprovada.');
+ const marco=empresaId===5?await db.medicaoObra.findFirst({where:{empresaId,obraId:m.obraId,status:'APROVADA',lancamentoId:null,observacoes:{startsWith:MARCA_ESCOPO_JOSE}}}):null;
+ if(marco?.observacoes?.startsWith(MARCA_ESCOPO_JOSE)){
+  const aprovadas=await db.medicaoObra.aggregate({where:{empresaId,obraId:m.obraId,status:'APROVADA'},_sum:{valor:true}});
+  if(dinheiro(Number(aprovadas._sum.valor||0)+Number(m.valor))>Number(m.obra.valorContrato))throw Error('O valor acumulado ultrapassa o contrato vigente da obra.');
+ }
  const l=await db.lancamentoFinanceiro.create({data:{empresaId,origem:'OBRA',tipo:'ENTRADA',descricao:`Medição #${m.id} · ${m.obra.nome}`,valor:m.valor,clienteId:m.obra.clienteId,dataCompetencia:m.fim,dataVencimento:m.vencimento,chaveOrigem:`obra-medicao:${empresaId}:${m.id}`}});
  const depois=await db.medicaoObra.update({where:{id:m.id},data:{status:'APROVADA',lancamentoId:l.lancamentofinanceiroid}});await historico(db,empresaId,m.obraId,usuarioId,'APROVAR_MEDICAO',m,depois);return depois;
 }

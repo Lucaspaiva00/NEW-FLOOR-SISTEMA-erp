@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import prisma from "../prisma";
 import { detectarPlanilha, validarXlsx, aplicarEdicoes, evolucaoAtual, gerarExcel, AbaPlanilha } from "../services/planilhasMedicaoJose.service";
 
+import { ativarEscopoJose, prepararEscopoJose } from "../services/escopoMedicaoJose.service";
+
 const handle = (fn: (req: Request, res: Response) => Promise<void>) =>
   async (req: Request, res: Response) => {
     try { await fn(req, res); } catch (error: any) {
@@ -91,6 +93,17 @@ export const listar = handle(async (req, res) => {
 export const detalhe = handle(async (req, res) => {
   const row = await obter(id(req.params.id));
   res.json({ id: row.id, obraId: row.obraId, nome: row.nome, arquivoNome: row.arquivoNome, abas: row.abas, edicoes: row.edicoes });
+});
+export const ativarEscopo = handle(async (req, res) => {
+  const row = await obter(id(req.params.id));
+  if (id(req.body?.obraId) !== row.obraId) throw Error("A planilha pertence a outra obra.");
+  const indice = Number(req.body?.aba), numero = Number(req.body?.medicao);
+  if (!Number.isSafeInteger(indice) || indice < 0 || !Number.isSafeInteger(numero) || numero < 0) throw Error("Informe a aba e o histórico.");
+  const aba = (row.abas as AbaPlanilha[]).find(a => a.indice === indice);
+  if (!aba) throw Error("Aba de medição não encontrada.");
+  const base = prepararEscopoJose(aba, row.edicoes || {}, numero, req.body?.dataCorte, req.body?.confirmarExcedente === "on");
+  const resultado = await prisma.$transaction(db => ativarEscopoJose(db, {id: row.id, obraId: row.obraId, aba: indice}, base, req.usuario?.id), { timeout: 30000, isolationLevel: "Serializable" });
+  res.status(201).json(resultado);
 });
 export const salvarMedicao = handle(async (req, res) => {
   const identificador = id(req.params.id);

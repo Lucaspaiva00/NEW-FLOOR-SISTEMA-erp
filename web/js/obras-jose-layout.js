@@ -224,6 +224,65 @@
  }
 
 
+ function prepararNovaMedicaoImportada(evento){
+  if(!abaImportada||!fonteImportada)return;
+  const obra=u.obra;
+  const marco=obra.medicoes.find(m=>m.status==='APROVADA'&&!m.lancamentoId&&m.observacoes==='Marco inicial importado da engenharia · Planilha #'+fonteImportada.id+' · Aba #'+abaImportada.indice);
+  if(marco){
+   fonteImportada=null;abasImportadas=[];abaImportada=null;medicaoSelecionada=undefined;
+   escopoCivil();
+   return;
+  }
+  evento.stopImmediatePropagation();
+  const total=abaImportada.itens.reduce((soma,i)=>soma+centavos(i.valor),0);
+  if(obra.medicoes.length||total!==centavos(obra.valorContrato)){
+   u.abrir('Usar os itens do Excel na medição',
+    `<p class="wide">A obra selecionada é <strong>${u.esc(obra.nome)}</strong> e tem contrato de <strong>${u.brl(obra.valorContrato)}</strong>. O Excel soma <strong>${u.brl(total/100)}</strong>.</p>
+    <p class="wide">Vincule a planilha à obra do cliente correto, com o mesmo valor contratado da aba e sem medições no ERP. Depois, volte a esta tela e clique em Nova medição.</p>`,null);
+   return;
+  }
+  const fonte=fonteImportada,aba=abaImportada;
+  const hoje=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const opcoes=[{id:'0',nome:'Ainda não houve medição realizada'},...aba.medicoes.filter(m=>!m.prevista&&(!m.data||m.data<=hoje)).map(m=>({
+   id:m.numero,nome:m.titulo+(m.data?' · '+u.dia(m.data):''),
+  }))];
+  u.abrir('Usar os itens do Excel na medição',
+   `<p class="wide"><strong>${u.esc(obra.nome)}</strong> · ${aba.itens.length} itens · ${u.brl(total/100)}</p>
+   <p class="wide">Escolha a última medição realizada. O percentual já executado será a base da próxima medição. Essa vinculação registra o histórico sem gerar uma conta a receber.</p>`+
+   u.select('medicao','Última medição realizada',opcoes)+
+   u.campo('dataCorte','Data do histórico','date','',`max="${hoje}"`)+
+   '<div id="joseExcedenteHistorico" class="wide" hidden></div>'+
+   '<label class="wide"><input type="checkbox" required> Conferi a obra, o cliente e o histórico medido.</label>',
+   async dados=>{
+    if(u.obra?.id!==obra.id)throw Error('A obra selecionada mudou.');
+    await u.api('/obras/planilhas/'+fonte.id+'/ativar-escopo','POST',{...dados,obraId:obra.id,aba:aba.indice});
+    fonteImportada=null;abasImportadas=[];abaImportada=null;medicaoSelecionada=undefined;
+    await u.detalhe();
+    $('medir')?.click();
+    return {continuar:true};
+   });
+  $('salvarEditor').textContent='Vincular itens e abrir medição';
+  const escolha=$('camposEditor').querySelector('[name="medicao"]');
+  const campoData=$('camposEditor').querySelector('[name="dataCorte"]');
+  const ajustarData=()=>{
+   const medicao=aba.medicoes.find(m=>m.numero===Number(escolha.value));
+   campoData.value=medicao?.data||'';
+   campoData.required=Boolean(escolha.value);
+   campoData.readOnly=Boolean(medicao?.data);
+   const modelo=montarEscopoImportado(aba);
+   const excedentes=modelo.etapas.flatMap(etapa=>{
+    const medido=modelo.medicoes.filter(m=>!m.prevista&&m.id<=Number(escolha.value)).reduce((s,m)=>s+Number(m.itens.find(i=>i.etapaId===etapa.id)?.valor||0),0);
+    return centavos(medido)>centavos(etapa.valor)?[etapa.nome+' · '+u.brl(medido)+' medidos de '+u.brl(etapa.valor)]:[];
+   });
+   const alerta=$('joseExcedenteHistorico');
+   alerta.hidden=!excedentes.length;
+   alerta.innerHTML=excedentes.length?'<p>O histórico já ultrapassa o valor vigente destes itens. Eles ficam em 100%, e o valor histórico é preservado.</p><ul>'+
+    excedentes.map(s=>'<li>'+u.esc(s)+'</li>').join('')+'</ul><label><input type="checkbox" name="confirmarExcedente" required> Conferi os excedentes da planilha.</label>':'';
+  };
+  escolha.addEventListener('change',ajustarData);
+  ajustarData();
+ }
+
  function escopoCivil(){
   if(fonteImportada?.obraId!==u.obra.id){fonteImportada=null;abasImportadas=[];abaImportada=null;}
   const importada=Boolean(abaImportada);
@@ -264,7 +323,7 @@
    <label>Origem dos dados<select id="joseEscopoFonte" disabled><option value="">Medições do ERP</option></select></label>
    ${abasImportadas.length>1?`<label>Aba<select id="joseEscopoAba">${abasImportadas.map(a=>`<option value="${a.indice}" ${a===abaImportada?'selected':''}>${u.esc(a.nome)}</option>`).join('')}</select></label>`:''}
    ${medicoes.length?`<label>Medição<select id="joseEscopoMedicao">${medicoes.map((m,i)=>
-    `<option value="${m.id}" ${m===selecionada?'selected':''}>${u.esc(m.titulo||('Medição '+String(i+1).padStart(2,'0')))} · ${m.fim?u.dia(m.fim):'Sem data'}${m.status==='RASCUNHO'?' · Rascunho':''}</option>`).join('')}</select></label>`:''}
+    `<option value="${m.id}" ${m===selecionada?'selected':''}>${u.esc(m.titulo||('Medição '+String(i+1).padStart(2,'0')))} · ${m.fim?u.dia(m.fim):'Sem data'}${m.status==='RASCUNHO'?' · Rascunho':m.observacoes?.startsWith('Marco inicial importado da engenharia')?' · Histórico importado':''}</option>`).join('')}</select></label>`:''}
    </div>
    <div class="obra-table-wrap">${u.tabela(['Item','Etapa / descrição','Valor da etapa','% do contrato','% na medição','% acumulado','Valor medido','Valor acumulado','Saldo a medir'],linhas)
     .replace('</table>',`<tfoot><tr><th colspan="2" scope="row">Total da obra</th><td>${u.brl(obra.valorContrato)}</td>
@@ -272,7 +331,7 @@
     <td>${percentual(contrato?totalAcumulado/contrato*100:0)}</td><td>${u.brl(selecionada?.valor)}</td>
     <td>${u.brl(totalAcumulado/100)}</td><td>${u.brl((contrato-totalAcumulado)/100)}</td></tr></tfoot></table>`)}</div>
    ${importada?`<div class="jose-escopo-recebimento">Dados da planilha vinculada à obra. Consulte as medições do ERP para aprovações e recebimentos.
-   ${obra.etapas.some(e=>(acumulados.get(e.id)||0)-centavos(e.valor)>0.5)?'<strong>Confira as etapas com valor acumulado acima do valor vigente.</strong>':''}</div>`:selecionada?`<div class="jose-escopo-recebimento"><span>Recebido nesta medição <strong>${u.brl(recebido/100)}</strong></span>
+   ${obra.etapas.some(e=>(acumulados.get(e.id)||0)-centavos(e.valor)>0.5)?'<strong>Confira as etapas com valor acumulado acima do valor vigente.</strong>':''}</div>`:selecionada?.observacoes?.startsWith('Marco inicial importado da engenharia')?'<div class="jose-escopo-recebimento">Histórico de execução importado da planilha.</div>':selecionada?`<div class="jose-escopo-recebimento"><span>Recebido nesta medição <strong>${u.brl(recebido/100)}</strong></span>
    ${lancamento?`<span>Saldo a receber <strong>${u.brl(saldo/100)}</strong></span>`:''}
    ${u.fin&&saldo>0?'<button type="button" id="joseReceberMedicao">Registrar recebimento</button>':''}</div>`:''}`;
   if($('joseEscopoCivil'))$('joseEscopoCivil').replaceWith(painel);
@@ -331,6 +390,7 @@
    if(u.admin){const novo=document.createElement('button');novo.type='button';novo.id='novoColaboradorDireto';novo.className='jose-obra-secondary';novo.textContent='+ Novo colaborador';novo.onclick=()=>u.abrirColaborador();acoes.prepend(novo);}
   }
   if(u.tab==='medicoes'){
+   $('medir')?.addEventListener('click',prepararNovaMedicaoImportada,true);
    if(u.admin&&!$('joseImportarMedicao')){
     const botao=document.createElement('button');
     botao.type='button';botao.id='joseImportarMedicao';botao.textContent='Importar Excel';
