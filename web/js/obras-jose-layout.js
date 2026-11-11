@@ -30,6 +30,89 @@
  filtros.addEventListener('input',atualizarFiltro);$('limparFiltros').addEventListener('click',atualizarFiltro);
  const nomes={planejamento:'Planejamento',medicoes:'Evolução e medições'};
  document.querySelectorAll('.obras-page .tabs [data-tab]').forEach(b=>{if(nomes[b.dataset.tab])b.textContent=nomes[b.dataset.tab];});
+ const percent=new Intl.NumberFormat('pt-BR',{style:'percent',maximumFractionDigits:2});
+ const percentual=valor=>percent.format(valor/100);
+ const centavos=valor=>Math.round(Number(valor)*100);
+ let medicaoSelecionada;
+
+ function escopoCivil(){
+  const obra=u.obra;
+  const medicoes=obra.medicoes.filter(m=>m.status!=='CANCELADA')
+   .sort((a,b)=>String(a.fim).localeCompare(String(b.fim))||a.id-b.id);
+  const selecionada=medicoes.find(m=>m.id===medicaoSelecionada)||medicoes.at(-1);
+  const acumulados=new Map();
+  for(const medicao of medicoes){
+   if(medicao===selecionada||medicao.status==='APROVADA'){
+    for(const item of medicao.itens){
+     acumulados.set(item.etapaId,(acumulados.get(item.etapaId)||0)+centavos(item.valor));
+    }
+   }
+   if(medicao===selecionada)break;
+  }
+  const itens=new Map((selecionada?.itens||[]).map(item=>[item.etapaId,item]));
+  const contrato=centavos(obra.valorContrato);
+  const lancamento=obra.financeiro.find(l=>l.lancamentofinanceiroid===selecionada?.lancamentoId);
+  const recebido=centavos(lancamento?.valorPago||0);
+  const saldo=lancamento?.status==='ABERTO'?Math.max(0,centavos(lancamento.valor)-recebido):0;
+  const linhas=obra.etapas.map((etapa,indice)=>{
+   const item=itens.get(etapa.id);
+   const valor=centavos(etapa.valor);
+   const acumulado=acumulados.get(etapa.id)||0;
+   return `<tr><td>${indice+1}</td><th scope="row">${u.esc(etapa.nome)}</th><td>${u.brl(etapa.valor)}</td>
+    <td>${percentual(contrato?valor/contrato*100:0)}</td>
+    <td>${percentual(Number(item?.atual||0)-Number(item?.anterior||0))}</td>
+    <td>${percentual(Number(item?.atual||0))}</td><td>${u.brl(item?.valor)}</td>
+    <td>${u.brl(acumulado/100)}</td><td>${u.brl((valor-acumulado)/100)}</td></tr>`;
+  });
+  const totalAcumulado=[...acumulados.values()].reduce((soma,valor)=>soma+valor,0);
+  const painel=document.createElement('section');
+  painel.id='joseEscopoCivil';
+  painel.innerHTML=`<div class="jose-escopo-cabecalho">
+   <div><h3>Escopo de mão de obra civil</h3><p>Valor total da obra <strong>${u.brl(obra.valorContrato)}</strong></p></div>
+   ${medicoes.length?`<label>Medição<select id="joseEscopoMedicao">${medicoes.map((m,i)=>
+    `<option value="${m.id}" ${m===selecionada?'selected':''}>Medição ${String(i+1).padStart(2,'0')} · ${u.dia(m.fim)}${m.status==='RASCUNHO'?' · Rascunho':''}</option>`).join('')}</select></label>`:''}
+   </div>
+   <div class="obra-table-wrap">${u.tabela(['Item','Etapa / descrição','Valor da etapa','% do contrato','% na medição','% acumulado','Valor medido','Valor acumulado','Saldo a medir'],linhas)
+    .replace('</table>',`<tfoot><tr><th colspan="2" scope="row">Total da obra</th><td>${u.brl(obra.valorContrato)}</td>
+    <td>${percentual(contrato?100:0)}</td><td>${percentual(contrato?centavos(selecionada?.valor||0)/contrato*100:0)}</td>
+    <td>${percentual(contrato?totalAcumulado/contrato*100:0)}</td><td>${u.brl(selecionada?.valor)}</td>
+    <td>${u.brl(totalAcumulado/100)}</td><td>${u.brl((contrato-totalAcumulado)/100)}</td></tr></tfoot></table>`)}</div>
+   ${selecionada?`<div class="jose-escopo-recebimento"><span>Recebido nesta medição <strong>${u.brl(recebido/100)}</strong></span>
+   ${lancamento?`<span>Saldo a receber <strong>${u.brl(saldo/100)}</strong></span>`:''}
+   ${u.fin&&saldo>0?'<button type="button" id="joseReceberMedicao">Registrar recebimento</button>':''}</div>`:''}`;
+  if($('joseEscopoCivil'))$('joseEscopoCivil').replaceWith(painel);
+  else $('consultaObras')?.before(painel);
+  painel.querySelector('#joseEscopoMedicao')?.addEventListener('change',evento=>{
+   medicaoSelecionada=Number(evento.target.value);
+   escopoCivil();
+   $('joseEscopoMedicao').focus();
+  });
+  painel.querySelector('#joseReceberMedicao')?.addEventListener('click',evento=>{
+   registrarRecebimento(evento.currentTarget,lancamento,saldo).catch(u.erro);
+  });
+ }
+
+ async function registrarRecebimento(botao,lancamento,saldo){
+  botao.disabled=true;
+  let contas;
+  try{contas=(await u.api('/financeiro/contas')).filter(conta=>conta.ativo!==false);}
+  finally{botao.disabled=false;}
+  if(!botao.isConnected)return;
+  if(!contas.length)throw Error('Cadastre uma conta financeira para registrar o recebimento.');
+  const hoje=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  u.abrir('Registrar recebimento da medição',
+   u.campo('valorPago','Valor recebido (R$)','number','',`required min="0.01" max="${saldo/100}" step="0.01"`)+
+   u.campo('dataPagamento','Data do recebimento','date',hoje,`required max="${hoje}"`)+
+   u.select('contaFinanceiraId','Conta de recebimento',contas.map(c=>({id:c.contafinanceiraid,nome:c.nome}))),
+   dados=>u.api('/financeiro/lancamentos/'+lancamento.lancamentofinanceiroid+'/baixar','POST',dados));
+ }
+
+ const camposEditor=$('camposEditor');
+ new MutationObserver(()=>{
+  if(!camposEditor.querySelector('input[name^="etapa_"]'))return;
+  const rotulo=camposEditor.querySelector('input[name="fim"]')?.parentElement.firstChild;
+  if(rotulo?.nodeType===Node.TEXT_NODE)rotulo.textContent='Data da medição (fim do período)';
+ }).observe(camposEditor,{childList:true});
  function organizarContexto(){
   filtroDetalhes.hidden=!u.obra;
   if(!u.obra)return;
@@ -45,6 +128,7 @@
   }
   if(u.tab==='medicoes'){
    const planilhas=mover('abrirPlanilhasMedicaoJose',acoes);if(planilhas){planilhas.textContent='Planilhas da engenharia';planilhas.classList.add('jose-obra-secondary');}
+   escopoCivil();
   }
  }
  const base=u.render;

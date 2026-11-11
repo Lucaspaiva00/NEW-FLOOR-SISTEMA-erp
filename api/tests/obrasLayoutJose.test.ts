@@ -10,17 +10,22 @@ function ambiente(empresaId=5,semEquipe=false){
  const dom=new JSDOM(read('obras.html').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,''),{url:'https://erp.test/obras.html',runScripts:'outside-only'}),w=dom.window,d=w.document;
  w.localStorage.setItem('usuarioLogado',JSON.stringify({token:'teste',usuario:{role:'ADMIN'}}));
  w.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};w.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');this.dispatchEvent(new w.Event('close'));};
- const obra={id:9,nome:'Holambra',clienteId:1,valorContrato:100000,etapas:[],apontamentos:[],despesas:[],medicoes:[],financeiro:[],resumo:{custoTotal:0,custoMaoObra:0,custoDespesas:0,medido:0,recebido:0,aReceber:0}};
+ const obra={id:9,nome:'Holambra',clienteId:1,valorContrato:100000,etapas:[] as any[],apontamentos:[],despesas:[],medicoes:[] as any[],financeiro:[] as any[],resumo:{custoTotal:0,custoMaoObra:0,custoDespesas:0,medido:0,recebido:0,aReceber:0}};
  Object.assign(w,{API_URL:'https://api.test'});
  const equipe:any[]=semEquipe?[]:[{id:1,nome:'João',ativo:true,diaria:100}],writes:any[]=[];
  w.fetch=async(url:any,options:any={})=>{const p=new URL(url).pathname;let data:any={};
  if(p==='/empresas/me')data={empresaid:empresaId,slug:empresaId===5?'construarty':'sba',configuracaoSistema:{modulos:{obras:true,propostas:true}}};
  else if(p==='/obras')data=[obra];else if(p==='/obras/colaboradores'){if(options.method==='POST'){const b=JSON.parse(options.body);writes.push(b);data={id:2,...b};equipe.push(data);}else data=equipe;}else if(p.endsWith('/consulta'))data={itens:[],total:0,paginas:1};else if(p==='/obras/9')data=obra;else if(p==='/obras/propostas-disponiveis')data=[];
+ else if(p==='/financeiro/contas')data=[{contafinanceiraid:3,nome:'Banco',ativo:true}];
+ else if(p==='/financeiro/lancamentos/20/baixar'){
+  const b=JSON.parse(options.body);writes.push(b);
+  obra.financeiro[0].valorPago+=Number(b.valorPago);
+ }
  else assert.fail('Requisição inesperada: '+p);
  return {ok:true,json:async()=>data} as any;
  };
  for(const p of ['obras','obras-operacao','obras-jose-simples','obras-propostas-jose','obras-planilhas-link','obras-jose-layout'])w.eval(read('js/'+p+'.js'));
- return {dom,w,d,writes};
+ return {dom,w,d,writes,obra};
 }
 test('José organiza ações por área e conserva os eventos após trocar abas',async()=>{
  const {dom,w,d}=ambiente();try{
@@ -51,6 +56,39 @@ test('José organiza ações por área e conserva os eventos após trocar abas',
 test('SBA conserva barra e filtros originais, sem receber a organização do José',async()=>{
  const {dom,d}=ambiente(2);try{await wait(()=>!!d.getElementById('consultaObras')?.textContent?.includes('Nenhum'));
  assert.equal(d.body.classList.contains('jose-obras-organizada'),false);assert.equal(d.getElementById('joseObraMais'),null);assert.equal(d.querySelectorAll('.toolbar>button').length,6);assert.equal(d.getElementById('filtros')!.parentElement?.tagName,'MAIN');
+ (d.querySelector('[data-tab="medicoes"]') as HTMLElement).click();
+ await wait(()=>!!d.getElementById('consultaObras')?.textContent?.includes('Nenhum'));
+ assert.equal(d.getElementById('joseEscopoCivil'),null);
+ }finally{dom.window.close();}
+});
+
+test('José consulta a composição e registra recebimento na cobrança da medição selecionada',async()=>{
+ const {dom,w,d,writes,obra}=ambiente();
+ try{
+  obra.etapas=[{id:1,nome:'Fundação',valor:60000},{id:2,nome:'Revestimento',valor:40000}];
+  obra.medicoes=[
+   {id:2,fim:'2026-10-25',status:'RASCUNHO',valor:22000,itens:[{etapaId:1,anterior:25,atual:50,valor:15000},{etapaId:2,anterior:0,atual:17.5,valor:7000}]},
+   {id:1,fim:'2026-10-10',status:'APROVADA',valor:15000,lancamentoId:20,itens:[{etapaId:1,anterior:0,atual:25,valor:15000},{etapaId:2,anterior:0,atual:0,valor:0}]},
+  ];
+  obra.financeiro=[{lancamentofinanceiroid:20,status:'ABERTO',valor:15000,valorPago:2000}];
+  await wait(()=>!!d.getElementById('joseObraEquipeAcoes'));
+  (d.querySelector('[data-tab="medicoes"]') as HTMLElement).click();
+  const linha=()=>Array.from(d.querySelectorAll('#joseEscopoCivil tbody tr:first-child > *'),c=>c.textContent);
+  assert.deepEqual(linha().slice(3,6),['60%','25%','50%']);
+  assert.match(linha()[7]!,/30\.000,00/);
+  assert.equal(d.getElementById('joseReceberMedicao'),null);
+  const select=d.getElementById('joseEscopoMedicao') as HTMLSelectElement;
+  select.value='1';select.dispatchEvent(new w.Event('change',{bubbles:true}));
+  assert.match(linha()[7]!,/15\.000,00/);
+  (d.getElementById('joseReceberMedicao') as HTMLElement).click();
+  await wait(()=>d.getElementById('editor')!.hasAttribute('open'));
+  const preencher=(nome:string,valor:string)=>{(d.querySelector('#editor [name="'+nome+'"]') as HTMLInputElement).value=valor;};
+  preencher('valorPago','500');preencher('dataPagamento','2026-10-10');preencher('contaFinanceiraId','3');
+  d.getElementById('formEditor')!.dispatchEvent(new w.SubmitEvent('submit',{bubbles:true,cancelable:true}));
+  await wait(()=>d.querySelector('.jose-escopo-recebimento')?.textContent?.includes('2.500,00')===true);
+  assert.deepEqual(writes,[{valorPago:'500',dataPagamento:'2026-10-10',contaFinanceiraId:'3'}]);
+  (d.getElementById('medir') as HTMLElement).click();
+  await wait(()=>d.querySelector('#editor input[name="fim"]')?.parentElement?.textContent?.includes('Data da medição')===true);
  }finally{dom.window.close();}
 });
 

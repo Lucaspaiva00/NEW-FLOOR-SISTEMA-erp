@@ -32,3 +32,17 @@ body.jose-obras-organizada .jose-obra-filtros.tem-filtro>summary{color:#24548d}
 body.jose-obras-organizada .jose-obra-filtros #filtros{border:0;border-top:1px solid #edf0f5;border-radius:0;margin:0;padding:16px 18px}
 body.jose-obras-organizada .obras-page .jose-obra-secondary{background:#edf2f7;color:#39556f}
 @media(max-width:700px){body.jose-obras-organizada .obras-page .toolbar{padding:15px;gap:10px}body.jose-obras-organizada .obras-page .toolbar>label{flex-basis:100%;max-width:none;min-width:0}body.jose-obras-organizada .obras-page .toolbar>.jose-obra-menu{flex:1}body.jose-obras-organizada .obras-page .toolbar>.jose-obra-primary{flex:1}body.jose-obras-organizada .obras-page .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}body.jose-obras-organizada .obras-page .kpis>div{padding:13px}body.jose-obras-organizada .obras-page .kpis strong{font-size:19px}body.jose-obras-organizada .obras-page .section-head{gap:12px}body.jose-obras-organizada .obras-page .jose-obra-acoes{justify-content:start;width:100%;gap:8px}body.jose-obras-organizada .obras-page .jose-obra-acoes>*{flex:1}body.jose-obras-organizada .jose-obra-acoes .jose-obra-menu-items{right:auto;left:0}body.jose-obras-organizada .obras-page #conteudo{padding:17px}body.jose-obras-organizada .obras-page>header h1{font-size:25px}}
+
+.jose-obras-organizada #joseEscopoCivil{margin-bottom:22px;border:1px solid #dfe7ee;border-radius:12px;overflow:hidden}
+.jose-obras-organizada .jose-escopo-cabecalho,
+.jose-obras-organizada .jose-escopo-recebimento{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;background:#f1f6fa}
+.jose-obras-organizada .jose-escopo-cabecalho h3{font-size:16px;margin:0 0 5px}
+.jose-obras-organizada .jose-escopo-cabecalho p{margin:0;color:#52647b}
+.jose-obras-organizada #joseEscopoCivil table{margin:0;min-width:950px}
+.jose-obras-organizada #joseEscopoCivil tbody th{min-width:180px;font-weight:600}
+.jose-obras-organizada #joseEscopoCivil td{font-variant-numeric:tabular-nums;white-space:nowrap}
+.jose-obras-organizada #joseEscopoCivil td:nth-child(n+3),
+.jose-obras-organizada #joseEscopoCivil thead th:nth-child(n+3),
+.jose-obras-organizada #joseEscopoCivil tfoot td{text-align:right}
+.jose-obras-organizada #joseEscopoCivil tfoot{background:#e8f0f7;font-weight:650}
+.jose-obras-organizada .jose-escopo-recebimento{justify-content:flex-start;border-top:1px solid #dfe7ee}
