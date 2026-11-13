@@ -1005,10 +1005,13 @@
     // Recupera também documentos já autorizados antes de reconhecer url_danfse.
     const pdfInformado = n.caminhoPdf || n.retornoProvedor?.url_danfse;
     let pdfDownload = null;
+    let pdfImpressao = null;
     try {
       if (pdfInformado) {
         const url = new URL(pdfInformado, n.caminhoXml || API_URL);
         if (["https:", "http:"].includes(url.protocol)) {
+          url.searchParams.delete("download");
+          pdfImpressao = url.href;
           url.searchParams.set("download", "1");
           pdfDownload = url.href;
         }
@@ -1024,6 +1027,7 @@
       ${editavel ? `<button type="button" class="btn btn-outline-primary" data-editar-nota="${n.notafiscalid}">Editar</button>` : ""}
       ${externaSba ? `<button type="button" class="btn btn-outline-success" data-externa-download="${n.notafiscalid}" data-tipo="xml">Baixar XML original</button>${n.payloadExtra.temPdf ? `<button type="button" class="btn btn-outline-success" data-externa-download="${n.notafiscalid}" data-tipo="pdf">Baixar DANFE PDF</button>` : ''}<a class="btn btn-outline-secondary" href="https://emissor.sieg.com/" target="_blank" rel="noopener">Abrir SIEG Emissor</a>` : ''}
       ${n.caminhoXml ? `<a class="btn btn-outline-success" target="_blank" rel="noopener" href="${esc(n.caminhoXml)}">XML</a>` : ""}
+      ${pdfImpressao && ["AUTORIZADA", "CANCELADA"].includes(n.status) ? `<a class="btn btn-outline-primary" target="_blank" rel="noopener" href="${esc(pdfImpressao)}">Imprimir nota</a>` : ""}
       ${pdfDownload ? `<a class="btn btn-outline-success" target="_blank" rel="noopener" download href="${esc(pdfDownload)}">Baixar PDF</a>` : ""}
       ${editavel ? `<button type="button" class="btn btn-outline-primary" data-conferir-nota="${n.notafiscalid}">Conferir dados</button>` : ""}
       ${consultavel ? `<button type="button" class="btn btn-outline-dark" data-consultar-nota="${n.notafiscalid}">Consultar</button>` : ""}
