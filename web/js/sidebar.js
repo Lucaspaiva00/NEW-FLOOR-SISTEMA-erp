@@ -357,6 +357,7 @@ function aplicarPerfilEmpresa(c) {
  if(!c) return;
  if(c.perfil==='SBA'){
  document.body.classList.add('perfil-sba');
+ if(Number(window.__empresaAtual?.empresaid)===2){const nav=document.querySelector('.menu');if(nav&&!nav.querySelector('a[href="historico-legado.html"]')){const a=document.createElement('a');a.href='historico-legado.html';a.textContent='Histórico recuperado';nav.append(a);}}
  if(['/propostas.html','/orcamentos.html'].some(p=>location.pathname.endsWith(p))&&!document.getElementById('sbaMobileStyles')){const css=document.createElement('link');css.id='sbaMobileStyles';css.rel='stylesheet';css.href='css/sba-mobile.css?v=20261012';document.head.append(css);}
 
  }
