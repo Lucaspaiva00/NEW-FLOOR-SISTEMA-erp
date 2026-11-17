@@ -1,3 +1,4 @@
+import * as historicoLegadoSba from '../controller/cthistoricoLegadoSba';
 import * as nfeExternaSba from "../controller/ctnfeExternaSba";
 import * as superadmin from '../controller/ctsuperadmin';
 import * as obraPropostaJose from '../controller/ctobraPropostaJose';
@@ -37,6 +38,7 @@ import auth from "../middlewares/auth";
 import requireRole from "../middlewares/requireRole";
 
 const routes = express.Router();
+routes.get('/historico-legado',auth,fornecedor.apenasSba,historicoLegadoSba.listar);
 routes.use('/superadmin',auth,superadmin.somenteSuperAdmin);
 routes.get('/superadmin/resumo',superadmin.resumo);
 routes.get('/superadmin/negocios',superadmin.negocios);
