@@ -4,11 +4,11 @@ export function empresaObrigatoria(req:Request,res:Response,next:NextFunction){i
 export function apenasSba(req:Request,res:Response,next:NextFunction){
  if(!req.empresaId || req.configuracaoSistema?.perfil!=='SBA'){res.status(403).json({error:'Recurso disponível apenas para o perfil SBA.'});return;}next();
 }
-export function dadosFornecedor(body:any){
+export function dadosFornecedor(body:any,permitirCpf=false){
  const nome=String(body.nome||'').trim().slice(0,500);
  if(!nome)throw Error('Informe o nome do fornecedor.');
  const cnpj=String(body.cnpj||'').replace(/\D/g,'');
- if(cnpj && ![11,14].includes(cnpj.length))throw Error('Informe CPF com 11 dígitos ou CNPJ com 14 dígitos.');
+ if(cnpj && !(permitirCpf?[11,14]:[14]).includes(cnpj.length))throw Error(permitirCpf?'Informe CPF com 11 dígitos ou CNPJ com 14 dígitos.':'Informe um CNPJ com 14 dígitos.');
  const prazo=body.prazoPagamentoDias==null||body.prazoPagamentoDias===''?null:Number(body.prazoPagamentoDias);
  if(prazo!==null && (!Number.isInteger(prazo)||prazo<0||prazo>3650))throw Error('Prazo de pagamento deve ser de 0 a 3650 dias.');
  const text=(k:string,max=2000)=>String(body[k]||'').trim().slice(0,max)||null;
@@ -17,11 +17,11 @@ export function dadosFornecedor(body:any){
 export async function listar(req:Request,res:Response){try{res.json(await prisma.fornecedor.findMany({where:{empresaId:req.empresaId!},orderBy:{nome:'asc'}}));}catch{res.status(500).json({error:'Não foi possível carregar fornecedores.'});}}
 export async function salvar(req:Request,res:Response){
  try{
-  const data=dadosFornecedor(req.body),empresaId=req.empresaId!;
+  const data=dadosFornecedor(req.body,req.empresaId===2 && req.configuracaoSistema?.perfil==='SBA'),empresaId=req.empresaId!;
   if(req.params.id){
    const id=Number(req.params.id),updated=await prisma.fornecedor.updateMany({where:{fornecedorid:id,empresaId},data});
    if(!updated.count){res.status(404).json({error:'Fornecedor não encontrado.'});return;}
    res.json(await prisma.fornecedor.findFirst({where:{fornecedorid:id,empresaId}}));
   }else res.status(201).json(await prisma.fornecedor.create({data:{...data,empresaId}}));
- }catch(error:any){res.status(error.code==='P2002'?409:400).json({error:error.code==='P2002'?'Este CPF/CNPJ já está cadastrado como fornecedor.':error.message||'Não foi possível salvar fornecedor.'});}
+ }catch(error:any){res.status(error.code==='P2002'?409:400).json({error:error.code==='P2002'?(req.empresaId===2 && req.configuracaoSistema?.perfil==='SBA'?'Este CPF/CNPJ já está cadastrado como fornecedor.':'Este CNPJ já está cadastrado como fornecedor.'):error.message||'Não foi possível salvar fornecedor.'});}
 }
