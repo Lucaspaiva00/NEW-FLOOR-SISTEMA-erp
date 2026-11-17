@@ -8,7 +8,7 @@ export function dadosFornecedor(body:any){
  const nome=String(body.nome||'').trim().slice(0,500);
  if(!nome)throw Error('Informe o nome do fornecedor.');
  const cnpj=String(body.cnpj||'').replace(/\D/g,'');
- if(cnpj && cnpj.length!==14)throw Error('Informe um CNPJ com 14 dígitos.');
+ if(cnpj && ![11,14].includes(cnpj.length))throw Error('Informe CPF com 11 dígitos ou CNPJ com 14 dígitos.');
  const prazo=body.prazoPagamentoDias==null||body.prazoPagamentoDias===''?null:Number(body.prazoPagamentoDias);
  if(prazo!==null && (!Number.isInteger(prazo)||prazo<0||prazo>3650))throw Error('Prazo de pagamento deve ser de 0 a 3650 dias.');
  const text=(k:string,max=2000)=>String(body[k]||'').trim().slice(0,max)||null;
@@ -23,5 +23,5 @@ export async function salvar(req:Request,res:Response){
    if(!updated.count){res.status(404).json({error:'Fornecedor não encontrado.'});return;}
    res.json(await prisma.fornecedor.findFirst({where:{fornecedorid:id,empresaId}}));
   }else res.status(201).json(await prisma.fornecedor.create({data:{...data,empresaId}}));
- }catch(error:any){res.status(error.code==='P2002'?409:400).json({error:error.code==='P2002'?'Este CNPJ já está cadastrado como fornecedor.':error.message||'Não foi possível salvar fornecedor.'});}
+ }catch(error:any){res.status(error.code==='P2002'?409:400).json({error:error.code==='P2002'?'Este CPF/CNPJ já está cadastrado como fornecedor.':error.message||'Não foi possível salvar fornecedor.'});}
 }
